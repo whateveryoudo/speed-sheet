@@ -1,0 +1,35 @@
+{
+  "name": "speed-sheet",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A sheet editor based on lucksheet, reference tiptap architecture",
+  "scripts": {
+    "dev": "pnpm --filter './packages/*' dev",
+    "build": "pnpm --filter './packages/*' build",
+    "type-check": "pnpm --filter './packages/*' type-check",
+    "lint": "pnpm --filter './packages/*' lint",
+    "clean": "pnpm --filter './packages/*' clean && rm -rf node_modules",
+    "prepublishOnly": "pnpm build"
+  },
+  "keywords": [
+    "sheet",
+    "spreadsheet",
+    "editor",
+    "lucksheet",
+    "excel"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.0"
+}
+

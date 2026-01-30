@@ -1,0 +1,26 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Testing
+coverage
+*.lcov
+
+# Production
+dist
+build
+*.tsbuildinfo
+
+# Misc
+.DS_Store
+*.log
+*.lock
+.vscode
+.idea
+
+# Environment
+.env
+.env.local
+.env.*.local
+

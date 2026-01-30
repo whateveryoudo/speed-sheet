@@ -1,0 +1,46 @@
+{
+  "name": "@speed-sheet/vue3",
+  "version": "0.1.0",
+  "description": "Vue3 renderer for speed-sheet",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "vue-tsc --watch --noEmit",
+    "build": "vue-tsc && tsc",
+    "type-check": "vue-tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "sheet",
+    "spreadsheet",
+    "editor",
+    "vue3",
+    "vue"
+  ],
+  "author": "",
+  "license": "MIT",
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  },
+  "dependencies": {
+    "@speed-sheet/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@vue/tsconfig": "^0.8.1",
+    "typescript": "^5.9.0",
+    "vue": "^3.5.22",
+    "vue-tsc": "^3.1.0"
+  }
+}
+
