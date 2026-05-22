@@ -1,26 +1,9 @@
-# Dependencies
-node_modules
-.pnp
-.pnp.js
-
-# Testing
-coverage
-*.lcov
-
-# Production
-dist
-build
+node_modules/
+dist/
+.turbo/
 *.tsbuildinfo
-
-# Misc
-.DS_Store
-*.log
-*.lock
-.vscode
-.idea
-
-# Environment
 .env
 .env.local
-.env.*.local
-
+.DS_Store
+*.log
+coverage/

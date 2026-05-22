@@ -1,36 +1,33 @@
 {
   "name": "@speed-sheet/core",
   "version": "0.1.0",
-  "description": "Core sheet editor logic without UI dependencies",
   "type": "module",
-  "main": "./dist/index.js",
+  "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
       "types": "./dist/index.d.ts"
     }
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "scripts": {
-    "dev": "tsc --watch",
-    "build": "tsc",
-    "type-check": "tsc --noEmit",
+    "build": "vite build && tsc -p tsconfig.build.json",
+    "dev": "vite build --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "clean": "rm -rf dist"
   },
-  "keywords": [
-    "sheet",
-    "spreadsheet",
-    "editor",
-    "core"
-  ],
-  "author": "",
-  "license": "MIT",
+  "dependencies": {
+    "@speed-sheet/shared": "workspace:^",
+    "yjs": "^13.6.0"
+  },
   "devDependencies": {
-    "typescript": "^5.9.0"
+    "vite": "^6.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
   }
 }
-
