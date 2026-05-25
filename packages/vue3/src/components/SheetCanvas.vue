@@ -1,19 +1,5 @@
 <template>
-  <div class="sheet-root" ref="rootEl" tabindex="0" @keydown="onKeyDown">
-    <!-- Formula Bar -->
-    <div class="sheet-formula-bar" v-if="chrome.showFormulaBar">
-      <span class="cell-ref">{{ cellRef }}</span>
-      <span class="fx-label">fx</span>
-      <input class="formula-input" :value="formulaText" @input="e => formulaText = (e.target as HTMLInputElement).value"
-        @keydown.enter="commitFormula" @focus="onFormulaFocus" />
-    </div>
-
-    <!-- Toolbar slot -->
-    <div class="sheet-toolbar" v-if="chrome.showToolbar">
-      <slot name="toolbar" />
-    </div>
-
-    <!-- Viewport: fixed flex size; scroll + canvas are layered, canvas NOT inside scroll -->
+  <div class="sheet-canvas-root" ref="rootEl" tabindex="0" @keydown="onKeyDown">
     <div class="sheet-viewport" ref="viewportEl">
       <div class="sheet-scroll" ref="scrollEl" @scroll="onScroll">
         <div class="sheet-spacer" :style="{ width: totalW + 'px', height: totalH + 'px' }" aria-hidden="true" />
@@ -25,13 +11,6 @@
       <slot v-if="ctxMenu.show && $slots['context-menu']" name="context-menu" v-bind="ctxMenuPayload"
         :close="closeCtxMenu" />
     </div>
-
-    <!-- Sheet tabs -->
-    <div class="sheet-bar" v-if="chrome.showSheetBar">
-      <div v-for="(name, idx) in chrome.sheetNames" :key="idx" class="sheet-tab" :class="{ active: name === chrome.activeSheetName }"
-        @click="$emit('switch-sheet', name)">{{ name }}</div>
-      <div class="sheet-tab-add" @click="$emit('add-sheet')">+</div>
-    </div>
   </div>
 </template>
 
@@ -39,32 +18,27 @@
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { renderSheet, cellFromPoint, cellRect, defaultLayout, CELL_EDITOR_OUTSET, buildCellMap, getCellTextColSpan, computeEditorWidth, type GridLayout, type CellEntry } from '@speed-sheet/core'
 import type { Selection, CellAttributes } from '@speed-sheet/shared'
+import type { Sheet } from '@speed-sheet/core'
 import type { ContextMenuState } from '../types/context-menu'
-import type { SheetViewState, SheetChromeOptions } from '../types/sheet-view'
 
-const props = defineProps<{
-  view: SheetViewState
-  chrome?: SheetChromeOptions
-}>()
+const props = withDefaults(defineProps<{
+  sheet: Sheet | null
+  /** 与 useSheet.revision 联动，触发 canvas 重绘 */
+  revision?: number
+  rowHeaderWidth?: number
+  columnHeaderHeight?: number
+}>(), {
+  revision: 0,
+})
 
-const chrome = computed(() => ({
-  showToolbar: false,
-  showSheetBar: true,
-  showFormulaBar: true,
-  sheetNames: [] as string[],
-  activeSheetName: '',
-  ...props.chrome,
-}))
+const sheet = computed(() => props.sheet)
 
-const sheet = computed(() => props.view.sheet)
+const EMPTY_SEL: Selection = { row: [0, 0], column: [0, 0] }
 
 const emit = defineEmits<{
   'cell-click': [r: number, c: number]
   'select-range': [r0: number, c0: number, r1: number, c1: number, anchorR: number, anchorC: number]
   'context-menu': [payload: ContextMenuState & { close: () => void }]
-  'switch-sheet': [name: string]
-  'add-sheet': []
-  'delete-sheet': [name: string]
 }>()
 
 const rootEl = ref<HTMLElement>()
@@ -82,8 +56,8 @@ const layout = ref<GridLayout>(
   defaultLayout({
     totalRows,
     totalCols,
-    ...(props.view.rowHeaderWidth != null ? { rowHeaderWidth: props.view.rowHeaderWidth } : {}),
-    ...(props.view.columnHeaderHeight != null ? { columnHeaderHeight: props.view.columnHeaderHeight } : {}),
+    ...(props.rowHeaderWidth != null ? { rowHeaderWidth: props.rowHeaderWidth } : {}),
+    ...(props.columnHeaderHeight != null ? { columnHeaderHeight: props.columnHeaderHeight } : {}),
   }),
 )
 
@@ -112,30 +86,22 @@ function editorBox(): {
   }
 }
 
-const sel = computed(() => props.view.selection)
-const cells = computed(() => props.view.cells)
+/** sheet 非响应式，须依赖 revision 才能在选区/单元格变更后重算 */
+const sel = computed(() => {
+  void props.revision
+  return sheet.value?.state.getSelection() ?? EMPTY_SEL
+})
+const cells = computed(() => {
+  void props.revision
+  return sheet.value?.state.getAllCells() ?? []
+})
 const activeCell = computed(() => ({
   r: sel.value.anchor?.r ?? sel.value.row[0],
   c: sel.value.anchor?.c ?? sel.value.column[0],
 }))
-const cellRef = computed(() => `${colLetter(activeCell.value.c)}${activeCell.value.r + 1}`)
 const cellEntries = computed<CellEntry[]>(() =>
   cells.value.map((c) => ({ r: c.r, c: c.c, data: c.data } as CellEntry)),
 )
-
-function colLetter(c: number): string { let s = ''; let n = c; do { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1 } while (n >= 0); return s }
-
-// ---- Formula bar ----
-const formulaText = ref('')
-function onFormulaFocus() {
-  const { r, c } = activeCell.value
-  const cell = cellEntries.value.find(x => x.r === r && x.c === c)
-  formulaText.value = cell?.data?.f ?? cell?.data?.v?.toString() ?? ''
-}
-function commitFormula() {
-  const { r, c } = activeCell.value
-  sheet.value?.chain().setCellValue({ r, c, value: formulaText.value }).run()
-}
 
 // ---- Inline edit ----
 const editing = ref(false); const editorValue = ref(''); const editR = ref(0); const editC = ref(0)
@@ -210,8 +176,16 @@ function cellPointFromEvent(e: MouseEvent): { r: number; c: number } | null {
   return clampCell(pt.r, pt.c)
 }
 
-function emitSelectRange(r0: number, c0: number, r1: number, c1: number): void {
+function applySelectRange(r0: number, c0: number, r1: number, c1: number): void {
   const a = dragAnchor.value ?? { r: r0, c: c0 }
+  sheet.value
+    ?.chain()
+    .selectRange({
+      row: [r0, r1],
+      column: [c0, c1],
+      anchor: { r: a.r, c: a.c },
+    })
+    .run()
   emit('select-range', r0, c0, r1, c1, a.r, a.c)
 }
 
@@ -238,7 +212,7 @@ function onDocumentMouseMove(e: MouseEvent): void {
   const pt = cellPointFromEvent(e)
   if (!pt) return
   const a = dragAnchor.value
-  emitSelectRange(a.r, a.c, pt.r, pt.c)
+  applySelectRange(a.r, a.c, pt.r, pt.c)
   scheduleDraw()
 }
 
@@ -246,6 +220,7 @@ function endDragSelect(): void {
   dragAnchor.value = null
   document.removeEventListener('mousemove', onDocumentMouseMove)
   document.removeEventListener('mouseup', endDragSelect)
+  scheduleDraw()
 }
 
 function onMouseDown(e: MouseEvent) {
@@ -256,8 +231,9 @@ function onMouseDown(e: MouseEvent) {
   if (!pt) return
   rootEl.value?.focus()
   dragAnchor.value = { r: pt.r, c: pt.c }
+  applySelectRange(pt.r, pt.c, pt.r, pt.c)
   emit('cell-click', pt.r, pt.c)
-  emitSelectRange(pt.r, pt.c, pt.r, pt.c)
+  scheduleDraw()
   document.addEventListener('mousemove', onDocumentMouseMove)
   document.addEventListener('mouseup', endDragSelect)
 }
@@ -330,8 +306,9 @@ function onKeyDown(e: KeyboardEvent) {
   else return
 
   e.preventDefault()
+  applySelectRange(nr, nc, nr, nc)
   emit('cell-click', nr, nc)
-  emitSelectRange(nr, nc, nr, nc)
+  scheduleDraw()
 }
 
 // ---- Right-click（UI 由 #context-menu slot 或 @context-menu 接入） ----
@@ -358,8 +335,9 @@ function onContextMenu(e: MouseEvent) {
   e.preventDefault()
   const pt = cellPointFromEvent(e)
   if (pt) {
+    applySelectRange(pt.r, pt.c, pt.r, pt.c)
     emit('cell-click', pt.r, pt.c)
-    emitSelectRange(pt.r, pt.c, pt.r, pt.c)
+    scheduleDraw()
   }
   const payload: ContextMenuState = {
     r: pt?.r ?? activeCell.value.r,
@@ -446,36 +424,28 @@ function draw() {
 
 // React to view / layout changes
 watch(
-  () => [props.view.rowHeaderWidth, props.view.columnHeaderHeight] as const,
+  () => [props.rowHeaderWidth, props.columnHeaderHeight] as const,
   () => {
     layout.value = {
       ...layout.value,
-      ...(props.view.rowHeaderWidth != null ? { rowHeaderWidth: props.view.rowHeaderWidth } : {}),
-      ...(props.view.columnHeaderHeight != null ? { columnHeaderHeight: props.view.columnHeaderHeight } : {}),
+      ...(props.rowHeaderWidth != null ? { rowHeaderWidth: props.rowHeaderWidth } : {}),
+      ...(props.columnHeaderHeight != null ? { columnHeaderHeight: props.columnHeaderHeight } : {}),
     }
     scheduleDraw()
   },
 )
 
 watch(
-  () => [props.view.revision, props.view.selection, editing.value] as const,
+  () => [props.revision, props.sheet, editing.value] as const,
   () => {
     scheduleDraw()
-    syncFormulaFromCell()
   },
 )
-
-function syncFormulaFromCell(): void {
-  const { r, c } = activeCell.value
-  const cell = cells.value.find(x => x.r === r && x.c === c)
-  formulaText.value = cell?.data?.f ?? String(cell?.data?.m ?? cell?.data?.v ?? '')
-}
 
 let resizeObs: ResizeObserver | null = null
 let lastViewportW = 0
 let lastViewportH = 0
 onMounted(() => {
-  syncFormulaFromCell()
   resizeObs = new ResizeObserver((entries) => {
     const entry = entries[0]
     if (!entry) return
@@ -494,71 +464,24 @@ onUnmounted(() => {
   endDragSelect()
 })
 
-defineExpose({ viewportEl })
+defineExpose({
+  viewportEl,
+  sheet,
+  getSelection: () => sheet.value?.state.getSelection(),
+  chain: () => sheet.value?.chain(),
+})
 </script>
 
 <style scoped>
-.sheet-root {
+.sheet-canvas-root {
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  font-size: 11px;
+  outline: none;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  width: 100%;
-  min-height: 0;
-  font-size: 11px;
-  outline: none;
-}
-
-.sheet-formula-bar {
-  height: 28px;
-  display: flex;
-  align-items: center;
-  border-bottom: 1px solid #d0d0d0;
-  padding: 0 6px;
-  gap: 6px;
-  background: #fff;
-  flex-shrink: 0;
-}
-
-.cell-ref {
-  font-family: monospace;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 10px;
-  border: 1px solid #e0e0e0;
-  border-radius: 3px;
-  min-width: 52px;
-  text-align: center;
-  color: #333;
-  background: #fafafa;
-}
-
-.fx-label {
-  font-style: italic;
-  font-weight: 700;
-  color: #999;
-  font-size: 12px;
-}
-
-.formula-input {
-  flex: 1;
-  height: 22px;
-  border: 1px solid #d0d0d0;
-  border-radius: 3px;
-  padding: 0 6px;
-  font-size: 11px;
-  outline: none;
-}
-
-.formula-input:focus {
-  border-color: #1a73e8;
-}
-
-.sheet-toolbar {
-  flex-shrink: 0;
-  border-bottom: 1px solid #d0d0d0;
-  background: #fafafa;
-  padding: 2px 6px;
-  min-height: 32px;
 }
 
 .sheet-viewport {
@@ -607,50 +530,5 @@ defineExpose({ viewportEl })
   box-sizing: border-box;
   overflow: hidden;
   white-space: nowrap;
-}
-
-.sheet-bar {
-  height: 31px;
-  border-top: 1px solid #d0d0d0;
-  display: flex;
-  align-items: center;
-  padding: 0 4px;
-  background: #f0f0f0;
-  gap: 1px;
-  overflow-x: auto;
-  flex-shrink: 0;
-}
-
-.sheet-tab {
-  padding: 2px 16px;
-  background: #e0e0e0;
-  cursor: pointer;
-  white-space: nowrap;
-  font-size: 11px;
-  border-radius: 4px 4px 0 0;
-  margin-top: 2px;
-}
-
-.sheet-tab:hover {
-  background: #d0d0d0;
-}
-
-.sheet-tab.active {
-  background: #fff;
-  font-weight: 600;
-  border-bottom: 2px solid #1a73e8;
-}
-
-.sheet-tab-add {
-  padding: 2px 8px;
-  cursor: pointer;
-  font-weight: bold;
-  color: #666;
-  font-size: 14px;
-}
-
-.sheet-tab-add:hover {
-  background: #d0d0d0;
-  border-radius: 2px;
 }
 </style>

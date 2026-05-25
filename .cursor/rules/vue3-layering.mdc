@@ -1,0 +1,92 @@
+---
+description: speed-sheet Vue 分层、headless 边界、vue3-antd 开发约定（改 vue3 / antd / SpeedSheet 时必读）
+alwaysApply: true
+globs:
+  - speed-sheet/packages/**/*
+  - speed-sheet/demos/**/*
+---
+
+# speed-sheet Vue 架构约定
+
+## 包依赖（禁止反向依赖）
+
+```
+@speed-sheet/core          ← Sheet、chain、canvas 渲染、Luckysheet 适配
+        ↓
+@speed-sheet/vue3          ← 严格 headless：SheetCanvas + useSheet（无 UI 库）
+        ↓
+@speed-sheet/vue3-antd     ← 默认产品皮：公式栏 / 工具栏 / 页签 / antd 菜单
+```
+
+- **vue3-element**（规划）只依赖 `vue3`，与 `vue3-antd` **平行**，互不依赖。
+- **业务 API 唯一句柄**：`sheet` 实例（对齐 Tiptap `editor`），不要在外壳层再包一层 `getRange` 等到 `defineExpose`。
+
+## @speed-sheet/vue3（headless）
+
+| 保留 | 不放在 vue3 |
+|------|-------------|
+| `SheetCanvas`：canvas、滚动、单元格编辑、选区同步 | 公式栏、底部页签条、工具栏 DOM |
+| `useSheet` → `sheet` + `revision` | `SheetChromeOptions`、antd / element |
+| `#context-menu` slot（坐标 + close，无 UI） | 页签 Pop、工具栏按钮 |
+
+### 响应式要点
+
+- `Sheet` 是普通 class，**不是** Vue 响应式对象。
+- canvas 读 `sheet.state` 时，`computed` 必须依赖 **`revision`**（`useSheet` 在 `onUpdate` 时 `revision++`）。
+- `SheetRenderer` 已废弃，等价于 `SheetCanvas`。
+
+### useSheet 对外
+
+```ts
+const { sheet, revision, switchSheet, addSheet, isReady } = useSheet(options)
+// 选区：sheet.value?.state.getSelection()
+// 命令：sheet.value?.chain()...
+```
+
+## @speed-sheet/vue3-antd（UI 层）
+
+### 组件拼装（SpeedSheet）
+
+```
+SheetFormulaBar
+SheetToolbarHost → menus/toolbar
+SheetCanvas（来自 vue3）
+SheetTabBar → vue-draggable-next + #tab-menu → SheetTabContextMenu
+```
+
+### antd 使用
+
+- 已配置 **unplugin-vue-components + AntDesignVueResolver**：模板里直接用 **`a-input`、`a-button`、`a-menu`** 等，无需手写 `import { Input } from 'ant-design-vue'`（图标仍从 `@ant-design/icons-vue` 引入）。
+- 根节点加 class **`speed-sheet`**，样式变量见 `packages/vue3-antd/src/style/base.less`。
+- 优先 **`var(--ant-color-*)`**（由 speed-components `useAntdCssVars` 注入到 document）；业务色可用 **`var(--speed-color-*)`**（定义在 `.speed-sheet` 下）。
+
+### 菜单目录
+
+```
+menus/
+  toolbar/          # 顶部工具栏
+  contextMenu/      # 单元格右键（antd Menu）
+  sheetTabMenu/     # 页签右键 / ▾（antd Menu + SubMenu）
+components/
+  SheetFormulaBar.vue
+  SheetTabBar.vue
+  SheetToolbarHost.vue
+```
+
+### core 工作表 API（页签相关）
+
+- `addSheet` / `deleteSheet` / `renameSheet` / `duplicateSheet`
+- `reorderSheets(orderedIds)` — 页签拖拽排序
+- `getVisibleSheetIds` / `getActiveSheetId` / `setSheetTabColor` / `setSheetHidden`
+- 切换页签用 **`useSheet.switchSheet`**（同步 `activeSheetId`），不要只调 `sheet.switchSheet` 而漏掉外壳状态。
+
+### SpeedSheet defineExpose
+
+只暴露：`sheet`、`switchSheet`、`addSheet`、`viewportEl`、`revision`。其余一律 `ref.sheet?.xxx`。
+
+## 改代码时的检查清单
+
+1. 新 UI 是否依赖 antd？→ 放 **vue3-antd**，不要放进 vue3。
+2. 新数据能力？→ **core `Sheet`** + `notifyUpdate`。
+3. canvas 是否要重绘？→ 确保 `revision` 递增或 watch `revision`。
+4. 样式是否硬编码 hex？→ 改用 `--ant-*` 或 `--speed-*`。

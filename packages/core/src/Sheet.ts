@@ -6,6 +6,9 @@ import { CommandManager } from './commands/CommandManager'
 import { SheetState } from './state/SheetState'
 import { importFromLuckysheet, exportToLuckysheet } from './adapter/luckysheet-adapter'
 import type { ClipboardPayload } from './extension/core/clipboard'
+import { sheetCompatApi, type LuckysheetRange } from './api/sheet-compat'
+
+export type { LuckysheetRange } from './api/sheet-compat'
 
 // ============================================================
 // Sheet — Headless spreadsheet editor (TipTap's Editor pattern)
@@ -39,6 +42,7 @@ export class Sheet {
   public options: SheetOptions
 
   private _isDestroyed = false
+  private _activeSheetId = '0'
 
   constructor(options: SheetOptions = {}) {
     this.options = options
@@ -130,8 +134,10 @@ export class Sheet {
 
     if (firstSheet) {
       this.state = new SheetState(firstSheet)
+      this._activeSheetId = firstId
     } else {
       this.state = new SheetState(new Y.Map())
+      this._activeSheetId = '0'
     }
   }
 
@@ -192,6 +198,34 @@ export class Sheet {
     return this.ydoc
   }
 
+  /** 新建工作表并切换到该表，返回新 sheet id */
+  addSheet(name?: string): string {
+    const sheetsMap = this.ydoc.getMap('sheets')
+    const id = this._nextSheetId()
+    const displayName = name ?? this._defaultNewSheetName()
+
+    this.ydoc.transact(() => {
+      const ySheet = new Y.Map()
+      ySheet.set('name', displayName)
+      sheetsMap.set(id, ySheet)
+    })
+
+    this.switchSheet(id)
+    return id
+  }
+
+  private _nextSheetId(): string {
+    const keys = this.getSheetIds()
+    let n = 0
+    while (keys.includes(String(n))) n++
+    return String(n)
+  }
+
+  private _defaultNewSheetName(): string {
+    const n = this.getSheetIds().length
+    return `Sheet${n}`
+  }
+
   /** Switch to a different sheet */
   switchSheet(sheetId: string): void {
     const sheetsMap = this.ydoc.getMap('sheets')
@@ -201,14 +235,133 @@ export class Sheet {
       return
     }
     this.state = new SheetState(ySheet)
+    this._activeSheetId = sheetId
     for (const ext of this.extensions) {
       ext.handleSheetSwitch(sheetId)
     }
+    this.notifyUpdate()
+  }
+
+  /** 当前激活的工作表 id */
+  getActiveSheetId(): string {
+    return this._activeSheetId
   }
 
   /** Get all sheet IDs */
   getSheetIds(): string[] {
     return Array.from(this.ydoc.getMap('sheets').keys())
+  }
+
+  /** 未隐藏的工作表 id（页签栏展示，顺序与内部 sheets Map 一致） */
+  getVisibleSheetIds(): string[] {
+    const sheetsMap = this.ydoc.getMap('sheets')
+    return this.getSheetIds().filter((id) => {
+      const ySheet = sheetsMap.get(id) as Y.Map<any>
+      return !ySheet?.get('hidden')
+    })
+  }
+
+  /** 调整工作表顺序（页签拖拽）；orderedIds 为可见表顺序，隐藏表保留在末尾 */
+  reorderSheets(orderedIds: string[]): void {
+    const sheetsMap = this.ydoc.getMap('sheets')
+    const all = this.getSheetIds()
+    const hidden = all.filter((id) => {
+      const ySheet = sheetsMap.get(id) as Y.Map<any>
+      return !!ySheet?.get('hidden')
+    })
+    const visibleSet = new Set(orderedIds)
+    const trailing = all.filter((id) => !visibleSet.has(id) && !hidden.includes(id))
+    const fullOrder = [...orderedIds, ...hidden, ...trailing]
+
+    this.ydoc.transact(() => {
+      const snapshot: Array<[string, Y.Map<any>]> = []
+      const seen = new Set<string>()
+      for (const id of fullOrder) {
+        const v = sheetsMap.get(id) as Y.Map<any> | undefined
+        if (v) {
+          snapshot.push([id, v])
+          seen.add(id)
+        }
+      }
+      for (const id of all) {
+        if (!seen.has(id)) {
+          const v = sheetsMap.get(id) as Y.Map<any> | undefined
+          if (v) snapshot.push([id, v])
+        }
+      }
+      for (const k of [...sheetsMap.keys()]) sheetsMap.delete(k)
+      for (const [k, v] of snapshot) sheetsMap.set(k, v)
+    })
+    this.notifyUpdate()
+  }
+
+  renameSheet(sheetId: string, name: string): void {
+    const ySheet = this.ydoc.getMap('sheets').get(sheetId) as Y.Map<any>
+    if (!ySheet) return
+    this.ydoc.transact(() => ySheet.set('name', name))
+    this.notifyUpdate()
+  }
+
+  deleteSheet(sheetId: string): void {
+    const ids = this.getSheetIds()
+    if (ids.length <= 1) {
+      console.warn('[@speed-sheet/core] Cannot delete the last sheet')
+      return
+    }
+    const sheetsMap = this.ydoc.getMap('sheets')
+    this.ydoc.transact(() => sheetsMap.delete(sheetId))
+    if (this._activeSheetId === sheetId) {
+      const next = ids.find((id) => id !== sheetId) ?? '0'
+      this.switchSheet(next)
+    } else {
+      this.notifyUpdate()
+    }
+  }
+
+  duplicateSheet(sheetId: string): string {
+    const sheetsMap = this.ydoc.getMap('sheets')
+    const source = sheetsMap.get(sheetId) as Y.Map<any>
+    if (!source) return sheetId
+    const id = this._nextSheetId()
+    const baseName = (source.get('name') as string) || 'Sheet'
+    this.ydoc.transact(() => {
+      const clone = cloneYSheetMap(source)
+      clone.set('name', `${baseName} 副本`)
+      sheetsMap.set(id, clone)
+    })
+    this.switchSheet(id)
+    return id
+  }
+
+  setSheetHidden(sheetId: string, hidden: boolean): void {
+    const ySheet = this.ydoc.getMap('sheets').get(sheetId) as Y.Map<any>
+    if (!ySheet) return
+    this.ydoc.transact(() => {
+      if (hidden) ySheet.set('hidden', 1)
+      else ySheet.delete('hidden')
+    })
+    if (hidden && this._activeSheetId === sheetId) {
+      const visible = this.getVisibleSheetIds()
+      if (visible.length) this.switchSheet(visible[0])
+      else this.notifyUpdate()
+    } else {
+      this.notifyUpdate()
+    }
+  }
+
+  setSheetTabColor(sheetId: string, color: string | null): void {
+    const ySheet = this.ydoc.getMap('sheets').get(sheetId) as Y.Map<any>
+    if (!ySheet) return
+    this.ydoc.transact(() => {
+      if (color) ySheet.set('color', color)
+      else ySheet.delete('color')
+    })
+    this.notifyUpdate()
+  }
+
+  getSheetTabColor(sheetId: string): string | null {
+    const ySheet = this.ydoc.getMap('sheets').get(sheetId) as Y.Map<any>
+    return (ySheet?.get('color') as string) ?? null
   }
 
   /** Get sheet name */
@@ -247,6 +400,64 @@ export class Sheet {
   /** Trigger update callback (called by CommandManager after mutations) */
   notifyUpdate(): void {
     this.options.onUpdate?.(this)
+  }
+
+  // ---- Luckysheet 风格便捷 API（内部仍走 chain） ----
+
+  getRange(): LuckysheetRange[] {
+    return sheetCompatApi.getRange(this)
+  }
+
+  getRangeValue(range?: LuckysheetRange): (string | number | null)[][] {
+    return sheetCompatApi.getRangeValue(this, range)
+  }
+
+  setRangeValue(data: (string | number | null)[][], range?: LuckysheetRange): void {
+    sheetCompatApi.setRangeValue(this, data, range)
+  }
+
+  getCellValue(r: number, c: number): string | number | null {
+    return sheetCompatApi.getCellValue(this, r, c)
+  }
+
+  setCellValue(r: number, c: number, value: string | number): void {
+    sheetCompatApi.setCellValue(this, r, c, value)
+  }
+
+  setRange(range: LuckysheetRange): void {
+    sheetCompatApi.setRange(this, range)
+  }
+
+  clearRange(range?: LuckysheetRange): void {
+    sheetCompatApi.clearRange(this, range)
+  }
+
+  insertRow(row?: number, count?: number): void {
+    sheetCompatApi.insertRow(this, row, count)
+  }
+
+  deleteRow(row?: number, count?: number): void {
+    sheetCompatApi.deleteRow(this, row, count)
+  }
+
+  insertColumn(col?: number, count?: number): void {
+    sheetCompatApi.insertColumn(this, col, count)
+  }
+
+  deleteColumn(col?: number, count?: number): void {
+    sheetCompatApi.deleteColumn(this, col, count)
+  }
+
+  copy(): void {
+    sheetCompatApi.copy(this)
+  }
+
+  cut(): void {
+    sheetCompatApi.cut(this)
+  }
+
+  paste(): void {
+    sheetCompatApi.paste(this)
   }
 
   /** 复制/剪切后的虚线选区（无则 null） */
@@ -288,4 +499,26 @@ function objectToYMap(obj: Record<string, any> | undefined): Y.Map<any> {
     }
   }
   return map
+}
+
+function cloneYSheetMap(source: Y.Map<any>): Y.Map<any> {
+  const target = new Y.Map()
+  source.forEach((value, key) => {
+    if (value instanceof Y.Map) {
+      const nested = new Y.Map()
+      value.forEach((v, k) => {
+        if (v instanceof Y.Map) {
+          const cell = new Y.Map()
+          v.forEach((cv, ck) => cell.set(ck, cv))
+          nested.set(k, cell)
+        } else {
+          nested.set(k, v)
+        }
+      })
+      target.set(key, nested)
+    } else {
+      target.set(key, value)
+    }
+  })
+  return target
 }

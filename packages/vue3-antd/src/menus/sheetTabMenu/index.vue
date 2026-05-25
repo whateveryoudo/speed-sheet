@@ -2,27 +2,26 @@
 import { computed, toRef, watch } from 'vue'
 import { Menu } from 'ant-design-vue'
 import type { Sheet } from '@speed-sheet/core'
-import type { ContextMenuItemConfig, SpeedSheetProps } from '../../types'
+import type { SpeedSheetProps } from '../../types'
 import { useContextMenuFloating } from '../../composables/useContextMenuFloating'
+import type { SheetTabMenuItemConfig } from './types'
 import {
-  processContextMenuKeys,
-  resolveContextMenuKeys,
-  runContextMenuAction,
-  type ContextMenuActionContext,
+  processSheetTabMenuKeys,
+  resolveSheetTabMenuKeys,
+  runSheetTabMenuAction,
 } from './registry'
 
-defineOptions({ name: 'CellContextMenu' })
+defineOptions({ name: 'SheetTabContextMenu' })
 
 const props = withDefaults(
   defineProps<{
     open?: boolean
     clientX?: number
     clientY?: number
-    r?: number
-    c?: number
+    sheetId?: string
     sheet?: Sheet | null
     lang?: SpeedSheetProps['lang']
-    menuKeys?: ContextMenuItemConfig[]
+    menuKeys?: SheetTabMenuItemConfig[]
     excludeKeys?: string[]
     boundary?: HTMLElement | null
   }>(),
@@ -30,19 +29,17 @@ const props = withDefaults(
     open: false,
     clientX: 0,
     clientY: 0,
-    r: 0,
-    c: 0,
+    sheetId: '',
     lang: 'zh',
   },
 )
 
-const emit = defineEmits<{
-  close: []
-}>()
+const emit = defineEmits<{ close: [] }>()
 
 const AMenu = Menu
 const AMenuItem = Menu.Item
 const AMenuDivider = Menu.Divider
+const ASubMenu = Menu.SubMenu
 
 const boundaryRef = toRef(() => props.boundary)
 const { visible, menuEl, openAt, close } = useContextMenuFloating({
@@ -50,14 +47,12 @@ const { visible, menuEl, openAt, close } = useContextMenuFloating({
 })
 
 const resolvedKeys = computed(() =>
-  resolveContextMenuKeys(props.menuKeys, props.excludeKeys),
+  resolveSheetTabMenuKeys(props.menuKeys, props.excludeKeys),
 )
 
-const actionCtx = computed<ContextMenuActionContext>(() => ({
+const actionCtx = computed(() => ({
   sheet: props.sheet,
-  selection: props.sheet?.state.getSelection(),
-  r: props.r ?? 0,
-  c: props.c ?? 0,
+  sheetId: props.sheetId ?? '',
   close: () => {
     close()
     emit('close')
@@ -65,7 +60,7 @@ const actionCtx = computed<ContextMenuActionContext>(() => ({
 }))
 
 const items = computed(() =>
-  processContextMenuKeys(resolvedKeys.value, props.lang ?? 'zh', actionCtx.value),
+  processSheetTabMenuKeys(resolvedKeys.value, props.lang ?? 'zh', actionCtx.value),
 )
 
 watch(
@@ -78,16 +73,33 @@ watch(
 )
 
 function onMenuClick({ key }: { key: string | number }): void {
-  runContextMenuAction(String(key), resolvedKeys.value, actionCtx.value)
+  runSheetTabMenuAction(String(key), resolvedKeys.value, actionCtx.value)
+}
+
+function onColorPick(color: string): void {
+  runSheetTabMenuAction('tabColor', resolvedKeys.value, actionCtx.value, color)
 }
 </script>
 
 <template>
   <Teleport to="body">
-    <div v-if="visible" ref="menuEl" class="cell-ctx-menu" @mousedown.prevent>
-      <a-menu class="cell-ctx-menu-inner" @click="onMenuClick">
+    <div v-if="visible" ref="menuEl" class="sheet-tab-ctx-menu" @mousedown.prevent>
+      <a-menu class="sheet-tab-ctx-menu-inner" @click="onMenuClick">
         <template v-for="(item, idx) in items" :key="idx">
           <a-menu-divider v-if="item.type === 'divider'" />
+          <a-sub-menu
+            v-else-if="item.type === 'color-submenu'"
+            :key="item.key"
+            :title="item.title"
+          >
+            <a-menu-item
+              v-for="color in item.colors"
+              :key="color"
+              @click="onColorPick(color)"
+            >
+              <span class="sheet-tab-color-swatch" :style="{ background: color }" />
+            </a-menu-item>
+          </a-sub-menu>
           <a-menu-item v-else :key="item.key" :disabled="item.disabled">
             {{ item.title }}
           </a-menu-item>
@@ -98,20 +110,27 @@ function onMenuClick({ key }: { key: string | number }): void {
 </template>
 
 <style scoped>
-.cell-ctx-menu {
+.sheet-tab-ctx-menu {
   background: #fff;
   border-radius: 6px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   border: 1px solid #d0d0d0;
-  min-width: 160px;
+  min-width: 180px;
   overflow: hidden;
 }
-.cell-ctx-menu-inner {
+.sheet-tab-ctx-menu-inner {
   border: none !important;
   box-shadow: none !important;
 }
-.cell-ctx-menu-inner :deep(.ant-menu-item) {
+.sheet-tab-ctx-menu-inner :deep(.ant-menu-item) {
   height: 32px;
   line-height: 32px;
+}
+.sheet-tab-color-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  vertical-align: middle;
 }
 </style>

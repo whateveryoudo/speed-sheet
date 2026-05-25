@@ -12,7 +12,7 @@
 //   sheet.toLuckysheetFile()
 
 export { Sheet } from './Sheet'
-export type { SheetOptions } from './Sheet'
+export type { SheetOptions, LuckysheetRange } from './Sheet'
 
 export {
   Extension,

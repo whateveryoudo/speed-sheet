@@ -46,7 +46,9 @@ export interface SpeedSheetProps {
   cellContextMenu?: ContextMenuItemConfig[]
   /** 从默认菜单排除的 key（与 cellContextMenu 同时传时仅 cellContextMenu 生效） */
   excludeContextMenuKeys?: string[]
-  sheetTabContextMenu?: string[]
+  /** 工作表页签菜单；未传则用默认（删除/重命名/副本等） */
+  sheetTabContextMenu?: import('./menus/sheetTabMenu/types').SheetTabMenuItemConfig[]
+  excludeSheetTabMenuKeys?: string[]
   rowHeaderWidth?: number
   columnHeaderHeight?: number
   showFormulaBar?: boolean

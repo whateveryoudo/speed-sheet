@@ -11,16 +11,26 @@ export function useSheetToolbar() {
   }
   const ctx = injected
 
+  const cells = computed(() => {
+    void ctx.revision.value
+    return ctx.sheet.value?.state.getAllCells() ?? []
+  })
+
   const cellMap = computed(() => {
     const m = new Map<string, CellAttributes | null>()
-    for (const { r, c, data } of ctx.cells.value ?? []) {
+    for (const { r, c, data } of cells.value) {
       m.set(`${r}_${c}`, data)
     }
     return m
   })
 
+  const selection = computed(() => {
+    void ctx.revision.value
+    return ctx.sheet.value?.state.getSelection()
+  })
+
   const anchorRc = computed(() => {
-    const sel = ctx.selection.value
+    const sel = selection.value
     if (!sel) return { r: 0, c: 0 }
     return {
       r: sel.anchor?.r ?? sel.row[0],
@@ -36,7 +46,7 @@ export function useSheetToolbar() {
   const editableCpt = computed(() => !!ctx.sheet.value)
 
   function forEachSelectedCell(fn: (r: number, c: number) => void): void {
-    const sel = ctx.selection.value
+    const sel = selection.value
     const sheet = ctx.sheet.value
     if (!sel || !sheet) return
     const r0 = Math.min(sel.row[0], sel.row[1])
@@ -59,6 +69,8 @@ export function useSheetToolbar() {
 
   return {
     ...ctx,
+    selection,
+    cells,
     cellMap,
     anchorRc,
     activeCell,

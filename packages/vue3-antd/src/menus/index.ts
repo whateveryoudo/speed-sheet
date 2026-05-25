@@ -14,3 +14,13 @@ export {
   runContextMenuAction,
 } from './contextMenu/registry'
 export type { ContextMenuActionContext } from './contextMenu/registry'
+
+export { default as SheetTabContextMenu } from './sheetTabMenu/index.vue'
+export { defaultSheetTabMenuKeys } from './sheetTabMenu/keys'
+export {
+  sheetTabMenuActions,
+  resolveSheetTabMenuKeys,
+  processSheetTabMenuKeys,
+  runSheetTabMenuAction,
+} from './sheetTabMenu/registry'
+export type { SheetTabMenuActionContext, SheetTabMenuItemConfig } from './sheetTabMenu/types'

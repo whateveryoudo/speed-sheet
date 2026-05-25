@@ -10,11 +10,13 @@ declare module 'vue' {
   export interface GlobalComponents {
     AButton: typeof import('ant-design-vue/es')['Button']
     ADropdown: typeof import('ant-design-vue/es')['Dropdown']
+    AInput: typeof import('ant-design-vue/es')['Input']
     AMenu: typeof import('ant-design-vue/es')['Menu']
     AMenuDivider: typeof import('ant-design-vue/es')['MenuDivider']
     AMenuItem: typeof import('ant-design-vue/es')['MenuItem']
     APopover: typeof import('ant-design-vue/es')['Popover']
     ASelect: typeof import('ant-design-vue/es')['Select']
     ATooltip: typeof import('ant-design-vue/es')['Tooltip']
+    ATypographyText: typeof import('ant-design-vue/es')['TypographyText']
   }
 }

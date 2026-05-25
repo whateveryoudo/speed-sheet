@@ -11,7 +11,7 @@
 │  @speed-sheet/vue3-antd  ← 可选 UI（Ant Design Toolbar 等）        │
 ├─────────────────────────────────────────────────────────┤
 │  @speed-sheet/vue3  │  @speed-sheet/react   ← Headless 适配层     │
-│  SheetRenderer, useSheet / useSheet（无 UI 库依赖）                  │
+│  SheetCanvas, useSheet（无 UI 库；SheetRenderer 为别名）            │
 ├─────────────────────────────────────────────────────────┤
 │  @speed-sheet/extension-*  ← 可选插件（筛选、导入导出…）       │
 ├─────────────────────────────────────────────────────────┤
@@ -66,10 +66,17 @@ packages/core/src/
 
 ### 框架包（vue3 / react）职责
 
-- 滚动容器 + 固定视口 Canvas（`position: absolute` 相对 scrollport）
+- **`SheetCanvas`**：滚动容器 + 固定视口 Canvas（`position: absolute` 相对 scrollport）
 - 把 `scrollX/Y`、`viewportW/H` 传给 `renderSheet`
-- 绑定鼠标/键盘到 `sheet.chain()`
-- 插槽 / children 放 Toolbar（任意 UI 库）
+- 绑定鼠标/键盘到 `sheet.chain()`，选区在 canvas 内同步到 `sheet`
+- **`#context-menu` slot**（仅 payload，无 UI 库）
+
+### @speed-sheet/vue3-antd 职责
+
+- **`SpeedSheet`** = `SheetFormulaBar` + `SheetToolbarHost` + `SheetCanvas` + `SheetTabBar`
+- 菜单：`menus/toolbar`、`menus/contextMenu`、`menus/sheetTabMenu`（antd）
+- 样式：`.speed-sheet` + `style/base.less`；优先 `var(--ant-color-*)`（见 speed-components `useAntdCssVars`）
+- 约定详见 [`.cursor/rules/vue3-layering.mdc`](.cursor/rules/vue3-layering.mdc)、[`docs/DEVLOG.md`](docs/DEVLOG.md)
 
 ### 协同（Yjs）
 

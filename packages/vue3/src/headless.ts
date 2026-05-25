@@ -1,9 +1,11 @@
 // Headless Vue3 bindings — no ant-design-vue
 export { useSheet } from './composables/useSheet'
 export type { UseSheetReturn } from './composables/useSheet'
+export { useSheetSelection } from './composables/useSheetSelection'
 
-export { default as SheetRenderer } from './components/SheetRenderer.vue'
-export type { SheetViewState, SheetChromeOptions } from './types/sheet-view'
+export { default as SheetCanvas } from './components/SheetCanvas.vue'
+
+
 export type { ContextMenuState, ContextMenuCloseFn } from './types/context-menu'
 export {
   Sheet,

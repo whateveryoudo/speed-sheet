@@ -1,52 +1,32 @@
-import { ref, shallowRef, computed, onMounted, onUnmounted, toValue, type Ref, type MaybeRefOrGetter, type ComputedRef } from 'vue'
-import { Sheet, type SheetOptions, type LuckysheetFile, type WorkbookSnapshot, type Selection } from '@speed-sheet/core'
-import type { SheetViewState } from '../types/sheet-view'
+import { ref, shallowRef, onMounted, onUnmounted, toValue, type Ref, type MaybeRefOrGetter } from 'vue'
+import { Sheet, type SheetOptions, type LuckysheetFile, type WorkbookSnapshot } from '@speed-sheet/core'
 
 export interface UseSheetReturn {
-  /** canvas 渲染用视图状态（单一数据源） */
-  sheetView: Ref<SheetViewState>
-  sheet: ComputedRef<Sheet | null>
+  /** 表格实例（对齐 Tiptap editor，选区/单元格请用 sheet.state 或 ref 暴露的方法） */
+  sheet: Ref<Sheet | null>
+  /** 每次 sheet 变更 +1，传给 SheetRenderer 触发重绘 */
+  revision: Ref<number>
   isReady: Ref<boolean>
-  selection: ComputedRef<Selection>
   activeSheetId: Ref<string>
   sheetNames: Ref<string[]>
-  /** @deprecated 请用 sheetView.value.cells */
-  allCells: ComputedRef<SheetViewState['cells']>
 
   switchSheet: (id: string) => void
+  addSheet: (name?: string) => string | null
   toSnapshot: () => WorkbookSnapshot | null
   toLuckysheetFile: () => LuckysheetFile | null
 }
 
 export function useSheet(options: MaybeRefOrGetter<SheetOptions> = {}): UseSheetReturn {
   const sheet = shallowRef<Sheet | null>(null)
+  const revision = ref(0)
   const isReady = ref(false)
   const activeSheetId = ref('0')
   const sheetNames = ref<string[]>([])
 
-  const sheetView = shallowRef<SheetViewState>({
-    sheet: null,
-    selection: { row: [0, 0], column: [0, 0] },
-    cells: [],
-    revision: 0,
-  })
-
-  const selection = computed(() => sheetView.value.selection)
-  const allCells = computed(() => sheetView.value.cells)
-
-  function refreshState(s: Sheet): void {
-    const ids = Array.from(s.getYDoc().getMap('sheets').keys())
-    sheetNames.value = ids
-    if (ids.length && !ids.includes(activeSheetId.value)) {
-      activeSheetId.value = ids[0]
-    }
-    sheetView.value = {
-      ...sheetView.value,
-      sheet: s,
-      selection: s.state.getSelection(),
-      cells: s.state.getAllCells(),
-      revision: sheetView.value.revision + 1,
-    }
+  function refreshMeta(s: Sheet): void {
+    sheetNames.value = s.getSheetIds()
+    activeSheetId.value = s.getActiveSheetId()
+    revision.value++
   }
 
   onMounted(() => {
@@ -56,28 +36,35 @@ export function useSheet(options: MaybeRefOrGetter<SheetOptions> = {}): UseSheet
     const instance = new Sheet({
       ...opts,
       onUpdate: (s) => {
-        refreshState(s)
+        refreshMeta(s)
         userOnUpdate?.(s)
       },
     })
 
-    const ids = Array.from(instance.getYDoc().getMap('sheets').keys())
+    const ids = instance.getSheetIds()
     if (ids.length) activeSheetId.value = ids[0]
 
     sheet.value = instance
     isReady.value = true
-    refreshState(instance)
+    refreshMeta(instance)
   })
 
   onUnmounted(() => {
     sheet.value?.destroy()
     sheet.value = null
+    isReady.value = false
   })
 
   function switchSheet(id: string): void {
     sheet.value?.switchSheet(id)
-    activeSheetId.value = id
-    if (sheet.value) refreshState(sheet.value)
+    if (sheet.value) refreshMeta(sheet.value)
+  }
+
+  function addSheet(name?: string): string | null {
+    if (!sheet.value) return null
+    const id = sheet.value.addSheet(name)
+    refreshMeta(sheet.value)
+    return id
   }
 
   function toSnapshot(): WorkbookSnapshot | null {
@@ -89,14 +76,13 @@ export function useSheet(options: MaybeRefOrGetter<SheetOptions> = {}): UseSheet
   }
 
   return {
-    sheetView,
-    sheet: computed(() => sheetView.value.sheet),
+    sheet,
+    revision,
     isReady,
-    selection,
     activeSheetId,
     sheetNames,
-    allCells,
     switchSheet,
+    addSheet,
     toSnapshot,
     toLuckysheetFile,
   }
