@@ -3,7 +3,16 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "types": ["vite/client"]
+    "baseUrl": ".",
+    "types": ["vite/client"],
+    "paths": {
+      "speed-components-ui/components": [
+        "../../../../speed-components/src/components/index.ts"
+      ],
+      "speed-components-ui/hooks": [
+        "../../../../speed-components/src/hooks/index.ts"
+      ]
+    }
   },
   "include": ["src/**/*.ts", "src/**/*.vue", "index.html"]
 }

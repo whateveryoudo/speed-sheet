@@ -1,13 +1,17 @@
-import { ref, shallowRef, onMounted, onUnmounted, toValue, type Ref, type MaybeRefOrGetter } from 'vue'
+import { ref, shallowRef, computed, onMounted, onUnmounted, toValue, type Ref, type MaybeRefOrGetter, type ComputedRef } from 'vue'
 import { Sheet, type SheetOptions, type LuckysheetFile, type WorkbookSnapshot, type Selection } from '@speed-sheet/core'
+import type { SheetViewState } from '../types/sheet-view'
 
 export interface UseSheetReturn {
-  sheet: Ref<Sheet | null>
+  /** canvas 渲染用视图状态（单一数据源） */
+  sheetView: Ref<SheetViewState>
+  sheet: ComputedRef<Sheet | null>
   isReady: Ref<boolean>
-  selection: Ref<Selection>
+  selection: ComputedRef<Selection>
   activeSheetId: Ref<string>
   sheetNames: Ref<string[]>
-  allCells: Ref<Array<{ r: number; c: number; data: any }>>
+  /** @deprecated 请用 sheetView.value.cells */
+  allCells: ComputedRef<SheetViewState['cells']>
 
   switchSheet: (id: string) => void
   toSnapshot: () => WorkbookSnapshot | null
@@ -17,19 +21,32 @@ export interface UseSheetReturn {
 export function useSheet(options: MaybeRefOrGetter<SheetOptions> = {}): UseSheetReturn {
   const sheet = shallowRef<Sheet | null>(null)
   const isReady = ref(false)
-  const selection = ref<Selection>({ row: [0, 0], column: [0, 0] })
   const activeSheetId = ref('0')
   const sheetNames = ref<string[]>([])
-  const allCells = ref<Array<{ r: number; c: number; data: any }>>([])
+
+  const sheetView = shallowRef<SheetViewState>({
+    sheet: null,
+    selection: { row: [0, 0], column: [0, 0] },
+    cells: [],
+    revision: 0,
+  })
+
+  const selection = computed(() => sheetView.value.selection)
+  const allCells = computed(() => sheetView.value.cells)
 
   function refreshState(s: Sheet): void {
-    selection.value = s.state.getSelection()
     const ids = Array.from(s.getYDoc().getMap('sheets').keys())
     sheetNames.value = ids
     if (ids.length && !ids.includes(activeSheetId.value)) {
       activeSheetId.value = ids[0]
     }
-    allCells.value = s.state.getAllCells()
+    sheetView.value = {
+      ...sheetView.value,
+      sheet: s,
+      selection: s.state.getSelection(),
+      cells: s.state.getAllCells(),
+      revision: sheetView.value.revision + 1,
+    }
   }
 
   onMounted(() => {
@@ -72,7 +89,8 @@ export function useSheet(options: MaybeRefOrGetter<SheetOptions> = {}): UseSheet
   }
 
   return {
-    sheet: sheet as Ref<Sheet | null>,
+    sheetView,
+    sheet: computed(() => sheetView.value.sheet),
     isReady,
     selection,
     activeSheetId,

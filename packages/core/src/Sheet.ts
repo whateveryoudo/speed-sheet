@@ -5,6 +5,7 @@ import type { ExtensionConfig, CommandChain } from './extension'
 import { CommandManager } from './commands/CommandManager'
 import { SheetState } from './state/SheetState'
 import { importFromLuckysheet, exportToLuckysheet } from './adapter/luckysheet-adapter'
+import type { ClipboardPayload } from './extension/core/clipboard'
 
 // ============================================================
 // Sheet — Headless spreadsheet editor (TipTap's Editor pattern)
@@ -246,6 +247,14 @@ export class Sheet {
   /** Trigger update callback (called by CommandManager after mutations) */
   notifyUpdate(): void {
     this.options.onUpdate?.(this)
+  }
+
+  /** 复制/剪切后的虚线选区（无则 null） */
+  getClipboardRange(): { row: [number, number]; column: [number, number] } | null {
+    const ext = this.extensions.find((e) => e.name === 'clipboard')
+    const copied = (ext?.storage as { copied?: ClipboardPayload | null })?.copied
+    if (!copied) return null
+    return { row: copied.row, column: copied.column }
   }
 
   /** Destroy the sheet instance */

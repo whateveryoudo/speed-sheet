@@ -21,6 +21,7 @@ export {
   HistoryExtension,
   ClipboardExtension,
   CellEditingExtension,
+  RowColExtension,
   CORE_EXTENSIONS,
 } from './extension'
 export type {
@@ -37,8 +38,8 @@ export { SheetState } from './state/SheetState'
 export { importFromLuckysheet, exportToLuckysheet } from './adapter/luckysheet-adapter'
 
 // Renderer
-export { renderSheet, cellFromPoint, cellRect, colToLetter, defaultLayout, getVisibleRange } from './renderer/canvas-renderer'
-export type { GridLayout, CellEntry, RenderOptions } from './renderer/canvas-renderer'
+export { renderSheet, cellFromPoint, cellRect, colToLetter, defaultLayout, getVisibleRange, CELL_SELECTION_INSET, CELL_EDITOR_OUTSET, drawCellText, truncateTextToWidth, buildCellMap, cellFontString, getCellTextColSpan, computeEditorWidth } from './renderer/canvas-renderer'
+export type { GridLayout, CellEntry, RenderOptions, DrawCellTextOptions } from './renderer/canvas-renderer'
 
 // Re-export shared types for convenience
 export type {

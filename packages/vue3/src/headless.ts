@@ -3,6 +3,8 @@ export { useSheet } from './composables/useSheet'
 export type { UseSheetReturn } from './composables/useSheet'
 
 export { default as SheetRenderer } from './components/SheetRenderer.vue'
+export type { SheetViewState, SheetChromeOptions } from './types/sheet-view'
+export type { ContextMenuState, ContextMenuCloseFn } from './types/context-menu'
 export {
   Sheet,
   Extension,

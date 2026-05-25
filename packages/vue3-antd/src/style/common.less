@@ -1,0 +1,263 @@
+// 通用渐变背景
+.shadow-bg-wrapper {
+  min-width: 28px;
+  height: 28px;
+  padding: 5px;
+  border: none;
+  cursor: pointer;
+  background: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 3px;
+  transition: all 0.2s;
+
+  &.ant-btn {
+    padding: 8px;
+    line-height: 20px;
+    outline: none;
+    border: none;
+  }
+
+  &:hover {
+    background-color: var(--ant-color-fill-secondary) !important;
+  }
+
+  &.inline {
+    display: inline-flex;
+  }
+
+  .anticon {
+    font-size: 16px;
+  }
+
+  &.is-active {
+    background-color: var(--ant-color-fill-secondary);
+  }
+
+  &.select {
+    height: auto;
+  }
+
+  &.middle {
+    min-width: 20px;
+    width: 20px;
+  }
+
+  &.small {
+    min-width: 12px;
+    width: 12px;
+  }
+
+  &.disabled {
+    cursor: not-allowed;
+    color: var(--ant-color-disabled-text);
+  }
+}
+
+// 用于一些带有背景的容器
+.shadow-btn-wrapper {
+  padding: 5px;
+  display: flex;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+
+  &.is-active {
+    background-color: var(--ant-color-fill-secondary);
+  }
+
+  &.small {
+    padding: 5px 3px;
+  }
+  // 追加一些主题相关的样式
+  &.atom-one-dark,
+  &.github-dark {
+    &:hover {
+      background-color: var(--speed-color-bg-dark-2);
+
+      .anticon {
+        color: var(--speed-color-text-white-1);
+      }
+    }
+    color: var(--speed-color-text-white-1);
+    .anticon {
+      color: var(--speed-color-text-white-1);
+    }
+  }
+}
+
+// 用于一些带有背景的select
+.shadow-ant-select {
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: var(--ant-color-fill-secondary);
+  }
+
+
+
+  &.ant-select-focused {
+    .ant-select-arrow {
+      color: rgba(0, 0, 0, 0.88);
+    }
+
+    .ant-select-selector,
+    .ant-select-selection-item {
+      color: rgba(0, 0, 0, 0.88);
+    }
+  }
+
+  // 搜索select聚焦时候添加宽度和背景
+  &.ant-select-show-search.ant-select-focused {
+    background-color: var(--ant-color-fill-secondary);
+
+    &.auto-width {
+      width: 120px;
+    }
+
+  }
+
+
+  // 追加一些主题相关的样式
+  &.atom-one-dark,
+  &.github-dark {
+    &:hover {
+      background-color: var(--speed-color-bg-dark-2);
+    }
+
+    .ant-select-selector,
+    .ant-select-selection-item {
+      color: var(--speed-color-text-white-1);
+    }
+
+    .ant-select-arrow {
+      color: var(--speed-color-text-white-1);
+    }
+
+    &.ant-select-focused {
+
+      .ant-select-selector,
+      .ant-select-selection-item {
+        color: var(--speed-color-text-white-1);
+      }
+
+      .ant-select-arrow {
+        color: var(--speed-color-text-white-1);
+      }
+    }
+  }
+
+}
+
+.ant-divider {
+  &.divider-small {
+    margin: 0 5px;
+  }
+
+  // 追加一些主题相关的样式
+  &.atom-one-dark,
+  &.github-dark {
+    border-color: var(--speed-color-bg-dark-2);
+  }
+}
+
+.ant-modal-content,
+.ant-modal,
+.ant-modal-header {
+  border-radius: 8px !important;
+}
+
+.fullscreen {
+  .ant-modal-content {
+    border-radius: 0px !important;
+  }
+
+  .ant-modal-body {
+    padding: 0;
+  }
+}
+
+.transition-bg {
+  transition: all 0.1s;
+
+  &:hover {
+    background-color: var(--ant-color-fill-secondary);
+  }
+}
+
+// 气泡菜单
+.bubble-menu-wrapper {
+  background: white;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  padding: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  // 去除一些默认样式
+  &.ai-bubble-out-container {
+    border: none;
+    background-color: transparent;
+    box-shadow: none;
+    padding: 0;
+    border-radius: 0;
+  }
+}
+
+// 支持带有check勾选的select弹出项
+.popover-check-dropdown {
+  .ant-select-item {
+    line-height: initial;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .ant-select-item-option .ant-select-item-option-content {
+    display: flex;
+    align-items: center;
+    position: relative;
+    padding-left: 30px;
+    padding-right: 20px;
+
+    .place-check-icon {
+      width: 15px;
+      font-size: 14px;
+      margin-right: 5px;
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+  }
+}
+
+// 配置box-sizing
+div,
+li,
+span {
+  box-sizing: border-box;
+}
+
+.toolbar-popover-wrapper {
+  .ant-popover-inner {
+    border-radius: 4px;
+    padding: 0;
+  }
+}
+
+ul,
+li {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ant-divider.menu-divider {
+  &.ant-divider-vertical {
+    height: 1em;
+    border-inline-start: 1px solid rgba(5, 5, 5, 0.1);
+  }
+
+  margin: 0 4px;
+}

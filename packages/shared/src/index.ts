@@ -46,6 +46,7 @@ export interface CellStyle {
   ff?: string   // font family
   fs?: number   // font size
   it?: number   // italic
+  un?: number   // underline: 0 or 1
   vt?: number   // vertical align (0=middle, 1=top, 2=bottom)
   ht?: number   // horizontal align (0=center, 1=left, 2=right)
   tr?: number   // text rotation
@@ -160,6 +161,8 @@ export type LuckysheetFile = LuckysheetSheet[]
 export interface Selection {
   row: [number, number]
   column: [number, number]
+  /** 选区锚点（拖拽起点 / 当前活动单元格），默认 row[0], column[0] */
+  anchor?: { r: number; c: number }
 }
 
 // ----- Workbook UI config (Fortune Sheet / Luckysheet 对齐) -----

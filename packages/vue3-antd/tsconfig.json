@@ -1,9 +1,24 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "types": ["vite/client"]
+    "baseUrl": ".",
+    "jsx": "preserve",
+    "noEmit": true,
+    "plugins": [
+      {
+        "name": "@vue/typescript-plugin",
+        "include": ["src/**/*.vue"]
+      }
+    ],
+    "paths": {
+      "vue": ["node_modules/vue/dist/vue.d.ts"],
+      "@speed-sheet/core": ["../core/src/index.ts"],
+      "@speed-sheet/shared": ["../shared/src/index.ts"],
+      "@speed-sheet/vue3": ["../vue3/src/index.ts"],
+    }
   },
-  "include": ["src/**/*.ts", "src/**/*.vue"]
+  "include": ["src/**/*.ts", "src/**/*.vue", "src/env.d.ts"],
+  "vueCompilerOptions": {
+    "target": 3.5
+  }
 }

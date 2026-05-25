@@ -23,5 +23,6 @@ export {
   HistoryExtension,
   ClipboardExtension,
   CellEditingExtension,
+  RowColExtension,
   CORE_EXTENSIONS,
 } from './core'

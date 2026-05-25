@@ -1,6 +1,28 @@
-import type { Extension, ExtensionConfig } from '@speed-sheet/core'
-import type { LuckysheetFile, WorkbookSnapshot } from '@speed-sheet/shared'
+import type { Extension, ExtensionConfig, Sheet } from '@speed-sheet/core'
+import type { LuckysheetFile, Selection, WorkbookSnapshot } from '@speed-sheet/shared'
 import type * as Y from 'yjs'
+
+export interface ContextMenuActionContext {
+  sheet: Sheet | null | undefined
+  selection: Selection | undefined
+  r: number
+  c: number
+  close: () => void
+}
+
+/**
+ * 右键菜单项配置（对齐 tiptap ToolBarConfig 思路）
+ * - string: 内置 key 或 '|' 分隔符
+ * - object: 自定义项
+ */
+export type ContextMenuItemConfig =
+  | string
+  | {
+      key: string
+      title: string
+      disabled?: boolean | ((ctx: ContextMenuActionContext) => boolean)
+      action?: (ctx: ContextMenuActionContext) => void
+    }
 
 /** SpeedSheet 组件 props（扁平声明，便于 vue-macros 解析） */
 export interface SpeedSheetProps {
@@ -12,10 +34,18 @@ export interface SpeedSheetProps {
   column?: number
   row?: number
   showToolbar?: boolean
+  /** 工具栏项；未传则用默认内置项，'|' 为分隔符 */
+  toolbarKeys?: import('./menus/toolbar/types').ToolbarItemConfig[]
+  /** @deprecated 请用 toolbarKeys */
   toolbarItems?: string[]
+  /** 从默认工具栏排除的 key（与 toolbarKeys 同时传时仅 toolbarKeys 生效） */
+  excludeToolbarKeys?: string[]
   showSheetTabs?: boolean
   devicePixelRatio?: number
-  cellContextMenu?: string[]
+  /** 单元格右键菜单项；未传则用默认内置项 */
+  cellContextMenu?: ContextMenuItemConfig[]
+  /** 从默认菜单排除的 key（与 cellContextMenu 同时传时仅 cellContextMenu 生效） */
+  excludeContextMenuKeys?: string[]
   sheetTabContextMenu?: string[]
   rowHeaderWidth?: number
   columnHeaderHeight?: number

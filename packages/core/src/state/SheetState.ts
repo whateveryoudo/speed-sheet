@@ -64,6 +64,90 @@ export class SheetState {
     this.cells.delete(cellKey(r, c))
   }
 
+  /** 在 atRow 处插入 count 行（该行及下方下移） */
+  insertRows(atRow: number, count = 1): void {
+    if (count <= 0) return
+    this.remapAllCells((r, c) => ({ r: r >= atRow ? r + count : r, c }))
+    this.shiftIndexMap(this.rowHeight, atRow, count)
+    this.shiftIndexMap(this.rowHidden, atRow, count)
+  }
+
+  /** 删除从 atRow 开始的 count 行 */
+  deleteRows(atRow: number, count = 1): void {
+    if (count <= 0) return
+    this.remapAllCells((r, c) => {
+      if (r >= atRow && r < atRow + count) return null
+      if (r >= atRow + count) return { r: r - count, c }
+      return { r, c }
+    })
+    this.shiftIndexMap(this.rowHeight, atRow, -count, count)
+    this.shiftIndexMap(this.rowHidden, atRow, -count, count)
+  }
+
+  /** 在 atCol 处插入 count 列 */
+  insertCols(atCol: number, count = 1): void {
+    if (count <= 0) return
+    this.remapAllCells((r, c) => ({ r, c: c >= atCol ? c + count : c }))
+    this.shiftIndexMap(this.colWidth, atCol, count)
+    this.shiftIndexMap(this.colHidden, atCol, count)
+  }
+
+  /** 删除从 atCol 开始的 count 列 */
+  deleteCols(atCol: number, count = 1): void {
+    if (count <= 0) return
+    this.remapAllCells((r, c) => {
+      if (c >= atCol && c < atCol + count) return null
+      if (c >= atCol + count) return { r, c: c - count }
+      return { r, c }
+    })
+    this.shiftIndexMap(this.colWidth, atCol, -count, count)
+    this.shiftIndexMap(this.colHidden, atCol, -count, count)
+  }
+
+  private remapAllCells(
+    mapPos: (r: number, c: number) => { r: number; c: number } | null,
+  ): void {
+    const all = this.getAllCells()
+    this.root.doc?.transact(() => {
+      this.cells.clear()
+      for (const { r, c, data } of all) {
+        const next = mapPos(r, c)
+        if (!next) continue
+        const key = cellKey(next.r, next.c)
+        const cell = new Y.Map()
+        for (const [field, value] of Object.entries(data)) {
+          if (value !== undefined && value !== null) cell.set(field, value)
+        }
+        this.cells.set(key, cell)
+      }
+    })
+  }
+
+  private shiftIndexMap(
+    map: Y.Map<number>,
+    at: number,
+    delta: number,
+    deleteCount = 0,
+  ): void {
+    const entries: Array<[string, number]> = []
+    map.forEach((v, k) => entries.push([k, v]))
+    map.doc?.transact(() => {
+      map.clear()
+      for (const [k, v] of entries) {
+        const idx = parseInt(k, 10)
+        if (Number.isNaN(idx)) {
+          map.set(k, v)
+          continue
+        }
+        if (deleteCount > 0 && idx >= at && idx < at + deleteCount) continue
+        let ni = idx
+        if (deleteCount > 0 && idx >= at + deleteCount) ni = idx + delta
+        else if (deleteCount === 0 && idx >= at) ni = idx + delta
+        if (ni >= 0) map.set(String(ni), v)
+      }
+    })
+  }
+
   getAllCells(): Array<{ r: number; c: number; data: CellAttributes }> {
     const result: Array<{ r: number; c: number; data: CellAttributes }> = []
     this.cells.forEach((cell: Y.Map<any>, key: string) => {
@@ -92,22 +176,28 @@ export class SheetState {
       this.root.set('_selection', new Y.Map())
     }
     const s = this.root.get('_selection') as Y.Map<any>
+    const anchor = sel.anchor ?? { r: sel.row[0], c: sel.column[0] }
     this.root.doc?.transact(() => {
       s.set('r0', sel.row[0])
       s.set('r1', sel.row[1])
       s.set('c0', sel.column[0])
       s.set('c1', sel.column[1])
+      s.set('ar', anchor.r)
+      s.set('ac', anchor.c)
     })
   }
 
   getSelection(): Selection {
     if (!this.root.has('_selection')) {
-      return { row: [0, 0], column: [0, 0] }
+      return { row: [0, 0], column: [0, 0], anchor: { r: 0, c: 0 } }
     }
     const s = this.root.get('_selection') as Y.Map<any>
+    const r0 = s.get('r0') ?? 0
+    const c0 = s.get('c0') ?? 0
     return {
-      row: [s.get('r0') ?? 0, s.get('r1') ?? 0],
-      column: [s.get('c0') ?? 0, s.get('c1') ?? 0],
+      row: [r0, s.get('r1') ?? 0],
+      column: [c0, s.get('c1') ?? 0],
+      anchor: { r: s.get('ar') ?? r0, c: s.get('ac') ?? c0 },
     }
   }
 

@@ -1,6 +1,6 @@
 /**
- * Shared tsup preset for headless TS libraries (core extensions, shared types).
- * Prefer this over per-package vite.config for packages that only contain .ts entry files.
+ * Shared tsup preset for headless TS libraries (@speed-sheet/core, shared, extensions).
+ * Vue/React UI packages keep Vite; pure .ts entry libs use this instead of Vite.
  */
 import { defineConfig, type Options } from 'tsup'
 
