@@ -1,66 +1,76 @@
 import type { ContextMenuActionContext, ContextMenuItemConfig, SpeedSheetProps } from '../../types'
 import { defaultCellContextMenuKeys } from './keys'
+import { selectionColCount, selectionRowCount } from './format'
 
 export type { ContextMenuActionContext }
 
-export interface ContextMenuActionDef {
-  title: Record<NonNullable<SpeedSheetProps['lang']>, string>
-  disabled?: (ctx: ContextMenuActionContext) => boolean
-  run: (ctx: ContextMenuActionContext) => void
+export interface RunContextMenuOptions {
+  count?: number
 }
 
-export const contextMenuActions: Record<string, ContextMenuActionDef> = {
-  copy: {
-    title: { zh: '复制', en: 'Copy', zh_tw: '複製', es: 'Copiar' },
-    run: ({ sheet, close }) => {
-      sheet?.chain().copy().run()
+export function runContextMenuAction(
+  key: string,
+  _keys: ContextMenuItemConfig[],
+  ctx: ContextMenuActionContext,
+  options: RunContextMenuOptions = {},
+): void {
+  const sheet = ctx.sheet
+  const sel = ctx.selection
+  if (!sheet || !sel) return
+  const count = Math.max(1, options.count ?? 1)
+  const close = ctx.close
+
+  switch (key) {
+    case 'copy':
+      sheet.chain().copy().run()
       close()
-    },
-  },
-  cut: {
-    title: { zh: '剪切', en: 'Cut', zh_tw: '剪下', es: 'Cortar' },
-    run: ({ sheet, close }) => {
-      sheet?.chain().cut().run()
+      break
+    case 'cut':
+      sheet.chain().cut().run()
       close()
-    },
-  },
-  paste: {
-    title: { zh: '粘贴', en: 'Paste', zh_tw: '貼上', es: 'Pegar' },
-    run: ({ sheet, close }) => {
-      sheet?.chain().paste().run()
+      break
+    case 'paste':
+      sheet.chain().paste().run()
       close()
-    },
-  },
-  insertRow: {
-    title: { zh: '在上方插入行', en: 'Insert row above', zh_tw: '在上方插入列', es: 'Insertar fila arriba' },
-    run: ({ sheet, r, close }) => {
-      sheet?.chain().insertRows({ at: r, count: 1 }).run()
+      break
+    case 'insertRowAbove':
+      sheet.chain().insertRows({ at: sel.row[0], count }).run()
       close()
-    },
-  },
-  deleteRow: {
-    title: { zh: '删除行', en: 'Delete row', zh_tw: '刪除列', es: 'Eliminar fila' },
-    run: ({ sheet, r, close }) => {
-      sheet?.chain().deleteRows({ at: r, count: 1 }).run()
+      break
+    case 'insertRowBelow':
+      sheet.chain().insertRows({ at: sel.row[1] + 1, count }).run()
       close()
-    },
-  },
-  insertCol: {
-    title: { zh: '在左侧插入列', en: 'Insert column left', zh_tw: '在左側插入欄', es: 'Insertar columna izquierda' },
-    run: ({ sheet, c, close }) => {
-      sheet?.chain().insertCols({ at: c, count: 1 }).run()
+      break
+    case 'insertColLeft':
+      sheet.chain().insertCols({ at: sel.column[0], count }).run()
       close()
-    },
-  },
-  clear: {
-    title: { zh: '清除内容', en: 'Clear contents', zh_tw: '清除內容', es: 'Borrar contenido' },
-    run: ({ sheet, close }) => {
-      sheet?.chain().clearSelection().run()
+      break
+    case 'insertColRight':
+      sheet.chain().insertCols({ at: sel.column[1] + 1, count }).run()
       close()
-    },
-  },
+      break
+    case 'deleteRows':
+      sheet.chain().deleteRows({ at: sel.row[0], count: selectionRowCount(sel) }).run()
+      close()
+      break
+    case 'deleteCols':
+      sheet.chain().deleteCols({ at: sel.column[0], count: selectionColCount(sel) }).run()
+      close()
+      break
+    case 'mergeCells':
+      sheet.chain().mergeCells({ row: sel.row, column: sel.column }).run()
+      close()
+      break
+    case 'clear':
+      sheet.chain().clearSelection().run()
+      close()
+      break
+    default:
+      break
+  }
 }
 
+/** @deprecated 场景菜单由 buildContextMenuItems 生成，保留兼容自定义 keys */
 export function resolveContextMenuKeys(
   keys: ContextMenuItemConfig[] | undefined,
   excludeKeys?: string[],
@@ -73,78 +83,17 @@ export function resolveContextMenuKeys(
   })
 }
 
-export type ProcessedContextMenuItem =
-  | { type: 'divider' }
-  | {
-      type: 'item'
-      key: string
-      title: string
-      disabled: boolean
-    }
-
+/** @deprecated 请使用 buildContextMenuItems */
 export function processContextMenuKeys(
   keys: ContextMenuItemConfig[],
   lang: NonNullable<SpeedSheetProps['lang']>,
   ctx: ContextMenuActionContext,
-): ProcessedContextMenuItem[] {
-  const result: ProcessedContextMenuItem[] = []
-
-  for (const item of keys) {
-    const key = typeof item === 'string' ? item : item.key
-    if (key === '|') {
-      if (result.length > 0 && result[result.length - 1]?.type !== 'divider') {
-        result.push({ type: 'divider' })
-      }
-      continue
-    }
-
-    if (typeof item === 'object' && item.action) {
-      const disabled =
-        typeof item.disabled === 'function'
-          ? item.disabled(ctx)
-          : (item.disabled ?? false)
-      result.push({
-        type: 'item',
-        key,
-        title: item.title,
-        disabled,
-      })
-      continue
-    }
-
-    const def = contextMenuActions[key]
-    if (!def) continue
-
-    const title =
-      typeof item === 'object' && item.title ? item.title : def.title[lang] ?? def.title.en
-
-    result.push({
-      type: 'item',
-      key,
-      title,
-      disabled: def.disabled?.(ctx) ?? false,
-    })
-  }
-
-  while (result[0]?.type === 'divider') result.shift()
-  while (result[result.length - 1]?.type === 'divider') result.pop()
-
-  return result
+) {
+  void keys
+  void lang
+  void ctx
+  return []
 }
 
-export function runContextMenuAction(
-  key: string,
-  keys: ContextMenuItemConfig[],
-  ctx: ContextMenuActionContext,
-): void {
-  for (const item of keys) {
-    const itemKey = typeof item === 'string' ? item : item.key
-    if (itemKey !== key) continue
-    if (typeof item === 'object' && item.action) {
-      item.action(ctx)
-      return
-    }
-    contextMenuActions[key]?.run(ctx)
-    return
-  }
-}
+/** @deprecated */
+export const contextMenuActions = {}

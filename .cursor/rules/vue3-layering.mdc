@@ -51,14 +51,32 @@ const { sheet, revision, switchSheet, addSheet, isReady } = useSheet(options)
 SheetFormulaBar
 SheetToolbarHost → menus/toolbar
 SheetCanvas（来自 vue3）
-SheetTabBar → vue-draggable-next + #tab-menu → SheetTabContextMenu
+SheetTabBar → vuedraggable + a-dropdown（▾ click / 页签 contextmenu）→ SheetTabContextMenu overlay
 ```
 
 ### antd 使用
 
 - 已配置 **unplugin-vue-components + AntDesignVueResolver**：模板里直接用 **`a-input`、`a-button`、`a-menu`** 等，无需手写 `import { Input } from 'ant-design-vue'`（图标仍从 `@ant-design/icons-vue` 引入）。
-- 根节点加 class **`speed-sheet`**，样式变量见 `packages/vue3-antd/src/style/base.less`。
-- 优先 **`var(--ant-color-*)`**（由 speed-components `useAntdCssVars` 注入到 document）；业务色可用 **`var(--speed-color-*)`**（定义在 `.speed-sheet` 下）。
+- 根节点加 class **`speed-sheet`**，全局业务变量见 `packages/vue3-antd/src/style/base.less`。
+
+### 样式优先级（新功能按此执行）
+
+布局与外观选型顺序（从高到低）：
+
+1. **antd 布局组件**：`a-flex`、`a-space`、`a-row` / `a-col` 等承担排列、间距、对齐。
+2. **UnoCSS**：原子类处理简单间距、宽高、`flex-1` 等（项目已引入 `uno.css`）。
+3. **组件内 `<style scoped>`**：仅放 antd / Uno 不好表达的样式（页签形态、拖拽 ghost、`:deep` 覆盖等）。
+4. **行内 `style`**：仅动态值（如 `tabAccentStyle` 的 `borderBottomColor`），禁止静态 hex 写死在模板。
+
+**禁止**用 `<style scoped src="*.less">` 外链整块 chrome；各 SFC 样式写在各自文件内。共享变量放 `style/base.less`，不要共享组件局部 class 文件。
+
+### CSS 变量
+
+- 可直接使用 antd 注入的 **`var(--ant-*)`**（`useAntdCssVars`）。
+- 业务语义色在 **`.speed-sheet`** 下定义于 `style/base.less`。
+- 自定义变量命名：**`--speed-{类别}-{用途}-{色值描述}-{分类号}`**  
+  例：`--speed-color-border-gray-1`、`--speed-color-bg-gray-2`。新增变量只加在 `base.less`，组件内用 `var(--speed-*)`，并尽量带 `var(--ant-*)` 作 fallback。
+- 检查清单：避免硬编码 `#hex`；优先 `--ant-*`，其次 `--speed-*`。
 
 ### 菜单目录
 
@@ -84,9 +102,11 @@ components/
 
 只暴露：`sheet`、`switchSheet`、`addSheet`、`viewportEl`、`revision`。其余一律 `ref.sheet?.xxx`。
 
-## 改代码时的检查清单
+## 改代码时的检查清单 
 
 1. 新 UI 是否依赖 antd？→ 放 **vue3-antd**，不要放进 vue3。
 2. 新数据能力？→ **core `Sheet`** + `notifyUpdate`。
 3. canvas 是否要重绘？→ 确保 `revision` 递增或 watch `revision`。
-4. 样式是否硬编码 hex？→ 改用 `--ant-*` 或 `--speed-*`。
+4. 布局是否可用 `a-flex` / `a-space`？→ 优先 antd，其次 UnoCSS，再 scoped class。
+5. 样式是否写在当前 SFC 的 `<style scoped>`？→ 禁止 `src` 外链组件样式；变量进 `base.less`。
+6. 是否硬编码 hex？→ 改用 `var(--ant-*)` 或 `var(--speed-*)`。

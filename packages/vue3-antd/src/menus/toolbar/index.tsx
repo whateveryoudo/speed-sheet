@@ -9,6 +9,7 @@ import Bold from './bold.vue'
 import Italic from './italic.vue'
 import Underline from './underline.vue'
 import FontSize from './fontSize.vue'
+import FormulaMenu from './formula/FormulaMenu.vue'
 import TextColor from './textColor.vue'
 import BackgroundColor from './backgroundColor.vue'
 import Align from './align'
@@ -16,7 +17,6 @@ import Link from './link/index.vue'
 import FindAndReplace from './findAndReplace.vue'
 import { defaultSheetToolbarKeys } from './keys'
 import type { ToolbarItemConfig } from './types'
-import './toolbar.less'
 
 const componentMap = {
   insert: InsertMenu,
@@ -25,6 +25,7 @@ const componentMap = {
   'format-painter': FormatPainter,
   clearFormat: ClearFormat,
   fontSize: FontSize,
+  formula: FormulaMenu,
   bold: Bold,
   italic: Italic,
   underline: Underline,
@@ -88,7 +89,7 @@ export default defineComponent({
     })
 
     return () => (
-      <header class="menu-header-wrapper">
+      <header class="flex items-center w-full px-0.5">
         <Space size={8}>
           {processedToolbarKeys.value.map(({ key, showDivider }) => {
             const Component = componentMap[key as keyof typeof componentMap]

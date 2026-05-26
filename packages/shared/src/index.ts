@@ -62,6 +62,10 @@ export interface CellAttributes extends CellStyle {
   v: string | number | boolean | null
   f?: string     // formula string, e.g. "=SUM(A1:A10)"
   m?: string     // display (monitor) value
+  /** 公式错误码：ERROR | VALUE | NAME | REF | DIV0 | NA | NUM | NULL */
+  ef?: string
+  /** 公式错误悬停提示 */
+  em?: string
   ct?: CellFormat
   qp?: number    // quote prefix
 }

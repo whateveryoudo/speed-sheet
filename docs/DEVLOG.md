@@ -22,7 +22,7 @@
 | `SheetCanvas` | 从 `SheetRenderer` 拆出，仅视口 |
 | `SheetViewState` 对外移除 | 改为内部实现细节（已废弃类型文件） |
 | 选区 | Renderer 内 `applySelectRange`，父组件不必再写 `onSelectRange` |
-| 页签 | `SheetTabBar` + `addSheet` / `reorderSheets`（`vue-draggable-next`） |
+| 页签 | `SheetTabBar` + `addSheet` / `reorderSheets`（`vuedraggable`） |
 | 菜单 | `contextMenu`、`sheetTabMenu` 在 antd 包 |
 | Luckysheet 风格 API | `getRange`、`setCellValue` 等在 `Sheet` 上 |
 | antd 外壳 | `SheetFormulaBar` / `SheetTabBar` 使用 `a-*` 组件；样式变量 `style/base.less` |

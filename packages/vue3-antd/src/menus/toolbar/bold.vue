@@ -1,5 +1,5 @@
 <template>
-  <s-keymap-tip title="粗体">
+  <s-keymap-tip :title="editableCpt ? t('toolbar.bold') : null" :key-map="keyMap">
     <a-button
       type="text"
       class="shadow-btn-wrapper"
@@ -14,9 +14,13 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { BoldOutlined } from '@ant-design/icons-vue'
+import { getShortcutTipByKey } from '../../helpers/registKeyMap'
 import { useSheetToolbar } from '../../composables/useSheetToolbar'
 
+const { t } = useI18n()
+const keyMap = getShortcutTipByKey('bold')
 const { sheet, editableCpt, activeCell, forEachSelectedCell } = useSheetToolbar()
 
 const isBoldActive = computed(() => activeCell.value?.bl === 1)

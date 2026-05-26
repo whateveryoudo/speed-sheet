@@ -2,11 +2,15 @@ import type { Extension, ExtensionConfig, Sheet } from '@speed-sheet/core'
 import type { LuckysheetFile, Selection, WorkbookSnapshot } from '@speed-sheet/shared'
 import type * as Y from 'yjs'
 
+/** 右键命中区域（与 @speed-sheet/vue3 ContextMenuTarget 一致） */
+export type ContextMenuTarget = 'cell' | 'range' | 'row' | 'column'
+
 export interface ContextMenuActionContext {
   sheet: Sheet | null | undefined
   selection: Selection | undefined
   r: number
   c: number
+  target?: ContextMenuTarget
   close: () => void
 }
 
@@ -26,7 +30,7 @@ export type ContextMenuItemConfig =
 
 /** SpeedSheet 组件 props（扁平声明，便于 vue-macros 解析） */
 export interface SpeedSheetProps {
-  lang?: 'zh' | 'en' | 'zh_tw' | 'es'
+  lang?: 'zh' | 'en'
   sheetData?: LuckysheetFile
   /** @deprecated 请用 sheetData */
   data?: LuckysheetFile

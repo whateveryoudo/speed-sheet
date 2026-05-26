@@ -34,7 +34,7 @@ export default defineConfig({
         "@speed-sheet/vue3",
         "ant-design-vue",
         "@ant-design/icons-vue",
-        "vue-draggable-next",
+        "vuedraggable",
         "sortablejs",
       ],
       output: {

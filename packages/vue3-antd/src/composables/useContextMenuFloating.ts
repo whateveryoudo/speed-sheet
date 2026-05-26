@@ -8,9 +8,24 @@ import {
   type VirtualElement,
 } from '@floating-ui/dom'
 
+/** 点击这些浮层时不视为“点外部”，避免菜单提前关闭 */
+const OUTSIDE_CLICK_IGNORE_SELECTORS = [
+  '.ant-dropdown',
+  '.ant-popover',
+  '.ant-tooltip',
+  '.ant-modal',
+  '.ant-menu-submenu-popup',
+  '.ant-select-dropdown',
+  '.color-picker-popover',
+  '.color-board-popover-wrapper',
+  '.sheet-tab-color-submenu-popup',
+].join(', ')
+
 export interface UseContextMenuFloatingOptions {
   boundary?: Ref<HTMLElement | null | undefined>
   placement?: 'bottom-start' | 'right-start' | 'top-start'
+  /** 额外浮层选择器，点击时不关闭菜单 */
+  ignoreOutsideSelectors?: string
 }
 
 function virtualPoint(x: number, y: number): VirtualElement {
@@ -63,15 +78,16 @@ export function useContextMenuFloating(options: UseContextMenuFloatingOptions = 
     })
   }
 
-  function bindOutsideClick(): void {
+  function   bindOutsideClick(): void {
     removeOutsideClick?.()
     const onMouseDown = (e: MouseEvent) => {
+      if (e.button === 2) return
       const el = menuEl.value
       if (!el || el.contains(e.target as Node)) return
-      const antLayer = (e.target as Element).closest(
-        '.ant-dropdown, .ant-popover, .ant-tooltip, .ant-modal',
-      )
-      if (antLayer) return
+      const ignoreSelectors = options.ignoreOutsideSelectors
+        ? `${OUTSIDE_CLICK_IGNORE_SELECTORS}, ${options.ignoreOutsideSelectors}`
+        : OUTSIDE_CLICK_IGNORE_SELECTORS
+      if ((e.target as Element).closest(ignoreSelectors)) return
       close()
     }
     document.addEventListener('mousedown', onMouseDown, true)

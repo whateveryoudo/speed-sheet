@@ -22,7 +22,9 @@
   },
   "dependencies": {
     "@speed-sheet/core": "workspace:^",
-    "@speed-sheet/shared": "workspace:^"
+    "@speed-sheet/extension-formula": "workspace:^",
+    "@speed-sheet/shared": "workspace:^",
+    "yjs": "^13.6.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.0",

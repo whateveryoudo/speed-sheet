@@ -4,6 +4,7 @@ import { HistoryExtension } from './history'
 import { ClipboardExtension } from './clipboard'
 import { CellEditingExtension } from './cell-editing'
 import { RowColExtension } from './row-col'
+import { MergeExtension } from './merge'
 
 export {
   KeyboardExtension,
@@ -12,6 +13,7 @@ export {
   ClipboardExtension,
   CellEditingExtension,
   RowColExtension,
+  MergeExtension,
 }
 
 /** Built-in extensions always loaded by Sheet */
@@ -22,4 +24,5 @@ export const CORE_EXTENSIONS = [
   ClipboardExtension,
   CellEditingExtension,
   RowColExtension,
+  MergeExtension,
 ]

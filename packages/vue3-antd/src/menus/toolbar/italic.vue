@@ -1,5 +1,5 @@
 <template>
-  <s-keymap-tip title="斜体">
+  <s-keymap-tip :title="editableCpt ? t('toolbar.italic') : null" :key-map="keyMap">
     <a-button
       type="text"
       class="shadow-btn-wrapper"
@@ -14,9 +14,13 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ItalicOutlined } from '@ant-design/icons-vue'
+import { getShortcutTipByKey } from '../../helpers/registKeyMap'
 import { useSheetToolbar } from '../../composables/useSheetToolbar'
 
+const { t } = useI18n()
+const keyMap = getShortcutTipByKey('italic')
 const { sheet, editableCpt, activeCell, forEachSelectedCell } = useSheetToolbar()
 
 const isItalicActive = computed(() => activeCell.value?.it === 1)

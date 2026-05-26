@@ -1,0 +1,69 @@
+{
+  "contextMenu": {
+    "copy": "复制",
+    "cut": "剪切",
+    "paste": "粘贴",
+    "clear": "清除",
+    "insertRowAbove": "向上插入",
+    "insertRowBelow": "向下插入",
+    "insertColLeft": "向左插入",
+    "insertColRight": "向右插入",
+    "rowUnit": "行",
+    "colUnit": "列",
+    "deleteRow": "删除第 {rows} 行",
+    "deleteCol": "删除第 {cols} 列",
+    "mergeCells": "合并单元格"
+  },
+  "sheetTabMenu": {
+    "delete": "删除",
+    "rename": "重命名",
+    "duplicate": "创建副本",
+    "copyLink": "复制工作表链接",
+    "hide": "隐藏工作表",
+    "tabColor": "工作表标签颜色",
+    "renamePrompt": "工作表名称"
+  },
+  "colorBoard": {
+    "noTabColor": "无标签色",
+    "noFill": "无填充色"
+  },
+  "sheetTabBar": {
+    "sheetList": "工作表列表",
+    "scrollLeft": "向左滚动页签",
+    "scrollRight": "向右滚动页签",
+    "tabMenu": "页签菜单",
+    "addSheet": "新建工作表"
+  },
+  "toolbar": {
+    "undo": "撤销",
+    "redo": "重做",
+    "bold": "粗体",
+    "italic": "斜体",
+    "underline": "下划线",
+    "formatPainter": "格式刷",
+    "formatPainterHint": "格式刷已开启，点击目标单元格应用（Esc 取消待接入）",
+    "clearFormat": "清除格式",
+    "textColor": "字体颜色",
+    "backgroundColor": "背景颜色",
+    "findAndReplace": "查找替换",
+    "findAndReplaceHint": "查找替换面板待实现（与编辑器版差异较大）",
+    "align": "对齐方式",
+    "alignLeft": "左对齐",
+    "alignCenter": "居中",
+    "alignRight": "右对齐",
+    "link": "插入链接",
+    "insertLinkHint": "单元格链接待实现",
+    "formula": "公式"
+  },
+  "formula": {
+    "common": "常用",
+    "allFunctions": "全部函数",
+    "searchPlaceholder": "搜索函数名或说明",
+    "categoryAll": "全部分类",
+    "definition": "定义",
+    "syntax": "语法",
+    "example": "示例",
+    "seeAlso": "另请参阅",
+    "notImplementedYet": "该函数尚未接入求值引擎"
+  }
+}

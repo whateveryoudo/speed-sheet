@@ -1,18 +1,17 @@
 <template>
-  <s-keymap-tip :title="disableMenu ? null : '字体颜色'">
-    <div class="text-color-menu-wrapper">
+  <s-keymap-tip :title="disableMenu ? null : t('toolbar.textColor')" :key-map="keyMap">
+    <div class="flex items-center">
       <a-button
         type="text"
-        class="shadow-btn-wrapper middle"
-        style="margin-top: -1px"
+        class="shadow-btn-wrapper middle -mt-1px"
         :disabled="disableMenu"
         @click="setColor(curColor)"
       >
-        <span class="text-wrapper">
-          <span :style="{ color: disableMenu ? 'rgba(0, 0, 0, 0.25)' : '#000' }">A</span>
+        <span class="relative flex flex-col text-16px">
+          <span :class="disableMenu ? 'text-black/25' : 'text-black'">A</span>
           <span
-            class="under-line"
-            :style="{ backgroundColor: disableMenu ? 'rgba(0, 0, 0, 0.25)' : curColor || 'transparent' }"
+            class="absolute bottom-3px h-2px w-130% left-[-1px]"
+            :style="{ backgroundColor: disableMenu ? 'rgba(0,0,0,0.25)' : curColor || 'transparent' }"
           />
         </span>
       </a-button>
@@ -32,11 +31,15 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { CaretDownOutlined } from '@ant-design/icons-vue'
+import { getShortcutTipByKey } from '../../helpers/registKeyMap'
 import ColorPicker from './colorPicker/index.vue'
 import type { ColorType } from './colorPicker/data'
 import { useSheetToolbar } from '../../composables/useSheetToolbar'
 
+const { t } = useI18n()
+const keyMap = getShortcutTipByKey('textColor')
 const { sheet, editableCpt, activeCell, forEachSelectedCell } = useSheetToolbar()
 
 const curColor = ref<ColorType>(activeCell.value?.fc ?? '#000000')
@@ -51,23 +54,3 @@ function setColor(color: ColorType) {
   })
 }
 </script>
-
-<style scoped lang="less">
-.text-color-menu-wrapper {
-  display: flex;
-  align-items: center;
-  .text-wrapper {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    font-size: 16px;
-    .under-line {
-      position: absolute;
-      bottom: 3px;
-      height: 2px;
-      width: 130%;
-      margin-left: -15%;
-    }
-  }
-}
-</style>

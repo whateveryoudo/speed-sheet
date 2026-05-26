@@ -18,17 +18,25 @@ import type { LuckysheetFile } from '@speed-sheet/shared'
 
 const sheetData = ref<LuckysheetFile>([
   {
-    name: 'Sheet1',
-    index: 0,
+    name: 'SheetA',
+    index: '0',
     celldata: [
-      { r: 0, c: 0, v: { v: 'Hello speed-sheet', m: 'Hello speed-sheet' } },
+      { r: 0, c: 0, v: { v: 10, m: '10' } },
+      { r: 1, c: 0, v: { v: 20, m: '20' } },
+      { r: 2, c: 0, v: { v: 30, m: '30' } },
+      { r: 0, c: 2, v: { f: '=A1+B1', v: 30, m: '30' } },
+      { r: 1, c: 2, v: { f: '=SUM(A1:A3)', v: 60, m: '60' } },
     ],
+  },
+  {
+    name: 'SheetB',
+    index: '1',
+    celldata: [{ r: 12, c: 3, v: { v: 99, m: '99' } }],
   },
 ])
 
 function onChange(data: LuckysheetFile): void {
   sheetData.value = data
-  console.log('[demo] onChange', data)
 }
 </script>
 

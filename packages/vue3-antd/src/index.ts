@@ -3,7 +3,24 @@
 export { installSpeedSheetUi } from './install'
 export type { SpeedSheetUiInstallOptions } from './install'
 
+export { sheetI18n, normalizeSheetLocale, setSheetLocale } from './i18n'
+export type { SheetLocale, SheetT } from './i18n'
+export { useSheetLocale } from './composables/useSheetLocale'
+export { getShortcutTipByKey, SHORTCUTS } from './helpers/registKeyMap'
+export type { ShortcutKey } from './helpers/registKeyMap'
+
 export { default as SpeedSheet } from './SpeedSheet.vue'
+
+/** 内置公式能力（headless，见 @speed-sheet/vue3） */
+export {
+  provideFormulaEdit,
+  useFormulaEdit,
+  useFormulaEditOptional,
+  useFormulaCanvas,
+  mergeBuiltinExtensions,
+  FormulaExtension,
+} from '@speed-sheet/vue3'
+export type { FormulaEditContext, FormulaRangeHighlight, UseSheetOptions } from '@speed-sheet/vue3'
 
 export {
   Toolbar,

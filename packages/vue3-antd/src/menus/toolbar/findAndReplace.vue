@@ -1,5 +1,5 @@
 <template>
-  <s-keymap-tip title="查找替换">
+  <s-keymap-tip :title="editableCpt ? t('toolbar.findAndReplace') : null" :key-map="keyMap">
     <a-button
       type="text"
       class="shadow-btn-wrapper"
@@ -13,13 +13,17 @@
 
 <script setup lang="ts">
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { FileSearchOutlined } from '@ant-design/icons-vue'
+import { getShortcutTipByKey } from '../../helpers/registKeyMap'
 import { useSheetToolbar } from '../../composables/useSheetToolbar'
 
+const { t } = useI18n()
+const keyMap = getShortcutTipByKey('findAndReplace')
 const { editableCpt, findReplaceOpen } = useSheetToolbar()
 
 function openFindReplace() {
   findReplaceOpen.value = true
-  message.info('查找替换面板待实现（与编辑器版差异较大）')
+  message.info(t('toolbar.findAndReplaceHint'))
 }
 </script>

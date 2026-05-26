@@ -1,5 +1,5 @@
 <template>
-  <s-keymap-tip title="格式刷">
+  <s-keymap-tip :title="editableCpt ? t('toolbar.formatPainter') : null" :key-map="keyMap">
     <a-button
       class="shadow-btn-wrapper"
       type="text"
@@ -14,9 +14,13 @@
 
 <script setup lang="ts">
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { ClearOutlined } from '@ant-design/icons-vue'
+import { getShortcutTipByKey } from '../../helpers/registKeyMap'
 import { useSheetToolbar } from '../../composables/useSheetToolbar'
 
+const { t } = useI18n()
+const keyMap = getShortcutTipByKey('formatPainter')
 const {
   editableCpt,
   formatPainterActive,
@@ -34,6 +38,6 @@ function toggleFormatPainter() {
   if (!activeCell.value) return
   copiedStyle.value = pickStyle(activeCell.value)
   formatPainterActive.value = true
-  message.info('格式刷已开启，点击目标单元格应用（Esc 取消待接入）')
+  message.info(t('toolbar.formatPainterHint'))
 }
 </script>

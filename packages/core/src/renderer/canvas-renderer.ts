@@ -29,6 +29,12 @@ export interface RenderOptions {
   editingCell?: { r: number; c: number };
   /** 复制/剪切后的虚线框区域 */
   clipboardRange?: { row: [number, number]; column: [number, number] } | null;
+  /** 公式编辑时引用的单元格/区域（虚线框，按 color 区分） */
+  formulaRefRanges?: Array<{
+    row: [number, number];
+    column: [number, number];
+    color: string;
+  }>;
 }
 
 /** Visible row/col index range (inclusive) from scroll + viewport */
@@ -102,6 +108,23 @@ function cellDisplayText(cell: CellAttributes | undefined): string {
   const v = cell.m ?? cell.v
   if (v === null || v === undefined) return ''
   return String(v)
+}
+
+/** 公式错误角标（左上红色三角，对齐 Excel） */
+function drawFormulaErrorMarker(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+): void {
+  ctx.save();
+  ctx.fillStyle = "#e74c3c";
+  ctx.beginPath();
+  ctx.moveTo(cx + 1, cy + 1);
+  ctx.lineTo(cx + 7, cy + 1);
+  ctx.lineTo(cx + 1, cy + 7);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
 }
 
 /** 右侧相邻格是否有可见文本（有文本则阻挡溢出） */
@@ -283,7 +306,15 @@ export function renderSheet(
   ctx: CanvasRenderingContext2D,
   options: RenderOptions,
 ): void {
-  const { layout, cells, selection, isSelecting = false, editingCell, clipboardRange } = options;
+  const {
+    layout,
+    cells,
+    selection,
+    isSelecting = false,
+    editingCell,
+    clipboardRange,
+    formulaRefRanges,
+  } = options;
   const {
     totalRows,
     totalCols,
@@ -384,6 +415,10 @@ export function renderSheet(
       colSpan,
       truncate: useTruncate,
     });
+
+    if (data.ef) {
+      drawFormulaErrorMarker(ctx, cx, cy);
+    }
   }
   ctx.restore();
 
@@ -525,6 +560,32 @@ export function renderSheet(
     if (hx > 0 && hy > 0 && !isSelecting) {
       ctx.fillStyle = "#1a73e8";
       ctx.fillRect(hx, hy, 5, 5);
+    }
+  }
+
+  // ---- 公式引用虚线框 ----
+  if (formulaRefRanges?.length) {
+    for (const ref of formulaRefRanges) {
+      const rr0 = ref.row[0];
+      const rr1 = ref.row[1];
+      const cc0 = ref.column[0];
+      const cc1 = ref.column[1];
+      const rx = RHW + cc0 * colW - sx;
+      const ry = CHH + rr0 * rowH - sy;
+      const rw = (cc1 - cc0 + 1) * colW;
+      const rh = (rr1 - rr0 + 1) * rowH;
+      if (rx + rw <= 0 || rx >= vw || ry + rh <= 0 || ry >= vh) continue;
+      ctx.save();
+      ctx.fillStyle = ref.color;
+      ctx.globalAlpha = 0.12;
+      ctx.fillRect(rx + 1, ry + 1, rw - 1, rh - 1);
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = ref.color;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 3]);
+      ctx.strokeRect(rx + 0.5, ry + 0.5, rw - 1, rh - 1);
+      ctx.setLineDash([]);
+      ctx.restore();
     }
   }
 

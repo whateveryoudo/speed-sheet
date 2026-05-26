@@ -1,0 +1,69 @@
+{
+  "contextMenu": {
+    "copy": "Copy",
+    "cut": "Cut",
+    "paste": "Paste",
+    "clear": "Clear",
+    "insertRowAbove": "Insert above",
+    "insertRowBelow": "Insert below",
+    "insertColLeft": "Insert left",
+    "insertColRight": "Insert right",
+    "rowUnit": "rows",
+    "colUnit": "cols",
+    "deleteRow": "Delete row {rows}",
+    "deleteCol": "Delete column {cols}",
+    "mergeCells": "Merge cells"
+  },
+  "sheetTabMenu": {
+    "delete": "Delete",
+    "rename": "Rename",
+    "duplicate": "Duplicate",
+    "copyLink": "Copy sheet link",
+    "hide": "Hide sheet",
+    "tabColor": "Tab color",
+    "renamePrompt": "Sheet name"
+  },
+  "colorBoard": {
+    "noTabColor": "No tab color",
+    "noFill": "No fill"
+  },
+  "sheetTabBar": {
+    "sheetList": "Sheet list",
+    "scrollLeft": "Scroll tabs left",
+    "scrollRight": "Scroll tabs right",
+    "tabMenu": "Tab menu",
+    "addSheet": "New sheet"
+  },
+  "toolbar": {
+    "undo": "Undo",
+    "redo": "Redo",
+    "bold": "Bold",
+    "italic": "Italic",
+    "underline": "Underline",
+    "formatPainter": "Format painter",
+    "formatPainterHint": "Format painter is on. Click a cell to apply (Esc to cancel — coming soon).",
+    "clearFormat": "Clear formatting",
+    "textColor": "Text color",
+    "backgroundColor": "Fill color",
+    "findAndReplace": "Find and replace",
+    "findAndReplaceHint": "Find and replace panel is not available yet.",
+    "align": "Alignment",
+    "alignLeft": "Align left",
+    "alignCenter": "Align center",
+    "alignRight": "Align right",
+    "insertLink": "Insert link",
+    "insertLinkHint": "Cell links are not available yet.",
+    "formula": "Functions"
+  },
+  "formula": {
+    "common": "Common functions",
+    "allFunctions": "All functions",
+    "searchPlaceholder": "Search by name or description",
+    "categoryAll": "All categories",
+    "definition": "Definition",
+    "syntax": "Syntax",
+    "example": "Example",
+    "seeAlso": "See also",
+    "notImplementedYet": "This function is not wired to the evaluator yet"
+  }
+}

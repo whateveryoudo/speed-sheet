@@ -12,7 +12,13 @@ export default defineConfig({
       fileName: (format) => (format === 'es' ? 'index.js' : 'index.cjs'),
     },
     rollupOptions: {
-      external: ['vue', '@speed-sheet/core', '@speed-sheet/shared', 'yjs'],
+      external: [
+        'vue',
+        '@speed-sheet/core',
+        '@speed-sheet/shared',
+        '@speed-sheet/extension-formula',
+        'yjs',
+      ],
       output: {
         globals: { vue: 'Vue' },
       },

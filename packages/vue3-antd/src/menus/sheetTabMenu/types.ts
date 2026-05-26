@@ -1,5 +1,4 @@
 import type { Sheet } from '@speed-sheet/core'
-import type { SpeedSheetProps } from '../../types'
 
 /** 页签菜单 slot / 事件 payload */
 export interface SheetTabMenuState {
@@ -23,4 +22,4 @@ export type SheetTabMenuItemConfig =
       action?: (ctx: SheetTabMenuActionContext) => void
     }
 
-export type SheetTabMenuLang = NonNullable<SpeedSheetProps['lang']>
+export type SheetTabMenuLang = import('../../i18n').SheetLocale

@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { computed, toRef, watch } from 'vue'
-import { Menu } from 'ant-design-vue'
+import { computed, ref, toRef } from 'vue'
+import type { MenuProps } from 'ant-design-vue'
+import { useSheetYMap } from '@speed-sheet/vue3'
 import type { Sheet } from '@speed-sheet/core'
 import type { SpeedSheetProps } from '../../types'
-import { useContextMenuFloating } from '../../composables/useContextMenuFloating'
+import ColorBoard from '../toolbar/colorPicker/ColorBoard.vue'
+import type { ColorType } from '../toolbar/colorPicker/data'
 import type { SheetTabMenuItemConfig } from './types'
+import { useSheetLocale } from '../../composables/useSheetLocale'
 import {
   processSheetTabMenuKeys,
   resolveSheetTabMenuKeys,
@@ -15,122 +18,129 @@ defineOptions({ name: 'SheetTabContextMenu' })
 
 const props = withDefaults(
   defineProps<{
-    open?: boolean
-    clientX?: number
-    clientY?: number
-    sheetId?: string
+    sheetId: string
     sheet?: Sheet | null
     lang?: SpeedSheetProps['lang']
     menuKeys?: SheetTabMenuItemConfig[]
     excludeKeys?: string[]
-    boundary?: HTMLElement | null
   }>(),
   {
-    open: false,
-    clientX: 0,
-    clientY: 0,
     sheetId: '',
     lang: 'zh',
   },
 )
 
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{
+  close: []
+  'picker-open-change': [open: boolean]
+}>()
 
-const AMenu = Menu
-const AMenuItem = Menu.Item
-const AMenuDivider = Menu.Divider
-const ASubMenu = Menu.SubMenu
-
-const boundaryRef = toRef(() => props.boundary)
-const { visible, menuEl, openAt, close } = useContextMenuFloating({
-  boundary: boundaryRef,
-})
+const pickerOpen = ref(false)
+const openKeys = ref<string[]>(['tabColor'])
 
 const resolvedKeys = computed(() =>
   resolveSheetTabMenuKeys(props.menuKeys, props.excludeKeys),
 )
 
+function dismissMenu(): void {
+  emit('close')
+}
+
 const actionCtx = computed(() => ({
   sheet: props.sheet,
-  sheetId: props.sheetId ?? '',
-  close: () => {
-    close()
-    emit('close')
-  },
+  sheetId: props.sheetId,
+  close: dismissMenu,
 }))
 
+const { t } = useSheetLocale(() => props.lang)
+
 const items = computed(() =>
-  processSheetTabMenuKeys(resolvedKeys.value, props.lang ?? 'zh', actionCtx.value),
+  processSheetTabMenuKeys(resolvedKeys.value, t, actionCtx.value),
 )
 
-watch(
-  () => [props.open, props.clientX, props.clientY] as const,
-  async ([open, x, y]) => {
-    if (open) await openAt(x, y)
-    else close()
-  },
-  { immediate: true },
+const sheetMeta = useSheetYMap(
+  toRef(() => props.sheet ?? null),
+  toRef(() => props.sheetId),
+  { color: '' },
 )
 
-function onMenuClick({ key }: { key: string | number }): void {
-  runSheetTabMenuAction(String(key), resolvedKeys.value, actionCtx.value)
+const onMenuClick: MenuProps['onClick'] = (e) => {
+  const key = String(e.key)
+  if (key === 'tabColor-board' || key === 'tabColor') return
+  runSheetTabMenuAction(key, resolvedKeys.value, actionCtx.value)
 }
 
-function onColorPick(color: string): void {
-  runSheetTabMenuAction('tabColor', resolvedKeys.value, actionCtx.value, color)
+function onColorPick(color: ColorType): void {
+  runSheetTabMenuAction(
+    'tabColor',
+    resolvedKeys.value,
+    actionCtx.value,
+    color === null ? null : String(color),
+  )
 }
+// 增加挂载容器配置（color拾色器需要挂载在submenu内部）
+function getPopupContainer(trigger: HTMLElement): HTMLElement {
+  return (
+    trigger.closest('.sheet-tab-color-submenu-popup') ??
+    document.body
+  )
+}
+
+function onPickerOpenChange(open: boolean): void {
+  pickerOpen.value = open
+  emit('picker-open-change', open)
+}
+
+defineExpose({ pickerOpen })
 </script>
 
 <template>
-  <Teleport to="body">
-    <div v-if="visible" ref="menuEl" class="sheet-tab-ctx-menu" @mousedown.prevent>
-      <a-menu class="sheet-tab-ctx-menu-inner" @click="onMenuClick">
-        <template v-for="(item, idx) in items" :key="idx">
-          <a-menu-divider v-if="item.type === 'divider'" />
-          <a-sub-menu
-            v-else-if="item.type === 'color-submenu'"
-            :key="item.key"
-            :title="item.title"
-          >
-            <a-menu-item
-              v-for="color in item.colors"
-              :key="color"
-              @click="onColorPick(color)"
-            >
-              <span class="sheet-tab-color-swatch" :style="{ background: color }" />
-            </a-menu-item>
-          </a-sub-menu>
-          <a-menu-item v-else :key="item.key" :disabled="item.disabled">
-            {{ item.title }}
-          </a-menu-item>
-        </template>
-      </a-menu>
-    </div>
-  </Teleport>
+  <a-menu v-model:open-keys="openKeys" class="w-[150px]" :selectable="false" @click="onMenuClick">
+    <template v-for="(item, idx) in items" :key="idx">
+      <a-menu-divider v-if="item.type === 'divider'" :key="`divider-${idx}`" />
+      <a-sub-menu v-else-if="item.type === 'color-submenu'" :key="`color-${item.key}`" :title="item.title"
+        popup-class-name="sheet-tab-color-submenu-popup">
+        <a-menu-item key="tabColor-board" class="sheet-tab-color-picker-item">
+          <ColorBoard :cur-color="sheetMeta.color" :clear-label="t('colorBoard.noTabColor')" :get-popup-container="getPopupContainer"
+            @pick="onColorPick" @picker-open-change="onPickerOpenChange" @mousedown.stop @click.stop />
+        </a-menu-item>
+      </a-sub-menu>
+      <a-menu-item v-else :key="`item-${item.key}`" :disabled="item.disabled">
+        {{ item.title }}
+      </a-menu-item>
+    </template>
+  </a-menu>
 </template>
 
-<style scoped>
-.sheet-tab-ctx-menu {
-  background: #fff;
-  border-radius: 6px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-  border: 1px solid #d0d0d0;
-  min-width: 180px;
-  overflow: hidden;
+<style lang="less">
+.sheet-tab-menu-dropdown-overlay {
+  overflow: visible;
+
+  .ant-dropdown-menu.sheet-tab-color-picker-item {
+    padding: 0;
+    box-shadow: none;
+    background: transparent;
+  }
 }
-.sheet-tab-ctx-menu-inner {
-  border: none !important;
-  box-shadow: none !important;
-}
-.sheet-tab-ctx-menu-inner :deep(.ant-menu-item) {
-  height: 32px;
-  line-height: 32px;
-}
-.sheet-tab-color-swatch {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border-radius: 2px;
-  vertical-align: middle;
+
+.sheet-tab-color-submenu-popup {
+  .sheet-tab-color-picker-item {
+    height: auto !important;
+    line-height: normal !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    cursor: default;
+    background: transparent !important;
+
+    &:hover,
+    &.ant-menu-item-active {
+      background: transparent !important;
+    }
+  }
+
+  .ant-menu-sub {
+    min-width: 0;
+    padding: 0;
+  }
 }
 </style>

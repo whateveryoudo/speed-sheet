@@ -104,6 +104,19 @@ export class SheetState {
     this.shiftIndexMap(this.colHidden, atCol, -count, count)
   }
 
+  /** 合并矩形选区为单个 merge 块（左上角为锚点） */
+  mergeCells(r0: number, c0: number, r1: number, c1: number): void {
+    const r = Math.min(r0, r1)
+    const c = Math.min(c0, c1)
+    const rs = Math.abs(r1 - r0) + 1
+    const cs = Math.abs(c1 - c0) + 1
+    if (rs <= 1 && cs <= 1) return
+    const key = `${r}_${c}`
+    this.root.doc?.transact(() => {
+      this.merges.set(key, { r, c, rs, cs })
+    })
+  }
+
   private remapAllCells(
     mapPos: (r: number, c: number) => { r: number; c: number } | null,
   ): void {

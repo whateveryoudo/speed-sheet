@@ -5,14 +5,17 @@ import {
   AlignCenterOutlined,
 } from '@ant-design/icons-vue'
 import { type VNode, computed, ref, defineComponent } from 'vue'
-import { Popover, Tooltip, Button, Space } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
+import { getShortcutTipByKey } from '../../helpers/registKeyMap'
+import { Space, Popover, Button } from 'ant-design-vue'
 import { useSheetToolbar } from '../../composables/useSheetToolbar'
 
 type AlignType = 'left' | 'center' | 'right'
 
 interface AlignButton {
   key: AlignType
-  tip: string
+  titleKey: string
+  shortcutKey: 'alignLeft' | 'alignCenter' | 'alignRight'
   ht: 0 | 1 | 2
   iconRender?: () => VNode
 }
@@ -27,6 +30,7 @@ export default defineComponent({
   },
   setup(props) {
     const open = ref(false)
+    const { t } = useI18n()
     const { sheet, editableCpt, activeCell, forEachSelectedCell } = useSheetToolbar()
 
     const disableMenu = computed(() => !editableCpt.value)
@@ -38,22 +42,25 @@ export default defineComponent({
       return 'left'
     })
 
-    const alignButtons = ref<AlignButton[]>([
+    const alignButtons = computed<AlignButton[]>(() => [
       {
         key: 'left',
-        tip: '左对齐',
+        titleKey: 'toolbar.alignLeft',
+        shortcutKey: 'alignLeft',
         ht: 1,
         iconRender: () => <AlignLeftOutlined />,
       },
       {
         key: 'center',
-        tip: '居中',
+        titleKey: 'toolbar.alignCenter',
+        shortcutKey: 'alignCenter',
         ht: 0,
         iconRender: () => <AlignCenterOutlined />,
       },
       {
         key: 'right',
-        tip: '右对齐',
+        titleKey: 'toolbar.alignRight',
+        shortcutKey: 'alignRight',
         ht: 2,
         iconRender: () => <AlignRightOutlined />,
       },
@@ -62,7 +69,7 @@ export default defineComponent({
     const selectButton = computed(
       () =>
         alignButtons.value.find((item) => item.key === current.value) ??
-        alignButtons.value[0],
+        alignButtons.value[0]!,
     )
 
     function applyAlign(ht: 0 | 1 | 2) {
@@ -83,7 +90,11 @@ export default defineComponent({
           !disableMenu.value ? (
             <Space class="align-list-wrapper">
               {alignButtons.value.map((item) => (
-                <Tooltip key={item.key} title={item.tip}>
+                <s-keymap-tip
+                  key={item.key}
+                  title={t(item.titleKey)}
+                  keyMap={getShortcutTipByKey(item.shortcutKey)}
+                >
                   <Button
                     type="text"
                     class={[
@@ -94,23 +105,20 @@ export default defineComponent({
                   >
                     {item.iconRender && <s-icon-font iconRender={item.iconRender} />}
                   </Button>
-                </Tooltip>
+                </s-keymap-tip>
               ))}
             </Space>
           ) : null
         }
       >
-        <Tooltip
-          title={disableMenu.value ? null : '对齐方式'}
-          placement={props.placement}
-        >
+        <s-keymap-tip keyMap={getShortcutTipByKey(selectButton.value.shortcutKey)} title={disableMenu.value ? null : t('toolbar.align')}>
           <Button disabled={disableMenu.value} type="text" class="shadow-btn-wrapper">
             {selectButton.value.iconRender && (
               <s-icon-font iconRender={selectButton.value.iconRender} />
             )}
             <CaretDownOutlined class="dropdown-trigger" />
           </Button>
-        </Tooltip>
+        </s-keymap-tip>
       </Popover>
     )
   },

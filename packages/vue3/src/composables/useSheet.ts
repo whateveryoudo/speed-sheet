@@ -1,5 +1,8 @@
 import { ref, shallowRef, onMounted, onUnmounted, toValue, type Ref, type MaybeRefOrGetter } from 'vue'
-import { Sheet, type SheetOptions, type LuckysheetFile, type WorkbookSnapshot } from '@speed-sheet/core'
+import { Sheet, type LuckysheetFile, type WorkbookSnapshot } from '@speed-sheet/core'
+import { resolveSheetOptions, type UseSheetOptions } from './sheetBuiltin'
+
+export type { UseSheetOptions }
 
 export interface UseSheetReturn {
   /** 表格实例（对齐 Tiptap editor，选区/单元格请用 sheet.state 或 ref 暴露的方法） */
@@ -16,7 +19,7 @@ export interface UseSheetReturn {
   toLuckysheetFile: () => LuckysheetFile | null
 }
 
-export function useSheet(options: MaybeRefOrGetter<SheetOptions> = {}): UseSheetReturn {
+export function useSheet(options: MaybeRefOrGetter<UseSheetOptions> = {}): UseSheetReturn {
   const sheet = shallowRef<Sheet | null>(null)
   const revision = ref(0)
   const isReady = ref(false)
@@ -30,7 +33,7 @@ export function useSheet(options: MaybeRefOrGetter<SheetOptions> = {}): UseSheet
   }
 
   onMounted(() => {
-    const opts = toValue(options)
+    const opts = resolveSheetOptions(toValue(options))
     const userOnUpdate = opts.onUpdate
 
     const instance = new Sheet({

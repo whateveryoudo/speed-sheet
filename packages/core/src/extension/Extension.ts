@@ -14,7 +14,7 @@ export interface ExtensionConfig<S = any> {
   dependencies?: string[]
   priority?: number
 
-  onInit?: (sheet: Sheet) => void
+  onInit?: (this: Extension<S>, sheet: Sheet) => void
   onDestroy?: () => void
 
   addCommands?: (this: Extension<S>, ctx: ExtensionCommandContext) => Record<string, CommandFn>
@@ -26,7 +26,7 @@ export interface ExtensionConfig<S = any> {
   addStorage?: () => S
   addOptions?: () => Record<string, any>
 
-  onCellChange?: (r: number, c: number, newValue: any, oldValue: any) => void
+  onCellChange?: (this: Extension<S>, r: number, c: number, newValue: any, oldValue: any) => void
   onSelectionChange?: (selection: any) => void
   onSheetSwitch?: (sheetId: string) => void
 
@@ -78,7 +78,7 @@ export class Extension<S = any> {
       this.storage = this.config.addStorage()
     }
     if (this.config.onInit) {
-      this.config.onInit(sheet)
+      this.config.onInit.call(this, sheet)
     }
   }
 
@@ -110,7 +110,7 @@ export class Extension<S = any> {
   }
 
   handleCellChange(r: number, c: number, newValue: any, oldValue: any): void {
-    this.config.onCellChange?.(r, c, newValue, oldValue)
+    this.config.onCellChange?.call(this, r, c, newValue, oldValue)
   }
 
   handleSelectionChange(selection: any): void {

@@ -1,19 +1,19 @@
-import type { SheetTabMenuActionContext, SheetTabMenuItemConfig, SheetTabMenuLang } from './types'
+import type { SheetT } from '../../i18n'
+import { sheetI18n } from '../../i18n'
+import type { SheetTabMenuActionContext, SheetTabMenuItemConfig } from './types'
 import { defaultSheetTabMenuKeys } from './keys'
 
 export type { SheetTabMenuActionContext }
 
 export interface SheetTabMenuActionDef {
-  title: Record<SheetTabMenuLang, string>
+  titleKey: string
   disabled?: (ctx: SheetTabMenuActionContext) => boolean
   run: (ctx: SheetTabMenuActionContext) => void
 }
 
-const TAB_COLORS = ['#1a73e8', '#34a853', '#fbbc04', '#ea4335', '#9c27b0', '#00acc1']
-
 export const sheetTabMenuActions: Record<string, SheetTabMenuActionDef> = {
   delete: {
-    title: { zh: '删除', en: 'Delete', zh_tw: '刪除', es: 'Eliminar' },
+    titleKey: 'sheetTabMenu.delete',
     disabled: (ctx) => (ctx.sheet?.getSheetIds().length ?? 0) <= 1,
     run: ({ sheet, sheetId, close }) => {
       sheet?.deleteSheet(sheetId)
@@ -21,23 +21,23 @@ export const sheetTabMenuActions: Record<string, SheetTabMenuActionDef> = {
     },
   },
   rename: {
-    title: { zh: '重命名', en: 'Rename', zh_tw: '重新命名', es: 'Renombrar' },
+    titleKey: 'sheetTabMenu.rename',
     run: ({ sheet, sheetId, close }) => {
       const cur = sheet?.getSheetName(sheetId) ?? ''
-      const name = window.prompt('工作表名称', cur)
+      const name = window.prompt(sheetI18n.global.t('sheetTabMenu.renamePrompt'), cur)
       if (name != null && name.trim()) sheet?.renameSheet(sheetId, name.trim())
       close()
     },
   },
   duplicate: {
-    title: { zh: '创建副本', en: 'Duplicate', zh_tw: '建立副本', es: 'Duplicar' },
+    titleKey: 'sheetTabMenu.duplicate',
     run: ({ sheet, sheetId, close }) => {
       sheet?.duplicateSheet(sheetId)
       close()
     },
   },
   copyLink: {
-    title: { zh: '复制工作表链接', en: 'Copy sheet link', zh_tw: '複製工作表連結', es: 'Copiar enlace' },
+    titleKey: 'sheetTabMenu.copyLink',
     run: ({ sheetId, close }) => {
       const url = `${location.href.split('#')[0]}#sheet=${sheetId}`
       void navigator.clipboard?.writeText(url)
@@ -45,7 +45,7 @@ export const sheetTabMenuActions: Record<string, SheetTabMenuActionDef> = {
     },
   },
   hide: {
-    title: { zh: '隐藏工作表', en: 'Hide sheet', zh_tw: '隱藏工作表', es: 'Ocultar hoja' },
+    titleKey: 'sheetTabMenu.hide',
     disabled: (ctx) => (ctx.sheet?.getVisibleSheetIds().length ?? 0) <= 1,
     run: ({ sheet, sheetId, close }) => {
       sheet?.setSheetHidden(sheetId, true)
@@ -53,7 +53,7 @@ export const sheetTabMenuActions: Record<string, SheetTabMenuActionDef> = {
     },
   },
   tabColor: {
-    title: { zh: '工作表标签颜色', en: 'Tab color', zh_tw: '工作表標籤顏色', es: 'Color de pestaña' },
+    titleKey: 'sheetTabMenu.tabColor',
     run: () => {},
   },
 }
@@ -73,11 +73,11 @@ export function resolveSheetTabMenuKeys(
 export type ProcessedSheetTabMenuItem =
   | { type: 'divider' }
   | { type: 'item'; key: string; title: string; disabled: boolean }
-  | { type: 'color-submenu'; key: string; title: string; colors: string[] }
+  | { type: 'color-submenu'; key: string; title: string }
 
 export function processSheetTabMenuKeys(
   keys: SheetTabMenuItemConfig[],
-  lang: SheetTabMenuLang,
+  t: SheetT,
   ctx: SheetTabMenuActionContext,
 ): ProcessedSheetTabMenuItem[] {
   const out: ProcessedSheetTabMenuItem[] = []
@@ -102,8 +102,7 @@ export function processSheetTabMenuKeys(
       out.push({
         type: 'color-submenu',
         key: 'tabColor',
-        title: def.title[lang],
-        colors: TAB_COLORS,
+        title: t(def.titleKey),
       })
       continue
     }
@@ -112,27 +111,21 @@ export function processSheetTabMenuKeys(
     out.push({
       type: 'item',
       key: item,
-      title: def.title[lang],
+      title: t(def.titleKey),
       disabled: def.disabled?.(ctx) ?? false,
     })
   }
   return out
 }
 
-sheetTabMenuActions.tabColor = {
-  title: { zh: '工作表标签颜色', en: 'Tab color', zh_tw: '工作表標籤顏色', es: 'Color de pestaña' },
-  run: () => {},
-}
-
 export function runSheetTabMenuAction(
   key: string,
   keys: SheetTabMenuItemConfig[],
   ctx: SheetTabMenuActionContext,
-  color?: string,
+  color?: string | null,
 ): void {
-  if (key === 'tabColor' && color) {
+  if (key === 'tabColor' && color !== undefined) {
     ctx.sheet?.setSheetTabColor(ctx.sheetId, color)
-    ctx.close()
     return
   }
   const custom = keys.find((k) => typeof k === 'object' && k.key === key) as

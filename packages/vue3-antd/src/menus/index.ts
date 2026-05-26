@@ -8,11 +8,13 @@ export type { ToolbarItemConfig } from './toolbar/types'
 export { default as CellContextMenu } from './contextMenu/index.vue'
 export { defaultCellContextMenuKeys } from './contextMenu/keys'
 export {
-  contextMenuActions,
+  runContextMenuAction,
   resolveContextMenuKeys,
   processContextMenuKeys,
-  runContextMenuAction,
+  contextMenuActions,
 } from './contextMenu/registry'
+export { buildContextMenuItems } from './contextMenu/buildItems'
+export type { ProcessedContextMenuItem } from './contextMenu/buildItems'
 export type { ContextMenuActionContext } from './contextMenu/registry'
 
 export { default as SheetTabContextMenu } from './sheetTabMenu/index.vue'

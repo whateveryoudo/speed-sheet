@@ -10,13 +10,21 @@ declare module 'vue' {
   export interface GlobalComponents {
     AButton: typeof import('ant-design-vue/es')['Button']
     ADropdown: typeof import('ant-design-vue/es')['Dropdown']
+    AFlex: typeof import('ant-design-vue/es')['Flex']
     AInput: typeof import('ant-design-vue/es')['Input']
+    AInputNumber: typeof import('ant-design-vue/es')['InputNumber']
     AMenu: typeof import('ant-design-vue/es')['Menu']
     AMenuDivider: typeof import('ant-design-vue/es')['MenuDivider']
     AMenuItem: typeof import('ant-design-vue/es')['MenuItem']
+    AMenuItemGroup: typeof import('ant-design-vue/es')['MenuItemGroup']
+    AModal: typeof import('ant-design-vue/es')['Modal']
     APopover: typeof import('ant-design-vue/es')['Popover']
     ASelect: typeof import('ant-design-vue/es')['Select']
+    ASubMenu: typeof import('ant-design-vue/es')['SubMenu']
+    ATag: typeof import('ant-design-vue/es')['Tag']
     ATooltip: typeof import('ant-design-vue/es')['Tooltip']
     ATypographyText: typeof import('ant-design-vue/es')['TypographyText']
+    CaretDownOutlined: typeof import('@ant-design/icons-vue')['CaretDownOutlined']
+    SearchOutlined: typeof import('@ant-design/icons-vue')['SearchOutlined']
   }
 }
