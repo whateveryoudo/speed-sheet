@@ -1,3 +1,4 @@
+import { extractInternalRefTokens, hasInternalRefs } from './internal-ref-scan'
 import { extractRefTokens } from './refs'
 
 export const FORMULA_REF_COLORS = [
@@ -15,9 +16,7 @@ export interface FormulaRefSpan {
   color: string
 }
 
-/** 公式内引用 token 着色区间（与 buildHighlightsFromFormula 同色序） */
-export function getFormulaRefSpans(formula: string): FormulaRefSpan[] {
-  const tokens = extractRefTokens(formula)
+function spansForTokens(formula: string, tokens: string[]): FormulaRefSpan[] {
   const spans: FormulaRefSpan[] = []
   let searchFrom = 0
   tokens.forEach((token, i) => {
@@ -32,4 +31,12 @@ export function getFormulaRefSpans(formula: string): FormulaRefSpan[] {
     searchFrom = idx + token.length
   })
   return spans
+}
+
+/** 公式内引用 token 着色区间 */
+export function getFormulaRefSpans(formula: string): FormulaRefSpan[] {
+  if (hasInternalRefs(formula)) {
+    return spansForTokens(formula, extractInternalRefTokens(formula))
+  }
+  return spansForTokens(formula, extractRefTokens(formula))
 }

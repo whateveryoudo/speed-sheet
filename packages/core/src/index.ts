@@ -34,6 +34,11 @@ export type {
 
 export { CommandManager } from './commands/CommandManager'
 export { SheetState } from './state/SheetState'
+export {
+  ensureLayoutOnSheet,
+  initLayoutFromRcEntries,
+  buildIdIndexes,
+} from './state/sheet-layout'
 
 export { importFromLuckysheet, exportToLuckysheet } from './adapter/luckysheet-adapter'
 
@@ -60,4 +65,17 @@ export type {
   Selection,
   ExtensionMeta,
 } from '@speed-sheet/shared'
-export { cellKey, parseCellKey, rowKey, colKey, parseRowKey, parseColKey } from '@speed-sheet/shared'
+export {
+  cellIdKey,
+  parseCellIdKey,
+  depKey,
+  parseDepKey,
+  CELL_ID_SEP,
+  allocRowId,
+  allocColId,
+  ROW_ID_PREFIX,
+  COL_ID_PREFIX,
+  AXIS_NANOID_SIZE,
+  isRowId,
+  isColId,
+} from '@speed-sheet/shared'

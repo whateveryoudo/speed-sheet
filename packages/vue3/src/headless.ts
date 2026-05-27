@@ -63,8 +63,9 @@ export {
   getVisibleRange,
   importFromLuckysheet,
   exportToLuckysheet,
-  cellKey,
-  parseCellKey,
+  cellIdKey,
+  parseCellIdKey,
+  depKey,
 } from '@speed-sheet/core'
 
 export type {

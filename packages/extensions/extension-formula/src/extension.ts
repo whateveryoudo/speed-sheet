@@ -4,20 +4,33 @@ import {
   type CommandContext,
   type ExtensionCommandContext,
 } from '@speed-sheet/core'
-import { cellKey } from '@speed-sheet/shared'
+import { depKey } from '@speed-sheet/shared'
 import { createFormulaContext } from './context'
 import { evaluateFormulaString, isFormulaInput } from './evaluate'
-import { cellPatchFromFormulaResult } from './result'
 import {
   buildHighlightsFromFormula,
+  normalizeWorkbookFormulas,
   recalculateWorkbook,
   registerFormulaDeps,
   updateDependents,
 } from './engine'
+import { displayFormulaToInternal } from './formula-bindings'
+import { cellPatchFromFormulaResult } from './result'
+
 export interface FormulaStorage {
   evaluating: boolean
   dependents: Map<string, Set<string>>
   sheet: Sheet | null
+}
+
+function afterLayoutChange(sheet: Sheet, storage: FormulaStorage): void {
+  storage.evaluating = true
+  try {
+    recalculateWorkbook(sheet)
+  } finally {
+    storage.evaluating = false
+  }
+  sheet.notifyLayoutChange()
 }
 
 export const FormulaExtension = Extension.create<FormulaStorage>({
@@ -40,12 +53,23 @@ export const FormulaExtension = Extension.create<FormulaStorage>({
         return ({ state }: CommandContext) => {
           const raw = props.value
           const sheetId = boundSheet.getActiveSheetId()
+          const ids = state.resolveCellIds(props.r, props.c)
 
           if (isFormulaInput(raw)) {
             const fctx = createFormulaContext(boundSheet)
-            const result = evaluateFormulaString(raw, fctx)
-            state.setCell(props.r, props.c, cellPatchFromFormulaResult(raw, result))
-            registerFormulaDeps(sheetId, props.r, props.c, raw, fctx, this.storage.dependents)
+            const internal = displayFormulaToInternal(raw, fctx, sheetId)
+            const result = evaluateFormulaString(internal, fctx)
+            state.setCell(props.r, props.c, cellPatchFromFormulaResult(internal, result))
+            if (ids) {
+              registerFormulaDeps(
+                sheetId,
+                ids.rowId,
+                ids.colId,
+                internal,
+                fctx,
+                this.storage.dependents,
+              )
+            }
           } else {
             const num = Number(raw)
             const v: string | number = !Number.isNaN(num) && raw !== '' ? num : raw
@@ -57,8 +81,10 @@ export const FormulaExtension = Extension.create<FormulaStorage>({
             })
             const cell = state.getCell(props.r, props.c)
             cell?.delete('f')
-            const tk = `${sheetId}:${cellKey(props.r, props.c)}`
-            for (const set of this.storage.dependents.values()) set.delete(tk)
+            if (ids) {
+              const tk = depKey(sheetId, ids.rowId, ids.colId)
+              for (const set of this.storage.dependents.values()) set.delete(tk)
+            }
           }
 
           return true
@@ -67,12 +93,23 @@ export const FormulaExtension = Extension.create<FormulaStorage>({
 
       setCellFormula: (props: { r: number; c: number; formula: string }) => {
         return ({ state }: CommandContext) => {
-          const f = props.formula.startsWith('=') ? props.formula : `=${props.formula}`
+          const display = props.formula.startsWith('=') ? props.formula : `=${props.formula}`
           const fctx = createFormulaContext(boundSheet)
-          const result = evaluateFormulaString(f, fctx)
           const sheetId = boundSheet.getActiveSheetId()
-          state.setCell(props.r, props.c, cellPatchFromFormulaResult(f, result))
-          registerFormulaDeps(sheetId, props.r, props.c, f, fctx, this.storage.dependents)
+          const internal = displayFormulaToInternal(display, fctx, sheetId)
+          const result = evaluateFormulaString(internal, fctx)
+          const ids = state.resolveCellIds(props.r, props.c)
+          state.setCell(props.r, props.c, cellPatchFromFormulaResult(internal, result))
+          if (ids) {
+            registerFormulaDeps(
+              sheetId,
+              ids.rowId,
+              ids.colId,
+              internal,
+              fctx,
+              this.storage.dependents,
+            )
+          }
           return true
         }
       },
@@ -88,6 +125,39 @@ export const FormulaExtension = Extension.create<FormulaStorage>({
           return true
         }
       },
+
+      insertRows: (props: { at: number; count?: number }) => {
+        return ({ state }: CommandContext) => {
+          boundSheet.notifyBeforeLayoutChange()
+          state.insertRows(props.at, props.count ?? 1)
+          afterLayoutChange(boundSheet, this.storage)
+          return true
+        }
+      },
+      deleteRows: (props: { at: number; count?: number }) => {
+        return ({ state }: CommandContext) => {
+          boundSheet.notifyBeforeLayoutChange()
+          state.deleteRows(props.at, props.count ?? 1)
+          afterLayoutChange(boundSheet, this.storage)
+          return true
+        }
+      },
+      insertCols: (props: { at: number; count?: number }) => {
+        return ({ state }: CommandContext) => {
+          boundSheet.notifyBeforeLayoutChange()
+          state.insertCols(props.at, props.count ?? 1)
+          afterLayoutChange(boundSheet, this.storage)
+          return true
+        }
+      },
+      deleteCols: (props: { at: number; count?: number }) => {
+        return ({ state }: CommandContext) => {
+          boundSheet.notifyBeforeLayoutChange()
+          state.deleteCols(props.at, props.count ?? 1)
+          afterLayoutChange(boundSheet, this.storage)
+          return true
+        }
+      },
     }
   },
 
@@ -95,6 +165,7 @@ export const FormulaExtension = Extension.create<FormulaStorage>({
     this.storage.sheet = sheet
     this.storage.evaluating = true
     try {
+      normalizeWorkbookFormulas(sheet, this.storage.dependents)
       recalculateWorkbook(sheet)
     } finally {
       this.storage.evaluating = false

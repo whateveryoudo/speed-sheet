@@ -88,13 +88,18 @@ export function parseRefToken(token: string): SheetRef | null {
   return null
 }
 
-/** 从公式文本中提取全部引用 token（不含函数名） */
+import { overlapsInternalRef } from './internal-ref-scan'
+
+/** 从公式文本中提取全部 A1 引用 token（跳过 `#r_…:c_…#` 内部区域） */
 export function extractRefTokens(formula: string): string[] {
   const tokens: string[] = []
   const re =
     /(?:'[^']+'|[\w\u4e00-\u9fff\u3400-\u9fff]+!)?[A-Za-z]{1,4}\d+(?::[A-Za-z]{1,4}\d+)?/g
   let m: RegExpExecArray | null
   while ((m = re.exec(formula)) !== null) {
+    const start = m.index
+    const end = start + m[0].length
+    if (overlapsInternalRef(formula, start, end)) continue
     tokens.push(m[0])
   }
   return tokens

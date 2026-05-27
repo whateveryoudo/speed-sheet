@@ -4,6 +4,9 @@
  */
 import type { Sheet } from '@speed-sheet/core'
 import type { CellAttributes } from '@speed-sheet/shared'
+import { createFormulaContext } from './context'
+import { internalFormulaToDisplay } from './formula-bindings'
+import { overlapsInternalRef } from './internal-ref-scan'
 import { formatA1 } from './refs'
 
 const REF_TOKEN_RE =
@@ -17,8 +20,20 @@ export function isFormulaInput(text: string): boolean {
 
 export const isFormulaText = isFormulaInput
 
-export function getCellFormulaInitialFromCell(cell: CellAttributes | null | undefined): string {
-  if (cell?.f) return String(cell.f)
+export function getCellFormulaInitialFromCell(
+  cell: CellAttributes | null | undefined,
+  sheet?: Sheet,
+  sheetId?: string,
+): string {
+  if (cell?.f) {
+    const f = String(cell.f)
+    if (sheet && f.startsWith('=')) {
+      const ctx = createFormulaContext(sheet)
+      const sid = sheetId ?? sheet.getActiveSheetId()
+      return internalFormulaToDisplay(f, ctx, sid)
+    }
+    return f
+  }
   const raw = cell?.m ?? cell?.v
   if (typeof raw === 'string' && raw.startsWith('=')) return raw
   return '='
@@ -26,7 +41,11 @@ export function getCellFormulaInitialFromCell(cell: CellAttributes | null | unde
 
 /** 进入公式编辑时的初始文本：已有公式则保留，否则为 `=` */
 export function getCellFormulaInitial(sheet: Sheet, r: number, c: number): string {
-  return getCellFormulaInitialFromCell(sheet.state.getCellData(r, c))
+  return getCellFormulaInitialFromCell(
+    sheet.state.getCellData(r, c),
+    sheet,
+    sheet.getActiveSheetId(),
+  )
 }
 
 export function formatRangeA1(
@@ -68,6 +87,7 @@ function findRefSpanAt(formula: string, index: number): { start: number; end: nu
   while ((m = REF_TOKEN_RE.exec(formula)) !== null) {
     const start = m.index
     const end = start + m[0].length
+    if (overlapsInternalRef(formula, start, end)) continue
     if (index >= start && index <= end) return { start, end }
   }
   return null
@@ -78,7 +98,10 @@ function findLastRefSpan(formula: string): { start: number; end: number } | null
   let last: { start: number; end: number } | null = null
   let m: RegExpExecArray | null
   while ((m = REF_TOKEN_RE.exec(formula)) !== null) {
-    last = { start: m.index, end: m.index + m[0].length }
+    const start = m.index
+    const end = start + m[0].length
+    if (overlapsInternalRef(formula, start, end)) continue
+    last = { start, end }
   }
   return last
 }

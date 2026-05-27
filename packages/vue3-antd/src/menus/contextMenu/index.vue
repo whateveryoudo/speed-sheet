@@ -98,7 +98,10 @@ watch(
 )
 
 function onMenuClick({ key }: { key: string | number }): void {
-  runContextMenuAction(String(key), [], actionCtx.value)
+  const k = String(key)
+  // Insert 项由 onInsert 单独处理（带行/列数）；避免冒泡导致执行两次
+  if (k.startsWith('insert')) return
+  runContextMenuAction(k, [], actionCtx.value)
 }
 
 function onInsert(key: keyof typeof insertCounts): void {
@@ -129,7 +132,7 @@ function setInsertCount(key: string, val: number | null): void {
           <a-menu-divider v-if="item.type === 'divider'" />
           <a-menu-item v-else-if="item.type === 'insert'" :key="item.key"
             class="cell-ctx-insert-item flex! items-center gap-1.5"
-            @click="onInsert(item.key as keyof typeof insertCounts)">
+            @click.stop="onInsert(item.key as keyof typeof insertCounts)">
             <span class="w-20px relative top-2px inline-flex">
               <s-icon-font v-if="item.prefixIcon" :icon-render="item.prefixIcon" />
             </span>

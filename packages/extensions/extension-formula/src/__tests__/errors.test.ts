@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { evaluateFormulaString } from '../evaluate'
 import type { FormulaContext } from '../context'
+import { hasInternalRefs } from '../formula-bindings'
 
 function mockCtx(cells: Record<string, number | string> = {}): FormulaContext {
   const activeSheetId = '0'
@@ -12,7 +13,16 @@ function mockCtx(cells: Record<string, number | string> = {}): FormulaContext {
       return '0'
     },
     getSheetName: () => 'Sheet1',
-    getScalar: (sheetId, r, c) => cells[`${sheetId}:R${r}_C${c}`] ?? null,
+    resolveCellIds: (_sheetId, r, c) => ({ rowId: `r_t${r}`, colId: `c_t${c}` }),
+    idsToDisplay: (_sheetId, rowId, colId) => {
+      const rm = /^r_t(\d+)$/.exec(rowId)
+      const cm = /^c_t(\d+)$/.exec(colId)
+      if (!rm || !cm) return null
+      return { r: Number(rm[1]), c: Number(cm[1]) }
+    },
+    expandIdRange: () => [],
+    getScalarById: (sheetId, rowId, colId) => cells[`${sheetId}:${rowId}:${colId}`] ?? null,
+    getScalar: (sheetId, r, c) => cells[`${sheetId}:r_t${r}:c_t${c}`] ?? null,
   }
 }
 
@@ -25,7 +35,7 @@ describe('formula errors', () => {
   })
 
   it('returns #NAME? for unknown function', () => {
-    const r = evaluateFormulaString('=SAM(A1)', mockCtx({ '0:R0_C0': 1 }))
+    const r = evaluateFormulaString('=SAM(#r_t0:c_t0#)', mockCtx({ '0:r_t0:c_t0': 1 }))
     expect(r.m).toBe('#NAME?')
     expect(r.error).toBe('NAME')
   })
@@ -42,8 +52,10 @@ describe('formula errors', () => {
     expect(r.error).toBe('DIV0')
   })
 
-  it('returns #REF! for missing sheet', () => {
-    const r = evaluateFormulaString('=Missing!A1', mockCtx())
+  it('returns #REF! for missing sheet in internal ref', () => {
+    const token = '#@Missing|r_t0:c_t0#'
+    expect(hasInternalRefs(token)).toBe(true)
+    const r = evaluateFormulaString(`=${token}`, mockCtx())
     expect(r.m).toBe('#REF!')
     expect(r.error).toBe('REF')
   })

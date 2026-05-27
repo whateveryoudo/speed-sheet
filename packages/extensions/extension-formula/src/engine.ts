@@ -1,9 +1,15 @@
 import * as Y from 'yjs'
 import type { Sheet } from '@speed-sheet/core'
 import { SheetState } from '@speed-sheet/core'
-import { cellKey, parseCellKey, parseDepTargetKey } from './cell-key'
+import { depKey, parseDepKey } from '@speed-sheet/shared'
 import { createFormulaContext } from './context'
 import { evaluateFormulaString } from './evaluate'
+import {
+  displayFormulaToInternal,
+  extractInternalRefTokens,
+  hasInternalRefs,
+  parseInternalRefToken,
+} from './formula-bindings'
 import { cellPatchFromFormulaResult } from './result'
 import { extractRefTokens, parseRefToken } from './refs'
 import { FORMULA_REF_COLORS } from './refSpans'
@@ -17,27 +23,71 @@ export interface FormulaRangeHighlight {
 
 const HIGHLIGHT_COLORS = [...FORMULA_REF_COLORS]
 
+function refToHighlight(
+  ctx: ReturnType<typeof createFormulaContext>,
+  sheetId: string,
+  r: number,
+  c: number,
+  color: string,
+): FormulaRangeHighlight {
+  return { sheetId, row: [r, r], column: [c, c], color }
+}
+
 export function buildHighlightsFromFormula(
   formula: string,
   ctx: ReturnType<typeof createFormulaContext>,
 ): FormulaRangeHighlight[] {
-  const tokens = extractRefTokens(formula)
   const out: FormulaRangeHighlight[] = []
+
+  if (hasInternalRefs(formula)) {
+    const tokens = extractInternalRefTokens(formula)
+    tokens.forEach((token, i) => {
+      const ref = parseInternalRefToken(token)
+      if (!ref) return
+      const sheetId = ref.sheetId ?? ctx.activeSheetId
+      const color = HIGHLIGHT_COLORS[i % HIGHLIGHT_COLORS.length]
+      if (ref.endRowId != null && ref.endColId != null) {
+        const cells = ctx.expandIdRange(
+          sheetId,
+          ref.rowId,
+          ref.colId,
+          ref.endRowId,
+          ref.endColId,
+        )
+        if (!cells.length) return
+        let rMin = Infinity
+        let rMax = -Infinity
+        let cMin = Infinity
+        let cMax = -Infinity
+        for (const { rowId, colId } of cells) {
+          const pos = ctx.idsToDisplay(sheetId, rowId, colId)
+          if (!pos) continue
+          rMin = Math.min(rMin, pos.r)
+          rMax = Math.max(rMax, pos.r)
+          cMin = Math.min(cMin, pos.c)
+          cMax = Math.max(cMax, pos.c)
+        }
+        if (rMin !== Infinity) {
+          out.push({ sheetId, row: [rMin, rMax], column: [cMin, cMax], color })
+        }
+      } else {
+        const pos = ctx.idsToDisplay(sheetId, ref.rowId, ref.colId)
+        if (pos) out.push(refToHighlight(ctx, sheetId, pos.r, pos.c, color))
+      }
+    })
+    return out
+  }
+
+  const tokens = extractRefTokens(formula)
   tokens.forEach((token, i) => {
     const ref = parseRefToken(token)
     if (!ref) return
     const sheetId = ctx.resolveSheetId(ref.sheet) ?? ctx.activeSheetId
-    if (!sheetId) return
     const color = HIGHLIGHT_COLORS[i % HIGHLIGHT_COLORS.length]
     if (ref.range) {
       out.push({ sheetId, row: ref.range.row, column: ref.range.column, color })
     } else if (ref.cell) {
-      out.push({
-        sheetId,
-        row: [ref.cell.r, ref.cell.r],
-        column: [ref.cell.c, ref.cell.c],
-        color,
-      })
+      out.push(refToHighlight(ctx, sheetId, ref.cell.r, ref.cell.c, color))
     }
   })
   return out
@@ -52,13 +102,11 @@ export function recalculateWorkbook(sheet: Sheet): void {
     const ySheet = sheetsMap.get(sheetId) as Y.Map<unknown> | undefined
     if (!ySheet) continue
     const state = new SheetState(ySheet as Y.Map<unknown> as Y.Map<Y.Map<unknown>>)
-    state.cells.forEach((cell: Y.Map<unknown>, key: string) => {
-      const data = cell.toJSON() as { f?: string }
-      const pos = parseCellKey(key)
-      if (pos && data.f && String(data.f).startsWith('=')) {
-        formulas.push({ sheetId, r: pos.r, c: pos.c, f: String(data.f) })
+    for (const { r, c, data } of state.getAllCells()) {
+      if (data.f && String(data.f).startsWith('=') && hasInternalRefs(String(data.f))) {
+        formulas.push({ sheetId, r, c, f: String(data.f) })
       }
-    })
+    }
   }
 
   for (let pass = 0; pass < 8; pass++) {
@@ -82,6 +130,31 @@ export function recalculateWorkbook(sheet: Sheet): void {
   }
 }
 
+export function normalizeWorkbookFormulas(sheet: Sheet, dependents: Map<string, Set<string>>): void {
+  const ctx = createFormulaContext(sheet)
+  const sheetsMap = sheet.ydoc.getMap('sheets')
+
+  for (const sheetId of sheet.getSheetIds()) {
+    const ySheet = sheetsMap.get(sheetId) as Y.Map<unknown> | undefined
+    if (!ySheet) continue
+    const state = new SheetState(ySheet as Y.Map<unknown> as Y.Map<Y.Map<unknown>>)
+
+    for (const { r, c, data } of state.getAllCells()) {
+      const f = data.f ? String(data.f) : ''
+      if (!f.startsWith('=') || hasInternalRefs(f)) continue
+
+      const internal = displayFormulaToInternal(f, ctx, sheetId)
+      const ids = state.resolveCellIds(r, c)
+      if (!ids) continue
+
+      sheet.ydoc.transact(() => {
+        state.setCell(r, c, { f: internal })
+      })
+      registerFormulaDeps(sheetId, ids.rowId, ids.colId, internal, ctx, dependents)
+    }
+  }
+}
+
 export function updateDependents(
   sheet: Sheet,
   changedSheetId: string,
@@ -89,7 +162,13 @@ export function updateDependents(
   c: number,
   dependents: Map<string, Set<string>>,
 ): void {
-  const key = `${changedSheetId}:${cellKey(r, c)}`
+  const ySheet = sheet.ydoc.getMap('sheets').get(changedSheetId) as Y.Map<unknown> | undefined
+  if (!ySheet) return
+  const state = new SheetState(ySheet as Y.Map<unknown> as Y.Map<Y.Map<unknown>>)
+  const ids = state.resolveCellIds(r, c)
+  if (!ids) return
+
+  const key = depKey(changedSheetId, ids.rowId, ids.colId)
   const targets = dependents.get(key)
   if (!targets?.size) return
 
@@ -97,30 +176,35 @@ export function updateDependents(
   const sheetsMap = sheet.ydoc.getMap('sheets')
 
   for (const targetKey of targets) {
-    const parsed = parseDepTargetKey(targetKey)
+    const parsed = parseDepKey(targetKey)
     if (!parsed) continue
-    const { sheetId, r: rr, c: cc } = parsed
-    const ySheet = sheetsMap.get(sheetId) as Y.Map<unknown> | undefined
-    if (!ySheet) continue
-    const state = new SheetState(ySheet as Y.Map<unknown> as Y.Map<Y.Map<unknown>>)
-    const data = state.getCellData(rr, cc)
+    const { sheetId, rowId, colId } = parsed
+    const targetSheet = sheetsMap.get(sheetId) as Y.Map<unknown> | undefined
+    if (!targetSheet) continue
+    const targetState = new SheetState(targetSheet as Y.Map<unknown> as Y.Map<Y.Map<unknown>>)
+    const pos = ctx.idsToDisplay(sheetId, rowId, colId)
+    if (!pos) continue
+    const data = targetState.getCellData(pos.r, pos.c)
     if (!data?.f) continue
-    const result = evaluateFormulaString(String(data.f), ctx)
+    const f = String(data.f)
+    if (!hasInternalRefs(f)) continue
+    const result = evaluateFormulaString(f, ctx)
     sheet.ydoc.transact(() => {
-      state.setCell(rr, cc, cellPatchFromFormulaResult(String(data.f), result))
+      targetState.setCell(pos.r, pos.c, cellPatchFromFormulaResult(f, result))
     })
   }
 }
 
 export function registerFormulaDeps(
   sheetId: string,
-  r: number,
-  c: number,
-  formula: string,
+  rowId: string,
+  colId: string,
+  internalFormula: string,
   ctx: ReturnType<typeof createFormulaContext>,
   dependents: Map<string, Set<string>>,
 ): void {
-  const targetKey = `${sheetId}:${cellKey(r, c)}`
+  const targetKey = depKey(sheetId, rowId, colId)
+
   for (const dep of dependents.values()) {
     dep.delete(targetKey)
   }
@@ -129,23 +213,29 @@ export function registerFormulaDeps(
     if (set.has(targetKey)) set.delete(targetKey)
   }
 
-  const tokens = extractRefTokens(formula)
-  for (const token of tokens) {
-    const ref = parseRefToken(token)
+  for (const token of extractInternalRefTokens(internalFormula)) {
+    const ref = parseInternalRefToken(token)
     if (!ref) continue
-    const refSheetId = ctx.resolveSheetId(ref.sheet) ?? sheetId
-    if (ref.range) {
-      for (let ri = ref.range.row[0]; ri <= ref.range.row[1]; ri++) {
-        for (let ci = ref.range.column[0]; ci <= ref.range.column[1]; ci++) {
-          const depKey = `${refSheetId}:${cellKey(ri, ci)}`
-          if (!dependents.has(depKey)) dependents.set(depKey, new Set())
-          dependents.get(depKey)!.add(targetKey)
-        }
+    const refSheetId = ref.sheetId ?? sheetId
+
+    const link = (depRowId: string, depColId: string): void => {
+      const depKeyStr = depKey(refSheetId, depRowId, depColId)
+      if (!dependents.has(depKeyStr)) dependents.set(depKeyStr, new Set())
+      dependents.get(depKeyStr)!.add(targetKey)
+    }
+
+    if (ref.endRowId != null && ref.endColId != null) {
+      for (const cell of ctx.expandIdRange(
+        refSheetId,
+        ref.rowId,
+        ref.colId,
+        ref.endRowId,
+        ref.endColId,
+      )) {
+        link(cell.rowId, cell.colId)
       }
-    } else if (ref.cell) {
-      const depKey = `${refSheetId}:${cellKey(ref.cell.r, ref.cell.c)}`
-      if (!dependents.has(depKey)) dependents.set(depKey, new Set())
-      dependents.get(depKey)!.add(targetKey)
+    } else {
+      link(ref.rowId, ref.colId)
     }
   }
 }

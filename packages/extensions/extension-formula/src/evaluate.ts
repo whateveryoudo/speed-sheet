@@ -1,9 +1,13 @@
 import type { FormulaContext } from './context'
-import { collectRangeScalars, coerceNumber } from './context'
+import { collectIdRangeScalars, coerceNumber } from './context'
 import { formulaErrorResult, type FormulaErrorCode } from './errors'
+import {
+  extractInternalRefTokens,
+  hasInternalRefs,
+  parseInternalRefToken,
+} from './formula-bindings'
 import { FN_MAP, FN_RE } from './fnMap'
 import { isRegisteredBuiltin } from './registry'
-import { extractRefTokens, parseRefToken } from './refs'
 
 export type { FormulaErrorCode }
 export { formulaErrorResult, isFormulaErrorDisplay, getFormulaErrorMessage, FORMULA_ERRORS } from './errors'
@@ -50,16 +54,14 @@ function detectNullRangeError(expr: string): boolean {
   return NULL_RANGE_RE.test(expr)
 }
 
-function resolveSheetForRef(
+function resolveRefSheetId(
   ctx: FormulaContext,
-  sheetName: string | undefined,
+  sheetIdOrName: string | undefined,
 ): string | { error: 'REF' } {
-  if (sheetName) {
-    const id = ctx.resolveSheetId(sheetName)
-    if (!id) return { error: 'REF' }
-    return id
-  }
-  return ctx.activeSheetId
+  if (!sheetIdOrName) return ctx.activeSheetId
+  const id = ctx.resolveSheetId(sheetIdOrName)
+  if (!id) return { error: 'REF' }
+  return id
 }
 
 function resolveArgNumbers(
@@ -67,18 +69,24 @@ function resolveArgNumbers(
   ctx: FormulaContext,
   visiting: Set<string>,
 ): number[] | { error: FormulaErrorCode } {
-  const ref = parseRefToken(arg)
-  if (ref?.range) {
-    const sheetResolved = resolveSheetForRef(ctx, ref.sheet)
+  if (arg.startsWith('#')) {
+    const ref = parseInternalRefToken(arg)
+    if (!ref) return { error: 'REF' }
+    const sheetResolved = resolveRefSheetId(ctx, ref.sheetId)
     if (typeof sheetResolved !== 'string') return sheetResolved
     const sheetId = sheetResolved
-    return collectRangeScalars(ctx, sheetId, ref.range.row, ref.range.column, visiting)
-  }
-  if (ref?.cell) {
-    const sheetResolved = resolveSheetForRef(ctx, ref.sheet)
-    if (typeof sheetResolved !== 'string') return sheetResolved
-    const sheetId = sheetResolved
-    const raw = ctx.getScalar(sheetId, ref.cell.r, ref.cell.c, visiting)
+    if (ref.endRowId != null && ref.endColId != null) {
+      return collectIdRangeScalars(
+        ctx,
+        sheetId,
+        ref.rowId,
+        ref.colId,
+        ref.endRowId,
+        ref.endColId,
+        visiting,
+      )
+    }
+    const raw = ctx.getScalarById(sheetId, ref.rowId, ref.colId, visiting)
     if (typeof raw === 'string' && raw.startsWith('#')) return { error: 'REF' }
     if (typeof raw === 'string' && raw !== '' && Number.isNaN(Number(raw))) {
       return { error: 'VALUE' }
@@ -138,21 +146,29 @@ function evalFunctions(
   return out
 }
 
-function replaceRefs(
+function replaceInternalRefs(
   expr: string,
   ctx: FormulaContext,
   visiting: Set<string>,
 ): string | { error: FormulaErrorCode } {
-  const tokens = extractRefTokens(expr)
+  const tokens = extractInternalRefTokens(expr)
   let out = expr
   for (const token of tokens) {
-    const ref = parseRefToken(token)
+    const ref = parseInternalRefToken(token)
     if (!ref) continue
-    const sheetResolved = resolveSheetForRef(ctx, ref.sheet)
+    const sheetResolved = resolveRefSheetId(ctx, ref.sheetId)
     if (typeof sheetResolved !== 'string') return sheetResolved
     const sheetId = sheetResolved
-    if (ref.range) {
-      const nums = collectRangeScalars(ctx, sheetId, ref.range.row, ref.range.column, visiting)
+    if (ref.endRowId != null && ref.endColId != null) {
+      const nums = collectIdRangeScalars(
+        ctx,
+        sheetId,
+        ref.rowId,
+        ref.colId,
+        ref.endRowId,
+        ref.endColId,
+        visiting,
+      )
       const sumFn = FN_MAP.SUM
       if (!sumFn) return { error: 'NAME' }
       const sum = sumFn(nums)
@@ -160,15 +176,13 @@ function replaceRefs(
       out = out.split(token).join(String(sum))
       continue
     }
-    if (ref.cell) {
-      const raw = ctx.getScalar(sheetId, ref.cell.r, ref.cell.c, visiting)
-      if (typeof raw === 'string' && raw.startsWith('#')) return { error: 'REF' }
-      if (typeof raw === 'string' && raw !== '' && Number.isNaN(Number(raw))) {
-        return { error: 'VALUE' }
-      }
-      const v = coerceNumber(raw)
-      out = out.split(token).join(String(v))
+    const raw = ctx.getScalarById(sheetId, ref.rowId, ref.colId, visiting)
+    if (typeof raw === 'string' && raw.startsWith('#')) return { error: 'REF' }
+    if (typeof raw === 'string' && raw !== '' && Number.isNaN(Number(raw))) {
+      return { error: 'VALUE' }
     }
+    const v = coerceNumber(raw)
+    out = out.split(token).join(String(v))
   }
   return out
 }
@@ -235,11 +249,13 @@ export function evaluateFormulaString(
     }
     expr = afterFn
 
-    const afterRefs = replaceRefs(expr, ctx, visiting)
-    if (typeof afterRefs !== 'string') {
-      return formulaErrorResult(afterRefs.error)
+    if (hasInternalRefs(expr)) {
+      const afterRefs = replaceInternalRefs(expr, ctx, visiting)
+      if (typeof afterRefs !== 'string') {
+        return formulaErrorResult(afterRefs.error)
+      }
+      expr = afterRefs
     }
-    expr = afterRefs
 
     return safeArithmetic(expr)
   } catch {

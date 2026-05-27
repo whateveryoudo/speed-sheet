@@ -25,6 +25,7 @@
   "dependencies": {
     "@floating-ui/dom": "^1.6.0",
     "@speed-sheet/core": "workspace:^",
+    "@speed-sheet/extension-formula": "workspace:^",
     "@speed-sheet/shared": "workspace:^",
     "@speed-sheet/vue3": "workspace:^",
     "speed-components-ui": "^0.1.40",
@@ -49,6 +50,7 @@
   "peerDependencies": {
     "@ant-design/icons-vue": "^7.0.0",
     "@speed-sheet/core": "workspace:*",
+    "@speed-sheet/extension-formula": "workspace:*",
     "@speed-sheet/shared": "workspace:*",
     "@speed-sheet/vue3": "workspace:*",
     "ant-design-vue": "^4.0.0",

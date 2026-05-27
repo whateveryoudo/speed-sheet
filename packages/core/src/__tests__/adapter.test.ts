@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import * as Y from 'yjs'
 import { importFromLuckysheet, exportToLuckysheet } from '../adapter/luckysheet-adapter'
+import { SheetState } from '../state/SheetState'
+import { cellIdKey } from '@speed-sheet/shared'
 import type { LuckysheetFile } from '@speed-sheet/shared'
 
 describe('Luckysheet Adapter', () => {
@@ -42,15 +44,18 @@ describe('Luckysheet Adapter', () => {
     const sheet0 = sheetsMap.get('0') as Y.Map<any>
     expect(sheet0.get('name')).toBe('Sheet1')
 
-    const cells = sheet0.get('cells') as Y.Map<any>
-    // Only non-null cells are stored
-    expect(cells.has('R0_C1')).toBe(true)
-    expect(cells.has('R1_C1')).toBe(true)
-    expect(cells.has('R0_C0')).toBe(false) // null, not stored
+    const state = new SheetState(sheet0)
+    expect(state.getCellData(0, 1)?.v).toBe('Name')
+    expect(state.getCellData(0, 1)?.m).toBe('Name')
+    expect(state.getCellData(0, 0)).toBeNull()
 
-    const cellR0C1 = cells.get('R0_C1') as Y.Map<any>
-    expect(cellR0C1.get('v')).toBe('Name')
-    expect(cellR0C1.get('m')).toBe('Name')
+    const rowOrder = sheet0.get('rowOrder') as Y.Array<string>
+    const colOrder = sheet0.get('colOrder') as Y.Array<string>
+    expect(rowOrder.length).toBeGreaterThan(0)
+    expect(colOrder.length).toBeGreaterThan(0)
+    const cells = sheet0.get('cells') as Y.Map<any>
+    const idKey = cellIdKey(rowOrder.get(0)!, colOrder.get(1)!)
+    expect(cells.has(idKey)).toBe(true)
 
     const merges = sheet0.get('merges') as Y.Map<any>
     expect(merges.has('0_1')).toBe(true)
@@ -93,14 +98,11 @@ describe('Luckysheet Adapter', () => {
     importFromLuckysheet(sparseData, ydoc)
 
     const sheet0 = ydoc.getMap('sheets').get('0') as Y.Map<any>
-    const cells = sheet0.get('cells') as Y.Map<any>
+    const state = new SheetState(sheet0)
 
-    expect(cells.has('R0_C0')).toBe(true)
-    expect(cells.has('R5_C10')).toBe(true)
-    expect(cells.has('R1_C0')).toBe(false)
-
-    const cellR5C10 = cells.get('R5_C10') as Y.Map<any>
-    expect(cellR5C10.get('f')).toBe('=A1')
+    expect(state.getCellData(0, 0)?.v).toBe('Hello')
+    expect(state.getCellData(5, 10)?.f).toBe('=A1')
+    expect(state.getCellData(1, 0)).toBeNull()
 
     ydoc.destroy()
   })
@@ -121,36 +123,35 @@ describe('Yjs CRDT cell operations', () => {
   it('should merge concurrent cell edits without conflict', () => {
     const ydoc = new Y.Doc()
 
-    // Simulate user A: edit cell R0_C0
     const cells = ydoc.getMap('cells')
-    const cellR0C0 = new Y.Map()
-    cellR0C0.set('v', 'Alice')
-    cells.set('R0_C0', cellR0C0)
+    const keyA = 'r_aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa:c_bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+    const keyB = 'r_cccccccc-cccc-cccc-cccc-cccccccccccc:c_dddddddd-dddd-dddd-dddd-dddddddddddd'
+    const keyShared = 'r_eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee:c_ffffffff-ffff-ffff-ffff-ffffffffffff'
 
-    // Simulate user B: edit cell R3_C5 (different key, no conflict)
-    const cellR3C5 = new Y.Map()
-    cellR3C5.set('v', 'Bob')
-    cells.set('R3_C5', cellR3C5)
+    const cellA = new Y.Map()
+    cellA.set('v', 'Alice')
+    cells.set(keyA, cellA)
 
-    // Both edits should coexist
-    expect(cells.get('R0_C0')?.get('v')).toBe('Alice')
-    expect(cells.get('R3_C5')?.get('v')).toBe('Bob')
+    const cellB = new Y.Map()
+    cellB.set('v', 'Bob')
+    cells.set(keyB, cellB)
 
-    // Simulate concurrent edit to the SAME cell's different attributes
+    expect(cells.get(keyA)?.get('v')).toBe('Alice')
+    expect(cells.get(keyB)?.get('v')).toBe('Bob')
+
     const sharedCell = new Y.Map()
     sharedCell.set('v', 'Original')
     sharedCell.set('fc', '#000')
-    cells.set('R1_C1', sharedCell)
+    cells.set(keyShared, sharedCell)
 
-    // User A changes value, User B changes color — different keys, no conflict
-    const cellA = cells.get('R1_C1') as Y.Map<any>
-    const cellB = cells.get('R1_C1') as Y.Map<any> // same reference
+    const sharedA = cells.get(keyShared) as Y.Map<any>
+    const sharedB = cells.get(keyShared) as Y.Map<any>
 
-    cellA.set('v', 'NewValue')
-    cellB.set('fc', '#FF0000')
+    sharedA.set('v', 'NewValue')
+    sharedB.set('fc', '#FF0000')
 
-    expect(cells.get('R1_C1')?.get('v')).toBe('NewValue')
-    expect(cells.get('R1_C1')?.get('fc')).toBe('#FF0000')
+    expect(cells.get(keyShared)?.get('v')).toBe('NewValue')
+    expect(cells.get(keyShared)?.get('fc')).toBe('#FF0000')
 
     ydoc.destroy()
   })

@@ -1,5 +1,32 @@
 # speed-sheet 开发日志
 
+## 2026-05-27 — 布局 v2 公式同步（插行跟格）
+
+### 背景
+
+表格已改为 **rowId/colId + rowOrder/colOrder**；公式在 `f` 里存内部 `#r_…:c_…#`，界面显示 A1。插行后应像语雀/Excel：**同一格数据下移、公式显示从 A3 变 A4**，不能拿插行后的旧字符串 `=A1+A3` 覆盖存储。
+
+### 结论（维护者备忘）
+
+1. **底层**：cells 的 key 不随插行变，只变 `rowOrder` → 详见 [`docs/layout-and-formula-notes.md`](./layout-and-formula-notes.md) §1。
+2. **公式**：绑定 / 重算 / 插行前后提交 → 自研；`SUM`/`IF` 等 → `@formulajs/formulajs`。
+3. **插行时序**：`onBeforeLayoutChange` 先提交编辑，再 `insertRows`，再 `recalculateWorkbook`，最后 `onLayoutChange` 关公式 UI。
+4. **构造 Sheet**：已有 `ydoc.sheets` 时不再写入空 sheet0。
+
+### 涉及文件（摘要）
+
+| 区域 | 文件 |
+|------|------|
+| Core | `Sheet.ts`（before/after layout）、`SheetState` / `sheet-layout.ts` |
+| 公式 | `formula-bindings.ts`、`engine.ts`、`extension.ts` |
+| UI | `SpeedSheet.vue`、`SheetCanvas.vue` |
+
+### 相关文档
+
+- 可读说明（推荐先看）：[`layout-and-formula-notes.md`](./layout-and-formula-notes.md)
+
+---
+
 ## 2026-05-25 — Vue 分层与 headless 收敛
 
 ### 背景

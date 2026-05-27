@@ -1,42 +1,25 @@
 // ============================================================
-// @speed-sheet/shared — Core types, cell key helpers, constants
+// @speed-sheet/shared — Core types, cell id helpers, constants
 // ============================================================
 
-// ----- Cell Key encoding -----
-// Encode: "R{row}_C{col}" — unambiguous, sortable, regex-parseable
-export function cellKey(r: number, c: number): string {
-  return `R${r}_C${c}`
-}
+export {
+  CELL_ID_SEP,
+  cellIdKey,
+  parseCellIdKey,
+  depKey,
+  parseDepKey,
+} from './cell-id'
 
-export function rowKey(r: number): string {
-  return `R${r}`
-}
-
-export function colKey(c: number): string {
-  return `C${c}`
-}
-
-const CELL_KEY_RE = /^R(\d+)_C(\d+)$/
-const ROW_KEY_RE = /^R(\d+)$/
-const COL_KEY_RE = /^C(\d+)$/
-
-export function parseCellKey(key: string): { r: number; c: number } | null {
-  const m = key.match(CELL_KEY_RE)
-  if (!m) return null
-  return { r: parseInt(m[1], 10), c: parseInt(m[2], 10) }
-}
-
-export function parseRowKey(key: string): number | null {
-  const m = key.match(ROW_KEY_RE)
-  if (!m) return null
-  return parseInt(m[1], 10)
-}
-
-export function parseColKey(key: string): number | null {
-  const m = key.match(COL_KEY_RE)
-  if (!m) return null
-  return parseInt(m[1], 10)
-}
+export {
+  ROW_ID_PREFIX,
+  COL_ID_PREFIX,
+  AXIS_NANOID_SIZE,
+  AXIS_ID_PATTERN,
+  allocRowId,
+  allocColId,
+  isRowId,
+  isColId,
+} from './axis-id'
 
 // ----- Cell Value Types -----
 export interface CellStyle {
@@ -120,6 +103,11 @@ export interface SheetSnapshot {
   id: string
   name: string
   order: number
+  /** Display order → stable row ids */
+  rowOrder: string[]
+  /** Display order → stable col ids */
+  colOrder: string[]
+  /** Sparse cells keyed by `rowId:colId` */
   cells: Record<string, CellAttributes>
   config: SheetConfig
 }

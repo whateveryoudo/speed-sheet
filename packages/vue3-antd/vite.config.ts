@@ -30,6 +30,7 @@ export default defineConfig({
         "vue",
         "@floating-ui/dom",
         "@speed-sheet/core",
+        "@speed-sheet/extension-formula",
         "@speed-sheet/shared",
         "@speed-sheet/vue3",
         "ant-design-vue",
@@ -50,6 +51,10 @@ export default defineConfig({
     alias: {
       "@sc": resolve(__dirname, "../../../speed-components/src"),
       "@speed-sheet/core": resolve(__dirname, "../core/src/index.ts"),
+      "@speed-sheet/extension-formula": resolve(
+        __dirname,
+        "../extensions/extension-formula/src/index.ts",
+      ),
       "@speed-sheet/shared": resolve(__dirname, "../shared/src/index.ts"),
       "@speed-sheet/vue3": resolve(__dirname, "../vue3/src/index.ts"),
     },

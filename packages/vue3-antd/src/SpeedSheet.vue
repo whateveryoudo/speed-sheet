@@ -61,6 +61,7 @@ import {
   useFormulaCanvas,
 } from '@speed-sheet/vue3'
 import type { Sheet } from '@speed-sheet/core'
+import { isFormulaText } from '@speed-sheet/extension-formula'
 import type { CellAttributes } from '@speed-sheet/shared'
 import type { SpeedSheetProps } from './types'
 import { SheetToolbarMenuBar, CellContextMenu } from './menus'
@@ -104,6 +105,21 @@ const sheetOptions = computed(() => ({
   onUpdate: (s: Sheet) => {
     const file = s.toLuckysheetFile()
     if (file) props.onChange?.(file)
+  },
+  onBeforeLayoutChange: (s: Sheet) => {
+    canvasRef.value?.endEditingForLayoutChange()
+    if (formulaEdit.active.value) {
+      const { r, c } = formulaEdit.anchor.value
+      const val = formulaEdit.text.value
+      if (isFormulaText(val)) {
+        s.chain().setCellFormula({ r, c, formula: val }).run()
+      } else if (val !== '') {
+        s.chain().setCellValue({ r, c, value: val }).run()
+      }
+    }
+  },
+  onLayoutChange: () => {
+    formulaEdit.cancel()
   },
 }))
 

@@ -1,11 +1,12 @@
 import * as Y from 'yjs'
-import { cellKey } from '@speed-sheet/shared'
 import type {
   LuckysheetFile,
   LuckysheetSheet,
   CellAttributes,
   MergeRange,
 } from '@speed-sheet/shared'
+import { initLayoutFromRcEntries } from '../state/sheet-layout'
+import { SheetState } from '../state/SheetState'
 
 // ============================================================
 // Adapter: Old Luckysheet format ↔ Yjs CRDT model
@@ -33,14 +34,17 @@ export function importFromLuckysheet(
       const oldSheet = oldFile[i]
       const sheetId = oldSheet.index?.toString() ?? i.toString()
       const ySheet = new Y.Map()
+      ySheets.set(sheetId, ySheet)
 
       // Name
       ySheet.set('name', oldSheet.name ?? `Sheet${i + 1}`)
 
-      // Cells — only store non-null, non-empty cells
-      const yCells = new Y.Map<Y.Map<any>>()
-      convertCells(oldSheet, yCells)
-      ySheet.set('cells', yCells)
+      // Cells — stable rowId:colId layout (v2); ySheet must be in doc before Y.Array ops
+      const cellEntries = collectCellEntries(oldSheet)
+      initLayoutFromRcEntries(ySheet as Y.Map<unknown>, cellEntries, {
+        rowCount: oldSheet.row,
+        colCount: oldSheet.column,
+      })
 
       // Config
       if (oldSheet.config) {
@@ -64,8 +68,6 @@ export function importFromLuckysheet(
       } else {
         ySheet.set('hidden', oldSheet.hide === 1)
       }
-
-      ySheets.set(sheetId, ySheet)
     }
   })
 }
@@ -81,7 +83,7 @@ export function exportToLuckysheet(ydoc: Y.Doc): LuckysheetFile {
     const ySheet = value as Y.Map<any>
     const name: string = ySheet.get('name') ?? 'Sheet'
     const hidden: boolean = ySheet.get('hidden') ?? false
-    const yCells = ySheet.get('cells') as Y.Map<Y.Map<any>>
+    const state = new SheetState(ySheet as Y.Map<unknown>)
     const merges = ySheet.get('merges') as Y.Map<any>
     const rowHeight = ySheet.get('rowHeight') as Y.Map<number>
     const colWidth = ySheet.get('colWidth') as Y.Map<number>
@@ -89,8 +91,7 @@ export function exportToLuckysheet(ydoc: Y.Doc): LuckysheetFile {
     const colHidden = ySheet.get('colHidden') as Y.Map<number>
     const freeze = ySheet.get('freeze') as Y.Map<number>
 
-    // Reconstruct 2D dense array
-    const { data } = yMapToGrid(yCells)
+    const { data } = cellsToGrid(state.getAllCells())
 
     // Convert merges back to luckysheet format
     const merge: Record<string, MergeRange> = {}
@@ -123,20 +124,18 @@ export function exportToLuckysheet(ydoc: Y.Doc): LuckysheetFile {
 
 // ---- Convert old sheet cells ----
 
-function convertCells(
+function collectCellEntries(
   oldSheet: LuckysheetSheet,
-  yCells: Y.Map<Y.Map<any>>,
-): void {
-  // Priority 1: sparse celldata
+): Array<{ r: number; c: number; cell: Y.Map<unknown> }> {
+  const entries: Array<{ r: number; c: number; cell: Y.Map<unknown> }> = []
+
   if (oldSheet.celldata && oldSheet.celldata.length > 0) {
     for (const item of oldSheet.celldata) {
-      const cellMap = valueToYMap(item.v)
-      yCells.set(cellKey(item.r, item.c), cellMap)
+      entries.push({ r: item.r, c: item.c, cell: valueToYMap(item.v) })
     }
-    return
+    return entries
   }
 
-  // Priority 2: dense 2D data array
   if (oldSheet.data && oldSheet.data.length > 0) {
     for (let r = 0; r < oldSheet.data.length; r++) {
       const row = oldSheet.data[r]
@@ -144,11 +143,11 @@ function convertCells(
       for (let c = 0; c < row.length; c++) {
         const cell = row[c]
         if (cell == null || cell === '') continue
-        const cellMap = valueToYMap(cell)
-        yCells.set(cellKey(r, c), cellMap)
+        entries.push({ r, c, cell: valueToYMap(cell) })
       }
     }
   }
+  return entries
 }
 
 function valueToYMap(
@@ -174,34 +173,23 @@ function valueToYMap(
 
 // ---- Grid conversion ----
 
-function yMapToGrid(yCells: Y.Map<Y.Map<any>>): {
+function cellsToGrid(cells: Array<{ r: number; c: number; data: CellAttributes }>): {
   data: (CellAttributes | null)[][]
   maxR: number
   maxC: number
 } {
   let maxR = 0
   let maxC = 0
-  const entries: { r: number; c: number; cell: CellAttributes }[] = []
-
-  yCells.forEach((cellMap: Y.Map<any>, key: string) => {
-    const [, rs, cs] = key.match(/R(\d+)_C(\d+)/) ?? []
-    if (!rs || !cs) return
-    const r = parseInt(rs, 10)
-    const c = parseInt(cs, 10)
+  for (const { r, c } of cells) {
     maxR = Math.max(maxR, r)
     maxC = Math.max(maxC, c)
-    entries.push({ r, c, cell: cellMap.toJSON() as CellAttributes })
-  })
-
-  // Build dense grid
+  }
   const data: (CellAttributes | null)[][] = Array.from({ length: maxR + 1 }, () =>
     Array(maxC + 1).fill(null),
   )
-
-  for (const { r, c, cell } of entries) {
+  for (const { r, c, data: cell } of cells) {
     data[r][c] = cell
   }
-
   return { data, maxR, maxC }
 }
 

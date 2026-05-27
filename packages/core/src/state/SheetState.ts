@@ -1,18 +1,36 @@
 import * as Y from 'yjs'
-import { cellKey } from '@speed-sheet/shared'
+import { cellIdKey, parseCellIdKey } from '@speed-sheet/shared'
 import type { CellAttributes, SheetConfig, Selection, SheetSnapshot } from '@speed-sheet/shared'
+import {
+  allocId,
+  buildIdIndexes,
+  cellsToIdRecord,
+  deleteCellsForColId,
+  deleteCellsForRowId,
+  ensureLayoutOnSheet,
+} from './sheet-layout'
 
 /**
- * SheetState wraps a Y.Doc for an individual sheet.
- * All mutations go through Yjs, enabling CRDT sync out of the box.
+ * SheetState — per-sheet Yjs root.
+ *
+ * Layout (v2):
+ *   rowOrder: Y.Array<rowId>   — display row index → stable id
+ *   colOrder: Y.Array<colId>   — display col index → stable id
+ *   cells:    Y.Map<"rowId:colId", Y.Map> — only non-empty cells
+ *
+ * insertRows / insertCols only mutate order arrays (+ row meta maps);
+ * cell storage keys stay stable.
  */
 export class SheetState {
-  public root: Y.Map<any>
+  public root: Y.Map<unknown>
 
-  constructor(existing?: Y.Map<any>) {
+  constructor(existing?: Y.Map<unknown>) {
     this.root = existing ?? new Y.Map()
+    this._ensureSubstructures()
+    ensureLayoutOnSheet(this.root)
+  }
 
-    // Ensure substructures exist
+  private _ensureSubstructures(): void {
     if (!this.root.has('cells')) this.root.set('cells', new Y.Map())
     if (!this.root.has('merges')) this.root.set('merges', new Y.Map())
     if (!this.root.has('rowHeight')) this.root.set('rowHeight', new Y.Map())
@@ -22,14 +40,48 @@ export class SheetState {
     if (!this.root.has('freeze')) this.root.set('freeze', new Y.Map())
   }
 
-  // ---- Cells ----
+  // ---- Layout accessors ----
 
-  get cells(): Y.Map<any> {
-    return this.root.get('cells') as Y.Map<any>
+  get cells(): Y.Map<Y.Map<unknown>> {
+    return this.root.get('cells') as Y.Map<Y.Map<unknown>>
   }
 
-  getCell(r: number, c: number): Y.Map<any> | undefined {
-    return this.cells.get(cellKey(r, c))
+  get rowOrder(): Y.Array<string> {
+    return this.root.get('rowOrder') as Y.Array<string>
+  }
+
+  get colOrder(): Y.Array<string> {
+    return this.root.get('colOrder') as Y.Array<string>
+  }
+
+  get meta(): Y.Map<unknown> {
+    if (!this.root.has('meta')) {
+      this.root.set('meta', new Y.Map())
+    }
+    return this.root.get('meta') as Y.Map<unknown>
+  }
+
+  getRowCount(): number {
+    return (this.meta.get('rowCount') as number) ?? this.rowOrder.length
+  }
+
+  getColCount(): number {
+    return (this.meta.get('colCount') as number) ?? this.colOrder.length
+  }
+
+  private _resolveIds(r: number, c: number): { rowId: string; colId: string } | null {
+    const rowId = this.rowOrder.get(r)
+    const colId = this.colOrder.get(c)
+    if (rowId == null || colId == null) return null
+    return { rowId, colId }
+  }
+
+  // ---- Cells (display coordinates) ----
+
+  getCell(r: number, c: number): Y.Map<unknown> | undefined {
+    const ids = this._resolveIds(r, c)
+    if (!ids) return undefined
+    return this.cells.get(cellIdKey(ids.rowId, ids.colId))
   }
 
   getCellData(r: number, c: number): CellAttributes | null {
@@ -39,17 +91,19 @@ export class SheetState {
   }
 
   setCell(r: number, c: number, data: Partial<CellAttributes>): void {
-    let cell: Y.Map<any>
-    const key = cellKey(r, c)
+    const ids = this._resolveIds(r, c)
+    if (!ids) return
 
+    const key = cellIdKey(ids.rowId, ids.colId)
+    let cell: Y.Map<unknown>
     if (this.cells.has(key)) {
-      cell = this.cells.get(key) as Y.Map<any>
+      cell = this.cells.get(key) as Y.Map<unknown>
     } else {
       cell = new Y.Map()
       this.cells.set(key, cell)
     }
 
-    this.cells.doc?.transact(() => {
+    this.root.doc?.transact(() => {
       for (const [field, value] of Object.entries(data)) {
         if (value === undefined || value === null) {
           cell.delete(field)
@@ -61,50 +115,69 @@ export class SheetState {
   }
 
   deleteCell(r: number, c: number): void {
-    this.cells.delete(cellKey(r, c))
+    const ids = this._resolveIds(r, c)
+    if (!ids) return
+    this.cells.delete(cellIdKey(ids.rowId, ids.colId))
   }
 
-  /** 在 atRow 处插入 count 行（该行及下方下移） */
+  // ---- Row / column structure ----
+
   insertRows(atRow: number, count = 1): void {
     if (count <= 0) return
-    this.remapAllCells((r, c) => ({ r: r >= atRow ? r + count : r, c }))
-    this.shiftIndexMap(this.rowHeight, atRow, count)
-    this.shiftIndexMap(this.rowHidden, atRow, count)
+    this.root.doc?.transact(() => {
+      const newIds: string[] = []
+      for (let i = 0; i < count; i++) newIds.push(allocId(this.root, 'row'))
+      this.rowOrder.insert(atRow, newIds)
+      this.meta.set('rowCount', this.rowOrder.length)
+      this.shiftIndexMap(this.rowHeight, atRow, count)
+      this.shiftIndexMap(this.rowHidden, atRow, count)
+      this._shiftMergesForRowInsert(atRow, count)
+    })
   }
 
-  /** 删除从 atRow 开始的 count 行 */
   deleteRows(atRow: number, count = 1): void {
     if (count <= 0) return
-    this.remapAllCells((r, c) => {
-      if (r >= atRow && r < atRow + count) return null
-      if (r >= atRow + count) return { r: r - count, c }
-      return { r, c }
+    this.root.doc?.transact(() => {
+      for (let i = 0; i < count; i++) {
+        const rowId = this.rowOrder.get(atRow + i)
+        if (rowId) deleteCellsForRowId(this.cells, rowId)
+      }
+      this.rowOrder.delete(atRow, count)
+      this.meta.set('rowCount', this.rowOrder.length)
+      this.shiftIndexMap(this.rowHeight, atRow, -count, count)
+      this.shiftIndexMap(this.rowHidden, atRow, -count, count)
+      this._shiftMergesForRowDelete(atRow, count)
     })
-    this.shiftIndexMap(this.rowHeight, atRow, -count, count)
-    this.shiftIndexMap(this.rowHidden, atRow, -count, count)
   }
 
-  /** 在 atCol 处插入 count 列 */
   insertCols(atCol: number, count = 1): void {
     if (count <= 0) return
-    this.remapAllCells((r, c) => ({ r, c: c >= atCol ? c + count : c }))
-    this.shiftIndexMap(this.colWidth, atCol, count)
-    this.shiftIndexMap(this.colHidden, atCol, count)
+    this.root.doc?.transact(() => {
+      const newIds: string[] = []
+      for (let i = 0; i < count; i++) newIds.push(allocId(this.root, 'col'))
+      this.colOrder.insert(atCol, newIds)
+      this.meta.set('colCount', this.colOrder.length)
+      this.shiftIndexMap(this.colWidth, atCol, count)
+      this.shiftIndexMap(this.colHidden, atCol, count)
+      this._shiftMergesForColInsert(atCol, count)
+    })
   }
 
-  /** 删除从 atCol 开始的 count 列 */
   deleteCols(atCol: number, count = 1): void {
     if (count <= 0) return
-    this.remapAllCells((r, c) => {
-      if (c >= atCol && c < atCol + count) return null
-      if (c >= atCol + count) return { r, c: c - count }
-      return { r, c }
+    this.root.doc?.transact(() => {
+      for (let i = 0; i < count; i++) {
+        const colId = this.colOrder.get(atCol + i)
+        if (colId) deleteCellsForColId(this.cells, colId)
+      }
+      this.colOrder.delete(atCol, count)
+      this.meta.set('colCount', this.colOrder.length)
+      this.shiftIndexMap(this.colWidth, atCol, -count, count)
+      this.shiftIndexMap(this.colHidden, atCol, -count, count)
+      this._shiftMergesForColDelete(atCol, count)
     })
-    this.shiftIndexMap(this.colWidth, atCol, -count, count)
-    this.shiftIndexMap(this.colHidden, atCol, -count, count)
   }
 
-  /** 合并矩形选区为单个 merge 块（左上角为锚点） */
   mergeCells(r0: number, c0: number, r1: number, c1: number): void {
     const r = Math.min(r0, r1)
     const c = Math.min(c0, c1)
@@ -117,23 +190,86 @@ export class SheetState {
     })
   }
 
-  private remapAllCells(
-    mapPos: (r: number, c: number) => { r: number; c: number } | null,
+  getAllCells(): Array<{ r: number; c: number; data: CellAttributes }> {
+    const { rowIndex, colIndex } = buildIdIndexes(this.rowOrder, this.colOrder)
+    const result: Array<{ r: number; c: number; data: CellAttributes }> = []
+    this.cells.forEach((cell, key) => {
+      const ids = parseCellIdKey(key)
+      if (!ids) return
+      const r = rowIndex.get(ids.rowId)
+      const c = colIndex.get(ids.colId)
+      if (r === undefined || c === undefined) return
+      result.push({ r, c, data: cell.toJSON() as CellAttributes })
+    })
+    return result
+  }
+
+  /** Resolve stable ids for a display coordinate (debug / formula hooks). */
+  resolveCellIds(r: number, c: number): { rowId: string; colId: string } | null {
+    return this._resolveIds(r, c)
+  }
+
+  // ---- Merge shift (display coordinates) ----
+
+  private _shiftMergesForRowInsert(at: number, count: number): void {
+    this._remapMerges((r, c, rs, cs) => ({
+      r: r >= at ? r + count : r,
+      c,
+      rs,
+      cs,
+    }))
+  }
+
+  private _shiftMergesForRowDelete(at: number, count: number): void {
+    this._remapMerges((r, c, rs, cs) => {
+      const end = at + count
+      if (r >= at && r + rs <= end) return null
+      let nr = r
+      if (r >= end) nr = r - count
+      else if (r < at && r + rs > at) nr = r
+      return { r: nr, c, rs, cs }
+    })
+  }
+
+  private _shiftMergesForColInsert(at: number, count: number): void {
+    this._remapMerges((r, c, rs, cs) => ({
+      r,
+      c: c >= at ? c + count : c,
+      rs,
+      cs,
+    }))
+  }
+
+  private _shiftMergesForColDelete(at: number, count: number): void {
+    this._remapMerges((r, c, rs, cs) => {
+      const end = at + count
+      if (c >= at && c + cs <= end) return null
+      let nc = c
+      if (c >= end) nc = c - count
+      return { r, c: nc, rs, cs }
+    })
+  }
+
+  private _remapMerges(
+    map: (
+      r: number,
+      c: number,
+      rs: number,
+      cs: number,
+    ) => { r: number; c: number; rs: number; cs: number } | null,
   ): void {
-    const all = this.getAllCells()
-    this.root.doc?.transact(() => {
-      this.cells.clear()
-      for (const { r, c, data } of all) {
-        const next = mapPos(r, c)
-        if (!next) continue
-        const key = cellKey(next.r, next.c)
-        const cell = new Y.Map()
-        for (const [field, value] of Object.entries(data)) {
-          if (value !== undefined && value !== null) cell.set(field, value)
-        }
-        this.cells.set(key, cell)
+    const entries: Array<[string, { r: number; c: number; rs: number; cs: number }]> = []
+    this.merges.forEach((val, key) => {
+      if (val && typeof val === 'object' && 'r' in val) {
+        entries.push([key, val as { r: number; c: number; rs: number; cs: number }])
       }
     })
+    this.merges.clear()
+    for (const [, m] of entries) {
+      const next = map(m.r, m.c, m.rs, m.cs)
+      if (!next) continue
+      this.merges.set(`${next.r}_${next.c}`, next)
+    }
   }
 
   private shiftIndexMap(
@@ -161,26 +297,26 @@ export class SheetState {
     })
   }
 
-  getAllCells(): Array<{ r: number; c: number; data: CellAttributes }> {
-    const result: Array<{ r: number; c: number; data: CellAttributes }> = []
-    this.cells.forEach((cell: Y.Map<any>, key: string) => {
-      // Use shared parseCellKey or inline
-      const [, rs, cs] = key.match(/R(\d+)_C(\d+)/) ?? []
-      if (rs && cs) {
-        result.push({ r: parseInt(rs), c: parseInt(cs), data: cell.toJSON() as CellAttributes })
-      }
-    })
-    return result
-  }
-
   // ---- Config accessors ----
 
-  get merges(): Y.Map<any> { return this.root.get('merges') as Y.Map<any> }
-  get rowHeight(): Y.Map<number> { return this.root.get('rowHeight') as Y.Map<number> }
-  get colWidth(): Y.Map<number> { return this.root.get('colWidth') as Y.Map<number> }
-  get rowHidden(): Y.Map<number> { return this.root.get('rowHidden') as Y.Map<number> }
-  get colHidden(): Y.Map<number> { return this.root.get('colHidden') as Y.Map<number> }
-  get freeze(): Y.Map<number> { return this.root.get('freeze') as Y.Map<number> }
+  get merges(): Y.Map<unknown> {
+    return this.root.get('merges') as Y.Map<unknown>
+  }
+  get rowHeight(): Y.Map<number> {
+    return this.root.get('rowHeight') as Y.Map<number>
+  }
+  get colWidth(): Y.Map<number> {
+    return this.root.get('colWidth') as Y.Map<number>
+  }
+  get rowHidden(): Y.Map<number> {
+    return this.root.get('rowHidden') as Y.Map<number>
+  }
+  get colHidden(): Y.Map<number> {
+    return this.root.get('colHidden') as Y.Map<number>
+  }
+  get freeze(): Y.Map<number> {
+    return this.root.get('freeze') as Y.Map<number>
+  }
 
   // ---- Selection ----
 
@@ -188,7 +324,7 @@ export class SheetState {
     if (!this.root.has('_selection')) {
       this.root.set('_selection', new Y.Map())
     }
-    const s = this.root.get('_selection') as Y.Map<any>
+    const s = this.root.get('_selection') as Y.Map<unknown>
     const anchor = sel.anchor ?? { r: sel.row[0], c: sel.column[0] }
     this.root.doc?.transact(() => {
       s.set('r0', sel.row[0])
@@ -204,38 +340,35 @@ export class SheetState {
     if (!this.root.has('_selection')) {
       return { row: [0, 0], column: [0, 0], anchor: { r: 0, c: 0 } }
     }
-    const s = this.root.get('_selection') as Y.Map<any>
-    const r0 = s.get('r0') ?? 0
-    const c0 = s.get('c0') ?? 0
+    const s = this.root.get('_selection') as Y.Map<unknown>
+    const r0 = (s.get('r0') as number) ?? 0
+    const c0 = (s.get('c0') as number) ?? 0
     return {
-      row: [r0, s.get('r1') ?? 0],
-      column: [c0, s.get('c1') ?? 0],
-      anchor: { r: s.get('ar') ?? r0, c: s.get('ac') ?? c0 },
+      row: [r0, (s.get('r1') as number) ?? 0],
+      column: [c0, (s.get('c1') as number) ?? 0],
+      anchor: { r: (s.get('ar') as number) ?? r0, c: (s.get('ac') as number) ?? c0 },
     }
   }
 
   // ---- Snapshot export ----
 
   toSnapshot(id: string, name: string): SheetSnapshot {
-    const cells: Record<string, CellAttributes> = {}
-    this.cells.forEach((cell: Y.Map<any>, key: string) => {
-      cells[key] = cell.toJSON() as CellAttributes
-    })
-
     return {
       id,
       name,
       order: 0,
-      cells,
+      rowOrder: this.rowOrder.toArray(),
+      colOrder: this.colOrder.toArray(),
+      cells: cellsToIdRecord(this.cells),
       config: {
-        merges: this.merges.toJSON(),
-        rowHeight: this.rowHeight.toJSON(),
-        colWidth: this.colWidth.toJSON(),
-        rowHidden: this.rowHidden.toJSON(),
-        colHidden: this.colHidden.toJSON(),
+        merges: this.merges.toJSON() as SheetConfig['merges'],
+        rowHeight: this.rowHeight.toJSON() as SheetConfig['rowHeight'],
+        colWidth: this.colWidth.toJSON() as SheetConfig['colWidth'],
+        rowHidden: this.rowHidden.toJSON() as SheetConfig['rowHidden'],
+        colHidden: this.colHidden.toJSON() as SheetConfig['colHidden'],
         borders: [],
         filters: [],
-        freeze: this.freeze.toJSON() as any,
+        freeze: this.freeze.toJSON() as SheetConfig['freeze'],
       },
     }
   }

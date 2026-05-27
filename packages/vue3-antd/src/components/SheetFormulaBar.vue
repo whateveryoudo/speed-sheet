@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, toRef, watch } from 'vue'
 import { colToLetter, type Sheet } from '@speed-sheet/core'
+import { getCellFormulaInitial } from '@speed-sheet/extension-formula'
 import {
   useSheetSelection,
   useFormulaEditOptional,
@@ -30,8 +31,9 @@ function syncFromCell(): void {
   if (!s) return
   const { r, c } = activeCell.value
   const cell = s.state.getCellData(r, c)
-  const raw = cell?.f ?? String(cell?.m ?? cell?.v ?? '')
-  formulaText.value = raw
+  const raw = getCellFormulaInitial(s, r, c)
+  formulaText.value =
+    raw === '=' && !cell?.f ? String(cell?.m ?? cell?.v ?? '') : raw
   if (formulaEdit?.active.value) {
     formulaEdit.text.value = raw
     formulaEdit.syncHighlights(s)

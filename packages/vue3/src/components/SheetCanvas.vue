@@ -48,7 +48,12 @@ import type { Selection, CellAttributes } from '@speed-sheet/shared'
 import type { Sheet } from '@speed-sheet/core'
 import type { ContextMenuState } from '../types/context-menu'
 import { FORMULA_EDIT_KEY } from '../composables/useFormulaEdit'
-import { buildSheetRefToken, isFormulaText, patchFormulaWithRef } from '@speed-sheet/extension-formula'
+import {
+  buildSheetRefToken,
+  getCellFormulaInitial,
+  isFormulaText,
+  patchFormulaWithRef,
+} from '@speed-sheet/extension-formula'
 import FormulaRichInput from './FormulaRichInput.vue'
 
 const props = withDefaults(defineProps<{
@@ -613,16 +618,21 @@ function onMouseDown(e: MouseEvent) {
   document.addEventListener('mouseup', endDragSelect)
 }
 
+function cellEditInitial(r: number, c: number): string {
+  const s = sheet.value
+  if (!s) return ''
+  const cell = s.state.getCellData(r, c)
+  if (cell?.f) return getCellFormulaInitial(s, r, c)
+  const raw = cell?.m ?? cell?.v
+  if (raw != null && raw !== '') return String(raw)
+  return ''
+}
+
 function onDblClick(e: MouseEvent) {
   const pt = cellPointFromEvent(e)
   if (!pt) return
   endDragSelect()
-  const cell = cells.value.find(x => x.r === pt.r && x.c === pt.c)
-  openEditor(
-    pt.r,
-    pt.c,
-    cell?.data?.f?.toString() ?? cell?.data?.m?.toString() ?? cell?.data?.v?.toString() ?? '',
-  )
+  openEditor(pt.r, pt.c, cellEditInitial(pt.r, pt.c))
 }
 
 function commitEdit(): void {
@@ -700,12 +710,7 @@ function onKeyDown(e: KeyboardEvent) {
   else if (key === 'ArrowLeft') nc = Math.max(0, c - 1)
   else if (key === 'ArrowRight') nc = Math.min(totalCols - 1, c + 1)
   else if (key === 'Enter') {
-    const cell = cells.value.find(x => x.r === r && x.c === c)
-    openEditor(
-      r,
-      c,
-      cell?.data?.f?.toString() ?? cell?.data?.m?.toString() ?? cell?.data?.v?.toString() ?? '',
-    )
+    openEditor(r, c, cellEditInitial(r, c))
     return
   }
   else if (key === 'Delete' || key === 'Backspace') {
@@ -949,11 +954,17 @@ onUnmounted(() => {
   endDragSelect()
 })
 
+/** 插删行列前：提交内联单元格编辑（须在网格变更前调用） */
+function endEditingForLayoutChange(): void {
+  if (editing.value) commitEdit()
+}
+
 defineExpose({
   viewportEl,
   sheet,
   getSelection: () => sheet.value?.state.getSelection(),
   chain: () => sheet.value?.chain(),
+  endEditingForLayoutChange,
 })
 </script>
 

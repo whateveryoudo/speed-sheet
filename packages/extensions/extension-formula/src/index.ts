@@ -13,6 +13,11 @@ export { createFormulaContext } from './context'
 export type { FormulaStorage } from './extension'
 export type { FormulaRangeHighlight } from './engine'
 export { formatA1, colToLetter, letterToCol, parseRefToken, extractRefTokens } from './refs'
+export {
+  displayFormulaToInternal,
+  internalFormulaToDisplay,
+  hasInternalRefs,
+} from './formula-bindings'
 export { getFormulaRefSpans, FORMULA_REF_COLORS } from './refSpans'
 export type { FormulaRefSpan } from './refSpans'
 export {

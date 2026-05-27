@@ -1,0 +1,29 @@
+---
+description: speed-sheet 早期开发 — 不做向后兼容，禁止迁移/双路径代码
+alwaysApply: true
+globs:
+  - speed-sheet/**/*
+---
+
+# speed-sheet：早期阶段，不做向后兼容
+
+项目处于起步阶段，**允许破坏性改动**。实现新模型时：
+
+## 必须
+
+- 只保留**一种**数据模型与 API 路径（当前：stable `rowId`/`colId` + `rowOrder`/`colOrder` + `cells` 键 `rowId:colId`）。
+- 公式语义引用绑定 **rowId/colId**；A1 仅作展示，由 order 数组推导。
+- 插入行/列只改 order 数组，**不重命名** cell 存储键。
+
+## 禁止
+
+- 不要写 legacy 迁移（如 `migrateLegacyRcCells`、`R{r}_C{c}` 双格式并存）。
+- 不要写 shim / 兼容分支 /「旧格式也能读」的 fallback。
+- 不要为了兼容保留 deprecated 导出或 snapshot 旧键名。
+- 不要「将就」在 eval / deps / snapshot 里同时支持两套 key。
+
+## 改代码时
+
+1. 发现 legacy 路径 → **删除**，统一到 id 模型。
+2. 外部格式（Luckysheet 导入、公式栏 A1）只在**边界**转换，内部存储与计算用 id。
+3. 测试用新模型写，不维护旧 key 的断言。

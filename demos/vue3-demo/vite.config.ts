@@ -40,6 +40,10 @@ export default defineConfig({
         __dirname,
         "../../packages/core/src/index.ts",
       ),
+      "@speed-sheet/extension-formula": resolve(
+        __dirname,
+        "../../packages/extensions/extension-formula/src/index.ts",
+      ),
     },
   },
   optimizeDeps: {

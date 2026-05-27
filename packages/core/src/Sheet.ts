@@ -32,6 +32,12 @@ export interface SheetOptions {
 
   /** Called after any state mutation */
   onUpdate?: (sheet: Sheet) => void
+
+  /** 插删行列前：提交进行中的单元格/公式编辑（此时 A1 坐标仍与网格一致） */
+  onBeforeLayoutChange?: (sheet: Sheet) => void
+
+  /** 插删行列等结构变更后（公式重算已完成）：关闭公式编辑 UI 等 */
+  onLayoutChange?: (sheet: Sheet) => void
 }
 
 export class Sheet {
@@ -120,11 +126,12 @@ export class Sheet {
     } else if (options.snapshot) {
       this._loadSnapshot(options.snapshot)
     } else {
-      // Empty workbook with one sheet
       const sheetsMap = this.ydoc.getMap('sheets')
-      const sheet0 = new Y.Map()
-      sheet0.set('name', 'Sheet1')
-      sheetsMap.set('0', sheet0)
+      if (sheetsMap.size === 0) {
+        const sheet0 = new Y.Map()
+        sheet0.set('name', 'Sheet1')
+        sheetsMap.set('0', sheet0)
+      }
     }
 
     // Bind state to first sheet (or an active one)
@@ -154,6 +161,19 @@ export class Sheet {
       for (const sheetSnap of snapshot.sheets) {
         const ySheet = new Y.Map()
         ySheet.set('name', sheetSnap.name)
+
+        const rowOrder = new Y.Array<string>()
+        rowOrder.insert(0, sheetSnap.rowOrder)
+        ySheet.set('rowOrder', rowOrder)
+
+        const colOrder = new Y.Array<string>()
+        colOrder.insert(0, sheetSnap.colOrder)
+        ySheet.set('colOrder', colOrder)
+
+        const meta = new Y.Map<unknown>()
+        meta.set('rowCount', sheetSnap.rowOrder.length)
+        meta.set('colCount', sheetSnap.colOrder.length)
+        ySheet.set('meta', meta)
 
         const cells = new Y.Map()
         for (const [key, attrs] of Object.entries(sheetSnap.cells)) {
@@ -371,7 +391,7 @@ export class Sheet {
       const ySheet = sheetsMap.get(sheetId) as Y.Map<any>
       return ySheet?.get('name') ?? ''
     }
-    return this.state.root.get('name') ?? ''
+    return (this.state.root.get('name') as string | undefined) ?? ''
   }
 
   /** Export to native snapshot */
@@ -400,6 +420,15 @@ export class Sheet {
   /** Trigger update callback (called by CommandManager after mutations) */
   notifyUpdate(): void {
     this.options.onUpdate?.(this)
+  }
+
+  notifyBeforeLayoutChange(): void {
+    this.options.onBeforeLayoutChange?.(this)
+  }
+
+  notifyLayoutChange(): void {
+    this.options.onLayoutChange?.(this)
+    this.notifyUpdate()
   }
 
   // ---- Luckysheet 风格便捷 API（内部仍走 chain） ----
