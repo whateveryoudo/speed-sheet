@@ -1,6 +1,10 @@
 import * as Y from 'yjs'
 import { cellIdKey, parseCellIdKey } from '@speed-sheet/shared'
-import type { CellAttributes, SheetConfig, Selection, SheetSnapshot } from '@speed-sheet/shared'
+import type { CellAttributes, MergeRange, SheetConfig, Selection, SheetSnapshot } from '@speed-sheet/shared'
+import { transactUser } from '../yjs/transact'
+import { MIN_COL_WIDTH, MIN_ROW_HEIGHT } from '../renderer/grid-metrics'
+import { mapColIndexAfterMove } from '../renderer/col-move-hit'
+import { mapRowIndexAfterMove } from '../renderer/row-move-hit'
 import {
   allocId,
   buildIdIndexes,
@@ -9,6 +13,80 @@ import {
   deleteCellsForRowId,
   ensureLayoutOnSheet,
 } from './sheet-layout'
+import { MergeContext } from '../merge'
+
+function readMergeRange(val: unknown): MergeRange | null {
+  if (!val) return null
+  if (val instanceof Y.Map) {
+    const r = val.get('r') as number
+    const c = val.get('c') as number
+    const rs = val.get('rs') as number
+    const cs = val.get('cs') as number
+    if (
+      Number.isFinite(r) &&
+      Number.isFinite(c) &&
+      Number.isFinite(rs) &&
+      Number.isFinite(cs)
+    ) {
+      return { r, c, rs, cs }
+    }
+    return null
+  }
+  if (
+    typeof val === 'object' &&
+    'r' in val &&
+    'c' in val &&
+    'rs' in val &&
+    'cs' in val
+  ) {
+    return val as MergeRange
+  }
+  return null
+}
+
+/** Luckysheet：合并时取选区内第一个有内容/公式的格 */
+function cellHasContent(data: CellAttributes | null): boolean {
+  if (!data) return false
+  if (data.f != null && String(data.f).length > 0) return true
+  const v = data.v
+  return v != null && v !== ''
+}
+
+/** 取消合并时从格复制样式，不含 v/m/f/ct（对齐 mergeCancel） */
+function cellStyleOnly(data: CellAttributes): Partial<CellAttributes> {
+  const out: Partial<CellAttributes> = {}
+  const keys = [
+    'bg',
+    'fc',
+    'fs',
+    'bl',
+    'it',
+    'ff',
+    'ht',
+    'vt',
+    'tb',
+    'tr',
+    'un',
+    'qp',
+  ] as const
+  for (const k of keys) {
+    if (data[k] !== undefined) out[k] = data[k] as never
+  }
+  return out
+}
+
+/** After move: perm[newIndex] = old index now at newIndex. */
+function buildIndexMovePermutation(
+  n: number,
+  from: number,
+  count: number,
+  insertAt: number,
+): number[] {
+  const order = Array.from({ length: n }, (_, i) => i)
+  const block = order.splice(from, count)
+  order.splice(insertAt, 0, ...block)
+  return order
+}
 
 /**
  * SheetState — per-sheet Yjs root.
@@ -28,6 +106,12 @@ export class SheetState {
     this.root = existing ?? new Y.Map()
     this._ensureSubstructures()
     ensureLayoutOnSheet(this.root)
+  }
+
+  private _transact(fn: () => void): void {
+    const doc = this.root.doc
+    if (doc) transactUser(doc, fn)
+    else fn()
   }
 
   private _ensureSubstructures(): void {
@@ -69,6 +153,48 @@ export class SheetState {
     return (this.meta.get('colCount') as number) ?? this.colOrder.length
   }
 
+  getRowHeight(r: number, defaultHeight = 25): number {
+    const v = this.rowHeight.get(String(r))
+    return v != null ? Math.max(MIN_ROW_HEIGHT, v) : defaultHeight
+  }
+
+  getColWidth(c: number, defaultWidth = 120): number {
+    const v = this.colWidth.get(String(c))
+    return v != null ? Math.max(MIN_COL_WIDTH, v) : defaultWidth
+  }
+
+  setRowHeight(r: number, height: number): void {
+    const h = Math.max(MIN_ROW_HEIGHT, Math.round(height))
+    this._transact(() => {
+      this.rowHeight.set(String(r), h)
+    })
+  }
+
+  setColWidth(c: number, width: number): void {
+    const w = Math.max(MIN_COL_WIDTH, Math.round(width))
+    this._transact(() => {
+      this.colWidth.set(String(c), w)
+    })
+  }
+
+  setRowHeights(rows: number[], height: number): void {
+    const h = Math.max(MIN_ROW_HEIGHT, Math.round(height))
+    this._transact(() => {
+      for (const r of rows) {
+        this.rowHeight.set(String(r), h)
+      }
+    })
+  }
+
+  setColWidths(cols: number[], width: number): void {
+    const w = Math.max(MIN_COL_WIDTH, Math.round(width))
+    this._transact(() => {
+      for (const c of cols) {
+        this.colWidth.set(String(c), w)
+      }
+    })
+  }
+
   private _resolveIds(r: number, c: number): { rowId: string; colId: string } | null {
     const rowId = this.rowOrder.get(r)
     const colId = this.colOrder.get(c)
@@ -86,24 +212,32 @@ export class SheetState {
 
   getCellData(r: number, c: number): CellAttributes | null {
     const cell = this.getCell(r, c)
-    if (!cell) return null
+    if (!cell || cell.size === 0) return null
     return cell.toJSON() as CellAttributes
   }
 
-  setCell(r: number, c: number, data: Partial<CellAttributes>): void {
+  /**
+   * @param trackUndo When false, apply inline (caller must wrap transactSystem/User).
+   */
+  createMergeContext(): MergeContext {
+    return MergeContext.fromRanges(this.getMergeRanges())
+  }
+
+  setCell(r: number, c: number, data: Partial<CellAttributes>, trackUndo = true): void {
+    const anchor = this.createMergeContext().anchor(r, c)
+    r = anchor.r
+    c = anchor.c
     const ids = this._resolveIds(r, c)
     if (!ids) return
 
     const key = cellIdKey(ids.rowId, ids.colId)
-    let cell: Y.Map<unknown>
-    if (this.cells.has(key)) {
-      cell = this.cells.get(key) as Y.Map<unknown>
-    } else {
-      cell = new Y.Map()
-      this.cells.set(key, cell)
-    }
 
-    this.root.doc?.transact(() => {
+    const write = (): void => {
+      let cell = this.cells.get(key) as Y.Map<unknown> | undefined
+      if (!cell) {
+        cell = new Y.Map()
+        this.cells.set(key, cell)
+      }
       for (const [field, value] of Object.entries(data)) {
         if (value === undefined || value === null) {
           cell.delete(field)
@@ -111,20 +245,28 @@ export class SheetState {
           cell.set(field, value)
         }
       }
-    })
+      if (cell.size === 0) this.cells.delete(key)
+    }
+    if (trackUndo) this._transact(write)
+    else write()
   }
 
-  deleteCell(r: number, c: number): void {
+  deleteCell(r: number, c: number, trackUndo = true): void {
     const ids = this._resolveIds(r, c)
     if (!ids) return
-    this.cells.delete(cellIdKey(ids.rowId, ids.colId))
+    const key = cellIdKey(ids.rowId, ids.colId)
+    const write = (): void => {
+      this.cells.delete(key)
+    }
+    if (trackUndo) this._transact(write)
+    else write()
   }
 
   // ---- Row / column structure ----
 
   insertRows(atRow: number, count = 1): void {
     if (count <= 0) return
-    this.root.doc?.transact(() => {
+    this._transact(() => {
       const newIds: string[] = []
       for (let i = 0; i < count; i++) newIds.push(allocId(this.root, 'row'))
       this.rowOrder.insert(atRow, newIds)
@@ -135,9 +277,77 @@ export class SheetState {
     })
   }
 
+  /**
+   * Move `count` rows starting at `fromRow` so they appear before `insertBefore`.
+   * Cell keys use stable rowId — only order + row-indexed config maps change.
+   */
+  moveRows(fromRow: number, insertBefore: number, count = 1): void {
+    if (count <= 0) return
+    const n = this.rowOrder.length
+    const from = Math.max(0, Math.min(fromRow, n - 1))
+    count = Math.min(count, n - from)
+    if (count <= 0) return
+
+    let to = Math.max(0, Math.min(n, insertBefore))
+    if (to >= from && to < from + count) return
+
+    this._transact(() => {
+      const ids: string[] = []
+      for (let i = 0; i < count; i++) {
+        const id = this.rowOrder.get(from + i)
+        if (id) ids.push(id)
+      }
+      if (ids.length === 0) return
+
+      this.rowOrder.delete(from, count)
+      let insertAt = to
+      if (to > from) insertAt = to - count
+      this.rowOrder.insert(insertAt, ids)
+
+      const perm = buildIndexMovePermutation(n, from, count, insertAt)
+      this._permuteRowIndexMap(this.rowHeight, perm)
+      this._permuteRowIndexMap(this.rowHidden, perm)
+      this._remapMergesForRowMove(from, count, insertAt)
+    })
+  }
+
+  /**
+   * Move `count` cols starting at `fromCol` so they appear before `insertBefore`.
+   * Cell keys use stable colId — only order + col-indexed config maps change.
+   */
+  moveCols(fromCol: number, insertBefore: number, count = 1): void {
+    if (count <= 0) return
+    const n = this.colOrder.length
+    const from = Math.max(0, Math.min(fromCol, n - 1))
+    count = Math.min(count, n - from)
+    if (count <= 0) return
+
+    let to = Math.max(0, Math.min(n, insertBefore))
+    if (to >= from && to < from + count) return
+
+    this._transact(() => {
+      const ids: string[] = []
+      for (let i = 0; i < count; i++) {
+        const id = this.colOrder.get(from + i)
+        if (id) ids.push(id)
+      }
+      if (ids.length === 0) return
+
+      this.colOrder.delete(from, count)
+      let insertAt = to
+      if (to > from) insertAt = to - count
+      this.colOrder.insert(insertAt, ids)
+
+      const perm = buildIndexMovePermutation(n, from, count, insertAt)
+      this._permuteColIndexMap(this.colWidth, perm)
+      this._permuteColIndexMap(this.colHidden, perm)
+      this._remapMergesForColMove(from, count, insertAt)
+    })
+  }
+
   deleteRows(atRow: number, count = 1): void {
     if (count <= 0) return
-    this.root.doc?.transact(() => {
+    this._transact(() => {
       for (let i = 0; i < count; i++) {
         const rowId = this.rowOrder.get(atRow + i)
         if (rowId) deleteCellsForRowId(this.cells, rowId)
@@ -152,7 +362,7 @@ export class SheetState {
 
   insertCols(atCol: number, count = 1): void {
     if (count <= 0) return
-    this.root.doc?.transact(() => {
+    this._transact(() => {
       const newIds: string[] = []
       for (let i = 0; i < count; i++) newIds.push(allocId(this.root, 'col'))
       this.colOrder.insert(atCol, newIds)
@@ -165,7 +375,7 @@ export class SheetState {
 
   deleteCols(atCol: number, count = 1): void {
     if (count <= 0) return
-    this.root.doc?.transact(() => {
+    this._transact(() => {
       for (let i = 0; i < count; i++) {
         const colId = this.colOrder.get(atCol + i)
         if (colId) deleteCellsForColId(this.cells, colId)
@@ -178,6 +388,24 @@ export class SheetState {
     })
   }
 
+  getMergeRanges(): MergeRange[] {
+    const result: MergeRange[] = []
+    this.merges.forEach((val) => {
+      const m = readMergeRange(val)
+      if (m) result.push(m)
+    })
+    return result
+  }
+
+  /** 包含 (r,c) 的合并区；无则 null */
+  getMergeAt(r: number, c: number): MergeRange | null {
+    return this.createMergeContext().at(r, c) ?? null
+  }
+
+  /**
+   * 合并选区：首个有值/公式的格写入锚点，其余格清空（Luckysheet mergeAll）。
+   * 取消合并不会恢复合并前的各格数值。
+   */
   mergeCells(r0: number, c0: number, r1: number, c1: number): void {
     const r = Math.min(r0, r1)
     const c = Math.min(c0, c1)
@@ -185,8 +413,71 @@ export class SheetState {
     const cs = Math.abs(c1 - c0) + 1
     if (rs <= 1 && cs <= 1) return
     const key = `${r}_${c}`
-    this.root.doc?.transact(() => {
+    this._transact(() => {
+      let winner: CellAttributes | null = null
+      for (let rr = r; rr < r + rs; rr++) {
+        for (let cc = c; cc < c + cs; cc++) {
+          const data = this.getCellData(rr, cc)
+          if (cellHasContent(data) && !winner) {
+            winner = { ...(data as CellAttributes) }
+          }
+        }
+      }
+      for (let rr = r; rr < r + rs; rr++) {
+        for (let cc = c; cc < c + cs; cc++) {
+          if (rr === r && cc === c) {
+            if (winner) this.setCell(rr, cc, winner, false)
+          } else {
+            this.deleteCell(rr, cc, false)
+          }
+        }
+      }
       this.merges.set(key, { r, c, rs, cs })
+    })
+  }
+
+  /**
+   * 取消合并：删除 merge 配置；锚点保留内容与样式，从格仅保留样式副本（无 v/m/f/ct）。
+   */
+  unmergeCells(r0: number, c0: number, r1: number, c1: number): void {
+    const rMin = Math.min(r0, r1)
+    const rMax = Math.max(r0, r1)
+    const cMin = Math.min(c0, c1)
+    const cMax = Math.max(c0, c1)
+
+    const targets: MergeRange[] = []
+    this.merges.forEach((val) => {
+      const m = readMergeRange(val)
+      if (!m || (m.rs <= 1 && m.cs <= 1)) return
+      const intersects =
+        m.r <= rMax &&
+        m.r + m.rs - 1 >= rMin &&
+        m.c <= cMax &&
+        m.c + m.cs - 1 >= cMin
+      if (intersects) targets.push(m)
+    })
+    if (!targets.length) return
+
+    this._transact(() => {
+      for (const m of targets) {
+        const anchor = this.getCellData(m.r, m.c)
+        for (let rr = m.r; rr < m.r + m.rs; rr++) {
+          for (let cc = m.c; cc < m.c + m.cs; cc++) {
+            if (rr === m.r && cc === m.c) continue
+            if (anchor) {
+              const style = cellStyleOnly(anchor)
+              if (Object.keys(style).length > 0) {
+                this.setCell(rr, cc, { ...style, v: null }, false)
+              } else {
+                this.deleteCell(rr, cc, false)
+              }
+            } else {
+              this.deleteCell(rr, cc, false)
+            }
+          }
+        }
+        this.merges.delete(`${m.r}_${m.c}`)
+      }
     })
   }
 
@@ -220,6 +511,37 @@ export class SheetState {
     }))
   }
 
+  private _permuteRowIndexMap(map: Y.Map<number>, perm: number[]): void {
+    this._permuteIndexMap(map, perm)
+  }
+
+  private _permuteColIndexMap(map: Y.Map<number>, perm: number[]): void {
+    this._permuteIndexMap(map, perm)
+  }
+
+  private _permuteIndexMap(map: Y.Map<number>, perm: number[]): void {
+    const old: Array<number | undefined> = []
+    map.forEach((v, k) => {
+      const i = parseInt(k, 10)
+      if (!Number.isNaN(i)) old[i] = v
+    })
+    map.clear()
+    for (let newIdx = 0; newIdx < perm.length; newIdx++) {
+      const oldIdx = perm[newIdx]!
+      const v = old[oldIdx]
+      if (v !== undefined) map.set(String(newIdx), v)
+    }
+  }
+
+  private _remapMergesForRowMove(from: number, count: number, insertAt: number): void {
+    this._remapMerges((r, c, rs, cs) => {
+      const nr = mapRowIndexAfterMove(r, from, count, insertAt)
+      const nrEnd = mapRowIndexAfterMove(r + rs - 1, from, count, insertAt)
+      if (nrEnd < nr) return null
+      return { r: nr, c, rs: nrEnd - nr + 1, cs }
+    })
+  }
+
   private _shiftMergesForRowDelete(at: number, count: number): void {
     this._remapMerges((r, c, rs, cs) => {
       const end = at + count
@@ -228,6 +550,15 @@ export class SheetState {
       if (r >= end) nr = r - count
       else if (r < at && r + rs > at) nr = r
       return { r: nr, c, rs, cs }
+    })
+  }
+
+  private _remapMergesForColMove(from: number, count: number, insertAt: number): void {
+    this._remapMerges((r, c, rs, cs) => {
+      const nc = mapColIndexAfterMove(c, from, count, insertAt)
+      const ncEnd = mapColIndexAfterMove(c + cs - 1, from, count, insertAt)
+      if (ncEnd < nc) return null
+      return { r, c: nc, rs, cs: ncEnd - nc + 1 }
     })
   }
 

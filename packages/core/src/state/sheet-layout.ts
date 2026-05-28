@@ -1,5 +1,6 @@
 import * as Y from 'yjs'
 import { allocColId, allocRowId, cellIdKey, parseCellIdKey } from '@speed-sheet/shared'
+import { transactSystem } from '../yjs/transact'
 import type { CellAttributes } from '@speed-sheet/shared'
 
 export const DEFAULT_ROW_COUNT = 200
@@ -43,7 +44,7 @@ export function createOrderArrays(
     rowOrder.insert(0, rowIds)
     colOrder.insert(0, colIds)
   }
-  if (root.doc) root.doc.transact(apply)
+  if (root.doc) transactSystem(root.doc, apply)
   else apply()
 
   return { rowOrder, colOrder }

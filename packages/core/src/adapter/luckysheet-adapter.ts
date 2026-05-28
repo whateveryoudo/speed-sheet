@@ -4,9 +4,12 @@ import type {
   LuckysheetSheet,
   CellAttributes,
   MergeRange,
+  SheetSnapshot,
+  WorkbookSnapshot,
 } from '@speed-sheet/shared'
 import { initLayoutFromRcEntries } from '../state/sheet-layout'
 import { SheetState } from '../state/SheetState'
+import { transactSystem } from '../yjs/transact'
 
 // ============================================================
 // Adapter: Old Luckysheet format ↔ Yjs CRDT model
@@ -29,7 +32,7 @@ export function importFromLuckysheet(
 ): void {
   const ySheets = ydoc.getMap('sheets')
 
-  ydoc.transact(() => {
+  transactSystem(ydoc, () => {
     for (let i = 0; i < oldFile.length; i++) {
       const oldSheet = oldFile[i]
       const sheetId = oldSheet.index?.toString() ?? i.toString()
@@ -120,6 +123,25 @@ export function exportToLuckysheet(ydoc: Y.Doc): LuckysheetFile {
   })
 
   return result
+}
+
+/** One-shot: Luckysheet file → v2 WorkbookSnapshot (import/export without keeping Y.Doc). */
+export function luckysheetFileToSnapshot(file: LuckysheetFile): WorkbookSnapshot {
+  const ydoc = new Y.Doc()
+  importFromLuckysheet(file, ydoc)
+  const sheetsMap = ydoc.getMap('sheets')
+  const sheets: SheetSnapshot[] = []
+  sheetsMap.forEach((value, id) => {
+    const ySheet = value as Y.Map<any>
+    const state = new SheetState(ySheet)
+    sheets.push(state.toSnapshot(id, (ySheet.get('name') as string) ?? ''))
+  })
+  ydoc.destroy()
+  return {
+    version: 2,
+    sheets,
+    activeSheetId: sheets[0]?.id ?? '0',
+  }
 }
 
 // ---- Convert old sheet cells ----

@@ -1,7 +1,15 @@
-# Formula engine (planned)
+# formula — 公式（core 内无实现）
 
-Formula parsing and calculation will live in a separate package:
+**公式解析与计算不在 core 内实现**，请使用独立包：
 
-- `@speed-sheet/extension-formula` — recommended (optional plugin, peer of `@speed-sheet/core`)
+- [`@speed-sheet/extension-formula`](../../../extension-formula/) — 公式 extension、AST、依赖图、求值
 
-Legacy Luckysheet `global/formula.js` is not ported here. Do not add a monolithic `formula.ts` under core.
+## 为何不在 core
+
+- 公式是可选能力，避免 core 体积与循环依赖
+- core 只保留单元格字段 `f`/`v`/`m` 的存储与 `SheetState.setCell`
+
+## 相关文档
+
+- 仓库根目录 `docs/layout-and-formula-notes.md`
+- `.cursor/rules/reference-luckysheet.mdc` 公式章节

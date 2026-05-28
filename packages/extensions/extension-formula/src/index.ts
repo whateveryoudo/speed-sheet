@@ -8,6 +8,8 @@ export {
   formatRangeA1,
   buildSheetRefToken,
   patchFormulaWithRef,
+  canPickFormulaRef,
+  canPickFormulaRefAtCaret,
 } from './edit'
 export { createFormulaContext } from './context'
 export type { FormulaStorage } from './extension'

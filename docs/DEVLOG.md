@@ -1,5 +1,34 @@
 # speed-sheet 开发日志
 
+## 2026-05-27 — Undo/Redo 调研 + Luckysheet 对照规则
+
+### 结论
+
+- Luckysheet：`jfundo`/`jfredo` 快照栈 + `controlHistory.js` 按 `type` 恢复 `flowdata`（见 `docs/undo-redo-research.md`）。
+- speed-sheet：**优先 Yjs `UndoManager`**，不复制 Luckysheet 二维快照；`history.ts` 仍为 TODO。
+- 新增 Cursor 规则：`.cursor/rules/reference-luckysheet.mdc`（新功能前先读 Luckysheet 无 UI 逻辑）。
+- 原则补充：**交互对齐商业表 / Luckysheet；机制按 v2（Yjs + rowId）自选最优**，不复制 `flowdata` 快照栈（见 `docs/undo-redo-research.md` §0）。
+
+### 落地（Phase A）
+
+- `HistoryExtension` + `Y.UndoManager`（`trackedOrigins: YOriginUser`，`captureTimeout: 500`）
+- `transactUser` / `transactSystem`；公式重算 `setCell(..., false)` + `transactSystem`
+- `Sheet.canUndo/canRedo`；工具栏禁用；`SheetCanvas` Ctrl+Z / Ctrl+Y
+
+---
+
+## 2026-05-27 — API：`sheet-data` / `onChange` 改为 v2 快照
+
+### 变更
+
+- `SpeedSheet`：`sheet-data` + `onChange` 使用 **`WorkbookSnapshot`**（原生 v2）
+- Luckysheet 兼容：`luckysheet-data` + `onLuckysheetChange`（可选）
+- `Sheet` 初始化：**snapshot 优先于** `data`（Luckysheet）
+- 工具：`luckysheetFileToSnapshot()` 用于从旧格式生成初始快照
+- Demo：`App.vue` 按 snapshot 存回，不再把 Luckysheet `data` 矩阵当主流
+
+---
+
 ## 2026-05-27 — 布局 v2 公式同步（插行跟格）
 
 ### 背景

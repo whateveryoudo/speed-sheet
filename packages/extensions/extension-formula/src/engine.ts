@@ -1,6 +1,6 @@
 import * as Y from 'yjs'
 import type { Sheet } from '@speed-sheet/core'
-import { SheetState } from '@speed-sheet/core'
+import { SheetState, transactSystem } from '@speed-sheet/core'
 import { depKey, parseDepKey } from '@speed-sheet/shared'
 import { createFormulaContext } from './context'
 import { evaluateFormulaString } from './evaluate'
@@ -121,8 +121,8 @@ export function recalculateWorkbook(sheet: Sheet): void {
       const patch = cellPatchFromFormulaResult(item.f, result)
       if (prev?.v !== patch.v || prev?.m !== patch.m || prev?.ef !== patch.ef) {
         changed = true
-        sheet.ydoc.transact(() => {
-          state.setCell(item.r, item.c, patch)
+        transactSystem(sheet.ydoc, () => {
+          state.setCell(item.r, item.c, patch, false)
         })
       }
     }
@@ -147,8 +147,8 @@ export function normalizeWorkbookFormulas(sheet: Sheet, dependents: Map<string, 
       const ids = state.resolveCellIds(r, c)
       if (!ids) continue
 
-      sheet.ydoc.transact(() => {
-        state.setCell(r, c, { f: internal })
+      transactSystem(sheet.ydoc, () => {
+        state.setCell(r, c, { f: internal }, false)
       })
       registerFormulaDeps(sheetId, ids.rowId, ids.colId, internal, ctx, dependents)
     }
@@ -189,8 +189,8 @@ export function updateDependents(
     const f = String(data.f)
     if (!hasInternalRefs(f)) continue
     const result = evaluateFormulaString(f, ctx)
-    sheet.ydoc.transact(() => {
-      targetState.setCell(pos.r, pos.c, cellPatchFromFormulaResult(f, result))
+    transactSystem(sheet.ydoc, () => {
+      targetState.setCell(pos.r, pos.c, cellPatchFromFormulaResult(f, result), false)
     })
   }
 }

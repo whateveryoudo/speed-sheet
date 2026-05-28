@@ -17,6 +17,8 @@ export {
   formatRangeA1,
   buildSheetRefToken,
   getCellFormulaInitial,
+  canPickFormulaRef,
+  canPickFormulaRefAtCaret,
 } from '@speed-sheet/extension-formula'
 export { useFormulaCanvas } from './composables/useFormulaCanvas'
 export type { FormulaRefRange } from './composables/useFormulaCanvas'

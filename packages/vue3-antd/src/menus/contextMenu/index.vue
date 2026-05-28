@@ -99,8 +99,8 @@ watch(
 
 function onMenuClick({ key }: { key: string | number }): void {
   const k = String(key)
-  // Insert 项由 onInsert 单独处理（带行/列数）；避免冒泡导致执行两次
-  if (k.startsWith('insert')) return
+  // Insert / merge 项有独立 @click，避免执行两次
+  if (k.startsWith('insert') || k === 'mergeCells' || k === 'unmergeCells') return
   runContextMenuAction(k, [], actionCtx.value)
 }
 
@@ -133,25 +133,38 @@ function setInsertCount(key: string, val: number | null): void {
           <a-menu-item v-else-if="item.type === 'insert'" :key="item.key"
             class="cell-ctx-insert-item flex! items-center gap-1.5"
             @click.stop="onInsert(item.key as keyof typeof insertCounts)">
-            <span class="w-20px relative top-2px inline-flex">
-              <s-icon-font v-if="item.prefixIcon" :icon-render="item.prefixIcon" />
-            </span>
-            <span class="flex-1 min-w-0">{{ item.label }}</span>
-            <a-input-number :value="insertCount(item.key)" size="small" :min="1" :max="999"
-              class="cell-ctx-insert-input w-52px! flex-shrink-0 mx-1" @click.stop @mousedown.stop
-              @update:value="(v: number | null) => setInsertCount(item.key, v)" />
-            <span class="flex-shrink-0 text-12px text-[var(--ant-color-text-tertiary,#999)]">
-              {{ item.unit }}
-            </span>
+            <a-flex align="center">
+              <span class="w-[20px] shrink-0">
+                <s-icon-font v-if="item.prefixIcon" :icon-render="item.prefixIcon" />
+              </span>
+              <span class="flex-1 min-w-0">{{ item.label }}</span>
+              <a-input-number :value="insertCount(item.key)" size="small" :min="1" :max="999"
+                class="cell-ctx-insert-input w-52px! flex-shrink-0 mx-1" @click.stop @mousedown.stop
+                @update:value="(v: number | null) => setInsertCount(item.key, v)" />
+              <span class="flex-shrink-0 text-12px text-[var(--ant-color-text-tertiary,#999)]">
+                {{ item.unit }}
+              </span>
+            </a-flex>
           </a-menu-item>
-          <a-menu-item v-else-if="item.type === 'merge'" :key="item.key" :disabled="item.disabled">
-            <span class="w-20px inline-flex" />
-            {{ item.title }}
+          <a-menu-item
+            v-else-if="item.type === 'merge'"
+            :key="item.key"
+            :disabled="item.disabled"
+            @click.stop="runContextMenuAction(item.key, [], actionCtx)"
+          >
+            <a-flex align="center">
+              <span class="shrink-0 w-[20px]" v-if="item.prefixIcon && item.prefixIcon()">
+                <s-icon-font :icon-render="item.prefixIcon" />
+              </span>
+              {{ item.title }}
+            </a-flex>
           </a-menu-item>
           <a-menu-item v-else :key="item.key" :disabled="item.disabled">
             <a-flex align="center" justify="space-between">
               <span class="flex items-center min-w-0 flex-1">
-                <span class="w-20px inline-flex" />
+                <span class="shrink-0 w-[20px]" v-if="item.prefixIcon && item.prefixIcon()">
+                  <s-icon-font :icon-render="item.prefixIcon" />
+                </span>
                 <span class="flex-1">{{ item.title }}</span>
               </span>
               <span v-if="item.shortcut"

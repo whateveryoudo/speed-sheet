@@ -1,5 +1,7 @@
-/** 右键命中区域（对齐语雀：单元格 / 框选 / 行头 / 列头） */
-export type ContextMenuTarget = 'cell' | 'range' | 'row' | 'column'
+import type { ContextMenuTarget as CoreContextMenuTarget } from '@speed-sheet/core'
+
+/** @deprecated Prefer importing from `@speed-sheet/core` */
+export type ContextMenuTarget = CoreContextMenuTarget
 
 /** 右键菜单 slot / emit 上下文（headless，不含 UI） */
 export interface ContextMenuState {

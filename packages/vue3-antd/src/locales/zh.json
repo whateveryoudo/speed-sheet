@@ -12,7 +12,8 @@
     "colUnit": "列",
     "deleteRow": "删除第 {rows} 行",
     "deleteCol": "删除第 {cols} 列",
-    "mergeCells": "合并单元格"
+    "mergeCells": "合并单元格",
+    "unmergeCells": "拆分单元格"
   },
   "sheetTabMenu": {
     "delete": "删除",

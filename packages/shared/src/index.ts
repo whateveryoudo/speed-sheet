@@ -157,18 +157,18 @@ export interface Selection {
   anchor?: { r: number; c: number }
 }
 
-// ----- Workbook UI config (Fortune Sheet / Luckysheet 对齐) -----
-/** @see https://ruilisi.github.io/fortune-sheet-docs/zh/guide/config.html */
+// ----- Workbook UI config -----
 export interface WorkbookConfig {
   lang?: 'zh' | 'en' | 'zh_tw' | 'es'
-  /**
-   * 工作簿数据（推荐用 sheetData；勿用 prop 名 `data`，Vue 下容易传不进来）
-   * Fortune Sheet 文档里的 `data` 对应此字段。
-   */
-  sheetData?: LuckysheetFile
-  /** @deprecated 请用 sheetData */
+  /** v2 原生快照（推荐；Vue 组件 prop 名 `sheet-data`） */
+  sheetData?: WorkbookSnapshot
+  /** 变更回调，返回 WorkbookSnapshot */
+  onChange?: (snapshot: WorkbookSnapshot) => void
+  /** Luckysheet / Fortune Sheet 兼容格式（prop 名 `luckysheet-data`） */
+  luckysheetData?: LuckysheetFile
+  onLuckysheetChange?: (data: LuckysheetFile) => void
+  /** @deprecated 请用 luckysheetData */
   data?: LuckysheetFile
-  onChange?: (data: LuckysheetFile) => void
   column?: number
   row?: number
   showToolbar?: boolean

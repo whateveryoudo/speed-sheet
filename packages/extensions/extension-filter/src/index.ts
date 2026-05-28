@@ -1,4 +1,4 @@
-import { Extension, type CommandContext } from '@speed-sheet/core'
+import { Extension, type CommandContext, transactUser } from '@speed-sheet/core'
 
 export interface FilterCriteria {
   column: number
@@ -38,7 +38,7 @@ export const FilterExtension = Extension.create<{
           // Store in Y.Map for persistence/sync
           const yFilters = state.root.get('_filters') as any
           if (yFilters) {
-            ydoc.transact(() => {
+            transactUser(ydoc, () => {
               yFilters.set(`col_${criteria.column}`, criteria)
             })
           }

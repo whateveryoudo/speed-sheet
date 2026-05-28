@@ -11,7 +11,7 @@
     "clean": "turbo run clean",
     "clean:node_modules": "find . -name node_modules -type d -prune -exec rm -rf {} +",
     "typecheck": "turbo run typecheck",
-    "demo": "pnpm --filter @speed-sheet/demo dev"
+    "demo": "pnpm --filter @speed-sheet/demo dev --host 0.0.0.0"
   },
   "devDependencies": {
     "@ant-design/icons-vue": "^7.0.0",

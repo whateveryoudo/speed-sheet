@@ -154,7 +154,7 @@ sequenceDiagram
 - 某格 `v` 变了 → `onCellChange` → `updateDependents` 重算公式格
 - 插删行列 → 整表 `recalculateWorkbook`（布局大变，简单可靠）
 
-**还没做满的**：公式专用 undo/redo、与 Formualizer 级引擎对接（见下）。
+**Undo/Redo**：见 [`docs/undo-redo-research.md`](./undo-redo-research.md)（计划 Yjs UndoManager，非 Luckysheet 快照栈）。
 
 ---
 

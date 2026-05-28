@@ -14,6 +14,48 @@ const REF_TOKEN_RE =
 
 const OP_END_RE = /[+\-*/,(]$/
 
+/** 光标前为该字符时，允许点选单元格插入引用（对齐 Luckysheet israngeseleciton） */
+const REF_PICK_TRIGGER = new Set([
+  '(',
+  ',',
+  '=',
+  '+',
+  '-',
+  '*',
+  '/',
+  '%',
+  '&',
+  '^',
+  '<',
+  '>',
+  '|',
+  ':',
+])
+
+/**
+ * 是否处于「点选插入引用」态（而非仅公式编辑态）。
+ * @param refPickSession 已为 true 时等同 Luckysheet rangestart（上一次点选后保持到提交/取消）
+ */
+export function canPickFormulaRefAtCaret(formula: string, caret: number): boolean {
+  if (!isFormulaInput(formula)) return false
+  const trimmed = formula.trimStart()
+  if (trimmed === '=') return true
+  const safeCaret = Math.max(0, Math.min(caret, formula.length))
+  const before = formula.slice(0, safeCaret).trimEnd()
+  if (!before.length) return false
+  const last = before[before.length - 1]!
+  return REF_PICK_TRIGGER.has(last)
+}
+
+export function canPickFormulaRef(
+  formula: string,
+  caret: number,
+  refPickSession: boolean,
+): boolean {
+  if (!isFormulaInput(formula)) return false
+  return refPickSession || canPickFormulaRefAtCaret(formula, caret)
+}
+
 export function isFormulaInput(text: string): boolean {
   return text.trimStart().startsWith('=')
 }

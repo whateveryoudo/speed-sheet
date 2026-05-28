@@ -31,10 +31,16 @@ export type ContextMenuItemConfig =
 /** SpeedSheet 组件 props（扁平声明，便于 vue-macros 解析） */
 export interface SpeedSheetProps {
   lang?: 'zh' | 'en'
-  sheetData?: LuckysheetFile
-  /** @deprecated 请用 sheetData */
+  /** v2 原生快照（推荐） */
+  sheetData?: WorkbookSnapshot
+  /** 变更时返回 WorkbookSnapshot */
+  onChange?: (snapshot: WorkbookSnapshot) => void
+  /** Luckysheet 兼容导入（celldata / data） */
+  luckysheetData?: LuckysheetFile
+  /** 需要 Luckysheet 形态回调时注册 */
+  onLuckysheetChange?: (data: LuckysheetFile) => void
+  /** @deprecated 请用 luckysheetData */
   data?: LuckysheetFile
-  onChange?: (data: LuckysheetFile) => void
   column?: number
   row?: number
   showToolbar?: boolean
@@ -57,7 +63,6 @@ export interface SpeedSheetProps {
   columnHeaderHeight?: number
   showFormulaBar?: boolean
   defaultFontSize?: number
-  snapshot?: WorkbookSnapshot
   extensions?: (Extension | ExtensionConfig)[]
   ydoc?: Y.Doc
 }

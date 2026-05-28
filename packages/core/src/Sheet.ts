@@ -1,5 +1,6 @@
 import * as Y from 'yjs'
-import type { LuckysheetFile, SheetSnapshot, WorkbookSnapshot } from '@speed-sheet/shared'
+import type { LuckysheetFile, MergeRange, SheetSnapshot, WorkbookSnapshot } from '@speed-sheet/shared'
+import type { MergeContext } from './merge'
 import { Extension, CORE_EXTENSIONS } from './extension'
 import type { ExtensionConfig, CommandChain } from './extension'
 import { CommandManager } from './commands/CommandManager'
@@ -7,6 +8,8 @@ import { SheetState } from './state/SheetState'
 import { importFromLuckysheet, exportToLuckysheet } from './adapter/luckysheet-adapter'
 import type { ClipboardPayload } from './extension/core/clipboard'
 import { sheetCompatApi, type LuckysheetRange } from './api/sheet-compat'
+import { canRedoSheet, canUndoSheet, getSheetUndoManager } from './yjs/undo-manager'
+import { transactSystem, transactUser } from './yjs/transact'
 
 export type { LuckysheetRange } from './api/sheet-compat'
 
@@ -21,11 +24,11 @@ export interface SheetOptions {
   /** Extensions to load */
   extensions?: (Extension | ExtensionConfig)[]
 
-  /** Initial data — Luckysheet format (auto-converted via adapter) */
-  data?: LuckysheetFile
-
-  /** Initial data — native snapshot */
+  /** Initial data — native v2 snapshot (preferred) */
   snapshot?: WorkbookSnapshot
+
+  /** Initial data — Luckysheet format (import via adapter) */
+  data?: LuckysheetFile
 
   /** External Y.Doc for collaborative editing */
   ydoc?: Y.Doc
@@ -120,11 +123,10 @@ export class Sheet {
   }
 
   private _initData(options: SheetOptions): void {
-    if (options.data) {
-      // Luckysheet compatibility path
-      importFromLuckysheet(options.data, this.ydoc)
-    } else if (options.snapshot) {
+    if (options.snapshot) {
       this._loadSnapshot(options.snapshot)
+    } else if (options.data) {
+      importFromLuckysheet(options.data, this.ydoc)
     } else {
       const sheetsMap = this.ydoc.getMap('sheets')
       if (sheetsMap.size === 0) {
@@ -157,7 +159,7 @@ export class Sheet {
 
   private _loadSnapshot(snapshot: WorkbookSnapshot): void {
     const sheetsMap = this.ydoc.getMap('sheets')
-    this.ydoc.transact(() => {
+    transactSystem(this.ydoc, () => {
       for (const sheetSnap of snapshot.sheets) {
         const ySheet = new Y.Map()
         ySheet.set('name', sheetSnap.name)
@@ -224,7 +226,7 @@ export class Sheet {
     const id = this._nextSheetId()
     const displayName = name ?? this._defaultNewSheetName()
 
-    this.ydoc.transact(() => {
+    transactUser(this.ydoc, () => {
       const ySheet = new Y.Map()
       ySheet.set('name', displayName)
       sheetsMap.set(id, ySheet)
@@ -293,7 +295,7 @@ export class Sheet {
     const trailing = all.filter((id) => !visibleSet.has(id) && !hidden.includes(id))
     const fullOrder = [...orderedIds, ...hidden, ...trailing]
 
-    this.ydoc.transact(() => {
+    transactUser(this.ydoc, () => {
       const snapshot: Array<[string, Y.Map<any>]> = []
       const seen = new Set<string>()
       for (const id of fullOrder) {
@@ -318,7 +320,7 @@ export class Sheet {
   renameSheet(sheetId: string, name: string): void {
     const ySheet = this.ydoc.getMap('sheets').get(sheetId) as Y.Map<any>
     if (!ySheet) return
-    this.ydoc.transact(() => ySheet.set('name', name))
+    transactUser(this.ydoc, () => ySheet.set('name', name))
     this.notifyUpdate()
   }
 
@@ -329,7 +331,7 @@ export class Sheet {
       return
     }
     const sheetsMap = this.ydoc.getMap('sheets')
-    this.ydoc.transact(() => sheetsMap.delete(sheetId))
+    transactUser(this.ydoc, () => sheetsMap.delete(sheetId))
     if (this._activeSheetId === sheetId) {
       const next = ids.find((id) => id !== sheetId) ?? '0'
       this.switchSheet(next)
@@ -344,7 +346,7 @@ export class Sheet {
     if (!source) return sheetId
     const id = this._nextSheetId()
     const baseName = (source.get('name') as string) || 'Sheet'
-    this.ydoc.transact(() => {
+    transactUser(this.ydoc, () => {
       const clone = cloneYSheetMap(source)
       clone.set('name', `${baseName} 副本`)
       sheetsMap.set(id, clone)
@@ -356,7 +358,7 @@ export class Sheet {
   setSheetHidden(sheetId: string, hidden: boolean): void {
     const ySheet = this.ydoc.getMap('sheets').get(sheetId) as Y.Map<any>
     if (!ySheet) return
-    this.ydoc.transact(() => {
+    transactUser(this.ydoc, () => {
       if (hidden) ySheet.set('hidden', 1)
       else ySheet.delete('hidden')
     })
@@ -372,7 +374,7 @@ export class Sheet {
   setSheetTabColor(sheetId: string, color: string | null): void {
     const ySheet = this.ydoc.getMap('sheets').get(sheetId) as Y.Map<any>
     if (!ySheet) return
-    this.ydoc.transact(() => {
+    transactUser(this.ydoc, () => {
       if (color) ySheet.set('color', color)
       else ySheet.delete('color')
     })
@@ -415,6 +417,20 @@ export class Sheet {
   /** Export to Luckysheet-compatible format */
   toLuckysheetFile(): LuckysheetFile {
     return exportToLuckysheet(this.ydoc)
+  }
+
+  /** Whether local undo stack has items (toolbar / shortcuts). */
+  canUndo(): boolean {
+    return canUndoSheet(this)
+  }
+
+  canRedo(): boolean {
+    return canRedoSheet(this)
+  }
+
+  /** End merge window for rapid edits (e.g. before formula ref pick). */
+  stopHistoryCapture(): void {
+    getSheetUndoManager(this)?.stopCapturing()
   }
 
   /** Trigger update callback (called by CommandManager after mutations) */
@@ -487,6 +503,16 @@ export class Sheet {
 
   paste(): void {
     sheetCompatApi.paste(this)
+  }
+
+  /** 当前工作表上的合并区域 */
+  getMergeRanges(): MergeRange[] {
+    return this.state.getMergeRanges()
+  }
+
+  /** 合并单元格统一门面（读写/命中/表头/绘制） */
+  createMergeContext(): MergeContext {
+    return this.state.createMergeContext()
   }
 
   /** 复制/剪切后的虚线选区（无则 null） */

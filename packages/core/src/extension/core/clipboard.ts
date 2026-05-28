@@ -1,6 +1,7 @@
 import { Extension } from '../Extension'
 import type { CommandContext } from '../types'
 import type { CellAttributes, Selection } from '@speed-sheet/shared'
+import { transactUser } from '../../yjs/transact'
 
 export interface ClipboardPayload {
   row: [number, number]
@@ -69,13 +70,15 @@ export const ClipboardExtension = Extension.create({
           this.storage.isCut = true
 
           const { r0, r1, c0, c1 } = normalizeSelection(sel)
-          state.root.doc?.transact(() => {
-            for (let r = r0; r <= r1; r++) {
-              for (let c = c0; c <= c1; c++) {
-                state.deleteCell(r, c)
+          if (state.root.doc) {
+            transactUser(state.root.doc, () => {
+              for (let r = r0; r <= r1; r++) {
+                for (let c = c0; c <= c1; c++) {
+                  state.deleteCell(r, c)
+                }
               }
-            }
-          })
+            })
+          }
           return true
         }
       },
@@ -88,11 +91,13 @@ export const ClipboardExtension = Extension.create({
           const ar = anchor.r0
           const ac = anchor.c0
 
-          state.root.doc?.transact(() => {
-            for (const { dr, dc, data } of clip.cells) {
-              state.setCell(ar + dr, ac + dc, cloneCell(data))
-            }
-          })
+          if (state.root.doc) {
+            transactUser(state.root.doc, () => {
+              for (const { dr, dc, data } of clip.cells) {
+                state.setCell(ar + dr, ac + dc, cloneCell(data))
+              }
+            })
+          }
 
           if (this.storage.isCut) {
             this.storage.isCut = false

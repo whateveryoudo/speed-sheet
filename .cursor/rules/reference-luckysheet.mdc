@@ -1,0 +1,61 @@
+---
+description: 新功能前先对照 Luckysheet 无 UI 逻辑（尤其 undo/公式/行列/选区）
+alwaysApply: true
+globs:
+  - speed-sheet/**/*
+---
+
+# 实现前对照 Luckysheet（`Luckysheet/src`）
+
+本仓库旁有 **Luckysheet 源码**：`/Volumes/ykxDrive/gitee/Luckysheet`（或工作区内 `Luckysheet/`）。  
+speed-sheet 是 **Yjs + 稳定 rowId** 的重写，不是 fork。
+
+## 核心原则（必读）
+
+对照 Luckysheet 时拆成 **三层**，不要混为一谈：
+
+| 层 | 要对齐什么 | 能否照搬代码 |
+|----|------------|--------------|
+| **交互 / 产品** | 用户可见行为：一步撤销什么、公式点选何时生效、插行后公式如何变、工具栏禁用等 | 行为对齐 **WPS / 语雀 / Luckysheet**；以 Luckysheet 为可读的参考实现 |
+| **语义 / 一步** | 哪些操作算「一条历史」、何时清空 redo、连续输入是否合并 | 参考 Luckysheet 的 `type` 与时机，在 speed-sheet **用 transact 边界重新定义** |
+| **存储 / 机制** | 如何记录、如何恢复 | **禁止照搬**；我们底层是 `Y.Doc` + `rowOrder`/`colOrder` + `cells[rowId:colId]`，机制选 **Yjs UndoManager** 等更贴合 v2 的方案 |
+
+Luckysheet 的实现 **不一定最优**（例如 `flowdata` 双份快照、`controlHistory` 按 type 全表刷新），但它的 **交互大多已与商业表格对齐**。  
+正确流程：**先读 Luckysheet 弄清「用户应感受到什么」→ 再按我们的数据结构选最优实现**；若更优方案与上游机制不同，必须在 PR/文档写明，**交互仍须一致**。
+
+## 必须先读（按功能）
+
+| 主题 | Luckysheet 入口 | speed-sheet 对应 |
+|------|-----------------|------------------|
+| **Undo/Redo** | `src/controllers/controlHistory.js`，栈 `Store.jfundo` / `Store.jfredo`，写入 `global/refresh.js` | `packages/core/src/extension/core/history.ts`（待接 Yjs UndoManager） |
+| **公式编辑/点选** | `global/formula.js`（`israngeseleciton`、`rangestart`），`controllers/handler.js` mousedown | `extension-formula/edit.ts`，`vue3/useFormulaEdit.ts` |
+| **公式计算** | `global/formula.js` + `function/` | `extension-formula` + formulajs |
+| **插删行列** | `controllers/rowColumnOperation.js`，`global/refresh.js` `addRC`/`delRC` | `SheetState.insertRows`，`FormulaExtension` |
+| **选区** | `controllers/select.js`，`handler.js` | `SelectionExtension`，`SheetCanvas` |
+| **数据刷新** | `global/refresh.js`（`jfrefreshgrid` 等） | `notifyUpdate` / `revision` / canvas `renderSheet` |
+| **导入导出** | `global/api.js`，适配器 | `adapter/luckysheet-adapter.ts` |
+
+## 阅读方式
+
+1. **先问「用户这一步应发生什么」**，再打开对应 Luckysheet 文件验证，而不是先抄代码结构。  
+2. **先搜关键字**：`jfundo`、`jfredo`、`rangestart`、`insertUpdateFunctionGroup`、`datachange` 等。  
+3. **区分「记录」与「应用」**：Luckysheet 在 `refresh.js` 里 `push` 历史项，在 `controlHistory.js` 里 `pop` 并 `jfrefreshgrid` 恢复 — **我们只借鉴「何时记一条」**，恢复走 Yjs 反演，不走 `jfrefreshgrid`。  
+4. **数据结构各走各的**：Luckysheet 二维 `flowdata` + 坐标键；我们 `rowOrder`/`colOrder` + 稳定 id。插删行 **只动 order**，cell 键不变 — undo 也应反演 order/单元格 patch，而不是恢复整块矩阵。  
+5. **无 UI 优先**：`handler.js` / `keyboard.js` 看交互顺序；实现放在 core / extension，Vue 只调 `chain()`。
+
+## 禁止
+
+- 不要未读 Luckysheet 就新增一套与上游完全相反的交互（除非在 PR/文档写明差异）。  
+- 不要把 Luckysheet 的 `flowdata` 二维数组搬进 core 当主存储。  
+- 不要从 Luckysheet 复制 UI/DOM 代码进 `vue3-antd`。
+
+## 当前已知差异（允许）
+
+- 存储：v2 快照 / Y.Doc，非 `flowdata`。  
+- 公式存 internal `#rowId:colId#`，非仅 A1 字符串。  
+- Undo：用 **Yjs UndoManager**（栈里是 CRDT patch，不是整表 JSON）；语义参考 **ProseMirror/Tiptap** 的 Step/invert 与 `newGroupDelay`，交互参考 Luckysheet。Luckysheet 自身是「`type` + data/curdata 快照」，不是纯 Command（见 `docs/undo-redo-research.md` §0.1）。
+
+## 文档
+
+- 布局/公式备忘：`docs/layout-and-formula-notes.md`  
+- Undo/Redo 调研：`docs/undo-redo-research.md`

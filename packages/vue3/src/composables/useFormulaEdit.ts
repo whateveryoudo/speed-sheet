@@ -6,6 +6,7 @@ import {
   getCellFormulaInitial,
   isFormulaText,
   patchFormulaWithRef,
+  canPickFormulaRef,
 } from '@speed-sheet/extension-formula'
 import type { Sheet } from '@speed-sheet/core'
 
@@ -16,6 +17,8 @@ export interface FormulaEditContext {
   text: Ref<string>
   anchor: Ref<{ r: number; c: number }>
   caret: Ref<number>
+  /** 已点选过引用（Luckysheet rangestart），直到 cancel / 非 pick 提交 */
+  refPickActive: Ref<boolean>
   highlights: Ref<FormulaRangeHighlight[]>
   start: (r: number, c: number, initial?: string) => void
   /** 在指定单元格进入公式编辑（菜单/公式栏触发） */
@@ -36,6 +39,7 @@ export function provideFormulaEdit(): FormulaEditContext {
   const text = ref('')
   const anchor = ref({ r: 0, c: 0 })
   const caret = ref(0)
+  const refPickActive = ref(false)
   const highlights = shallowRef<FormulaRangeHighlight[]>([])
 
   const ctx: FormulaEditContext = {
@@ -43,12 +47,14 @@ export function provideFormulaEdit(): FormulaEditContext {
     text,
     anchor,
     caret,
+    refPickActive,
     highlights,
     start(r, c, initial = '') {
       active.value = true
       anchor.value = { r, c }
       text.value = initial
       caret.value = initial.length
+      refPickActive.value = false
       highlights.value = []
       if (isFormulaText(initial)) ctx.syncHighlights(null)
     },
@@ -61,11 +67,13 @@ export function provideFormulaEdit(): FormulaEditContext {
       active.value = false
       text.value = ''
       caret.value = 0
+      refPickActive.value = false
       highlights.value = []
     },
     setText(next, nextCaret) {
       text.value = next
       caret.value = nextCaret ?? next.length
+      refPickActive.value = false
     },
     insertRef(sheet, r0, c0, r1, c1, sheetId) {
       const token = buildSheetRefToken(sheet, r0, c0, r1, c1, sheetId)
@@ -76,6 +84,7 @@ export function provideFormulaEdit(): FormulaEditContext {
       )
       text.value = next
       caret.value = nextCaret
+      refPickActive.value = true
       ctx.syncHighlights(sheet)
     },
     insertFunction(fn) {

@@ -356,8 +356,8 @@ defineExpose({
   min-height: var(--speed-layout-sheet-bar-height, 32px);
   max-height: var(--speed-layout-sheet-bar-height, 32px);
   flex-shrink: 0;
+  padding-left: 12px;
   border-top: 1px solid var(--speed-color-border-gray, var(--ant-color-border));
-  padding: 0;
   background: var(--speed-color-bg-gray, var(--ant-color-fill-quaternary));
   overflow: hidden;
 }

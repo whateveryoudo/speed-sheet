@@ -61,6 +61,10 @@ export function runContextMenuAction(
       sheet.chain().mergeCells({ row: sel.row, column: sel.column }).run()
       close()
       break
+    case 'unmergeCells':
+      sheet.chain().unmergeCells().run()
+      close()
+      break
     case 'clear':
       sheet.chain().clearSelection().run()
       close()

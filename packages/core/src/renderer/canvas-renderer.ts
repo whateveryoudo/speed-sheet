@@ -1,17 +1,14 @@
-import type { CellAttributes, Selection } from "@speed-sheet/shared";
-
-export interface GridLayout {
-  rowHeaderWidth: number;
-  columnHeaderHeight: number;
-  defaultColWidth: number;
-  defaultRowHeight: number;
-  totalRows: number;
-  totalCols: number;
-  scrollX: number;
-  scrollY: number;
-  viewportW: number;
-  viewportH: number;
-}
+import type { CellAttributes, MergeRange, Selection } from "@speed-sheet/shared";
+import { MergeContext } from "../merge";
+import { getVisibleRangeFromMetrics } from "./grid-metrics";
+import {
+  gridCellX,
+  gridCellY,
+  resolveMetrics,
+  selectionBox,
+} from "./layout-metrics";
+export type { GridLayout } from "./grid-layout";
+import type { GridLayout } from "./grid-layout";
 
 export interface CellEntry {
   r: number;
@@ -22,6 +19,10 @@ export interface CellEntry {
 export interface RenderOptions {
   layout: GridLayout;
   cells: CellEntry[];
+  /** @deprecated 使用 mergeCtx */
+  merges?: MergeRange[];
+  /** 合并门面（优先于 merges） */
+  mergeCtx?: MergeContext;
   selection: Selection;
   /** 正在拖拽框选（范围细框；锚点仍为粗框） */
   isSelecting?: boolean;
@@ -44,31 +45,7 @@ export function getVisibleRange(layout: GridLayout): {
   colStart: number;
   colEnd: number;
 } {
-  const {
-    totalRows,
-    totalCols,
-    rowHeaderWidth: RHW,
-    columnHeaderHeight: CHH,
-    defaultColWidth: colW,
-    defaultRowHeight: rowH,
-    scrollX: sx,
-    scrollY: sy,
-    viewportW: vw,
-    viewportH: vh,
-  } = layout;
-
-  const colStart = Math.max(0, Math.floor(sx / colW));
-  const colEnd = Math.min(
-    totalCols - 1,
-    Math.ceil((sx + Math.max(0, vw - RHW)) / colW),
-  );
-  const rowStart = Math.max(0, Math.floor(sy / rowH));
-  const rowEnd = Math.min(
-    totalRows - 1,
-    Math.ceil((sy + Math.max(0, vh - CHH)) / rowH),
-  );
-
-  return { rowStart, rowEnd, colStart, colEnd };
+  return getVisibleRangeFromMetrics(resolveMetrics(layout), layout);
 }
 
 export function defaultLayout(overrides?: Partial<GridLayout>): GridLayout {
@@ -83,31 +60,31 @@ export function defaultLayout(overrides?: Partial<GridLayout>): GridLayout {
     scrollY: 0,
     viewportW: 800,
     viewportH: 600,
-  }
-  if (!overrides) return base
+  };
+  if (!overrides) return base;
   const patch = Object.fromEntries(
     Object.entries(overrides).filter(([, v]) => v !== undefined),
-  ) as Partial<GridLayout>
-  return { ...base, ...patch }
+  ) as Partial<GridLayout>;
+  return { ...base, ...patch };
 }
 
 /** Luckysheet 默认左右内边距（space_width） */
-const CELL_TEXT_PAD_X = 4
+const CELL_TEXT_PAD_X = 4;
 /** 单元格文本裁剪区内边距（与 draw.js rect + clip 一致） */
-const CELL_TEXT_PAD_Y = 1
+const CELL_TEXT_PAD_Y = 1;
 
 /** tb: 0=截断 1=溢出 2=换行（换行暂未实现，按单格截断） */
-type CellMap = Map<string, CellAttributes>
+type CellMap = Map<string, CellAttributes>;
 
 function cellMapKey(r: number, c: number): string {
-  return `${r},${c}`
+  return `${r},${c}`;
 }
 
 function cellDisplayText(cell: CellAttributes | undefined): string {
-  if (!cell) return ''
-  const v = cell.m ?? cell.v
-  if (v === null || v === undefined) return ''
-  return String(v)
+  if (!cell) return "";
+  const v = cell.m ?? cell.v;
+  if (v === null || v === undefined) return "";
+  return String(v);
 }
 
 /** 公式错误角标（左上红色三角，对齐 Excel） */
@@ -129,22 +106,22 @@ function drawFormulaErrorMarker(
 
 /** 右侧相邻格是否有可见文本（有文本则阻挡溢出） */
 function cellBlocksOverflow(cellMap: CellMap, r: number, c: number): boolean {
-  return cellDisplayText(cellMap.get(cellMapKey(r, c))).length > 0
+  return cellDisplayText(cellMap.get(cellMapKey(r, c))).length > 0;
 }
 
 export function buildCellMap(cells: CellEntry[]): CellMap {
-  const map: CellMap = new Map()
+  const map: CellMap = new Map();
   for (const { r, c, data } of cells) {
-    map.set(cellMapKey(r, c), data)
+    map.set(cellMapKey(r, c), data);
   }
-  return map
+  return map;
 }
 
 export function cellFontString(data: CellAttributes): string {
-  let font = `${data.fs ?? 11}px -apple-system, BlinkMacSystemFont, sans-serif`
-  if (data.bl) font = `bold ${font}`
-  if (data.it) font = `italic ${font}`
-  return font
+  let font = `${data.fs ?? 11}px -apple-system, BlinkMacSystemFont, sans-serif`;
+  if (data.bl) font = `bold ${font}`;
+  if (data.it) font = `italic ${font}`;
+  return font;
 }
 
 /** 文本绘制横向占用的列数（含自身），与 canvas 溢出逻辑一致 */
@@ -153,21 +130,21 @@ export function getCellTextColSpan(
   r: number,
   c: number,
   data: CellAttributes,
-  layout: Pick<GridLayout, 'defaultColWidth' | 'totalCols'>,
+  layout: Pick<GridLayout, "defaultColWidth" | "totalCols">,
   measureCtx: CanvasRenderingContext2D,
   textOverride?: string,
 ): number {
-  const text = textOverride ?? cellDisplayText(data)
-  if (!text) return 1
+  const text = textOverride ?? cellDisplayText(data);
+  if (!text) return 1;
 
-  measureCtx.font = cellFontString(data)
-  const colW = layout.defaultColWidth
-  const { overflow } = resolveTextDrawMode(data)
-  if (!overflow) return 1
+  measureCtx.font = cellFontString(data);
+  const colW = layout.defaultColWidth;
+  const { overflow } = resolveTextDrawMode(data);
+  if (!overflow) return 1;
 
-  const textWidth = measureCtx.measureText(text).width
-  const innerW = colW - CELL_TEXT_PAD_X * 2
-  if (textWidth <= innerW) return 1
+  const textWidth = measureCtx.measureText(text).width;
+  const innerW = colW - CELL_TEXT_PAD_X * 2;
+  if (textWidth <= innerW) return 1;
 
   const edc = computeOverflowEndCol(
     cellMap,
@@ -176,8 +153,8 @@ export function getCellTextColSpan(
     textWidth,
     colW,
     layout.totalCols,
-  )
-  return edc - c + 1
+  );
+  return edc - c + 1;
 }
 
 /**
@@ -188,18 +165,21 @@ export function computeEditorWidth(
   text: string,
   data: CellAttributes | undefined,
   colSpan: number,
-  layout: Pick<GridLayout, 'defaultColWidth' | 'viewportW'>,
+  layout: Pick<GridLayout, "defaultColWidth" | "viewportW">,
   editorLeft: number,
 ): number {
-  const colW = layout.defaultColWidth
-  const o = CELL_EDITOR_OUTSET
-  const minW = colW + o * 2
-  const spanW = colSpan * colW + o * 2
+  const colW = layout.defaultColWidth;
+  const o = CELL_EDITOR_OUTSET;
+  const minW = colW + o * 2;
+  const spanW = colSpan * colW + o * 2;
 
-  measureCtx.font = data ? cellFontString(data) : '11px -apple-system, BlinkMacSystemFont, sans-serif'
-  const textW = measureCtx.measureText(text).width + CELL_TEXT_PAD_X * 2 + o * 2
-  const maxW = Math.max(minW, layout.viewportW - editorLeft - 4)
-  return Math.min(maxW, Math.max(minW, spanW, textW))
+  measureCtx.font = data
+    ? cellFontString(data)
+    : "11px -apple-system, BlinkMacSystemFont, sans-serif";
+  const textW =
+    measureCtx.measureText(text).width + CELL_TEXT_PAD_X * 2 + o * 2;
+  const maxW = Math.max(minW, layout.viewportW - editorLeft - 4);
+  return Math.min(maxW, Math.max(minW, spanW, textW));
 }
 
 /**
@@ -214,28 +194,28 @@ function computeOverflowEndCol(
   colW: number,
   totalCols: number,
 ): number {
-  const needed = textWidth + CELL_TEXT_PAD_X * 2
-  let totalW = colW
-  let edc = c
+  const needed = textWidth + CELL_TEXT_PAD_X * 2;
+  let totalW = colW;
+  let edc = c;
 
   while (totalW < needed && edc < totalCols - 1) {
-    const next = edc + 1
-    if (cellBlocksOverflow(cellMap, r, next)) break
-    edc = next
-    totalW += colW
+    const next = edc + 1;
+    if (cellBlocksOverflow(cellMap, r, next)) break;
+    edc = next;
+    totalW += colW;
   }
-  return edc
+  return edc;
 }
 
 function resolveTextDrawMode(data: CellAttributes): {
-  overflow: boolean
-  truncate: boolean
+  overflow: boolean;
+  truncate: boolean;
 } {
-  const tb = data.tb
-  if (tb === 0) return { overflow: false, truncate: true }
-  if (tb === 2) return { overflow: false, truncate: true }
+  const tb = data.tb;
+  if (tb === 0) return { overflow: false, truncate: true };
+  if (tb === 2) return { overflow: false, truncate: true };
   // tb === 1 或未设置：Excel / 腾讯文档默认溢出
-  return { overflow: true, truncate: false }
+  return { overflow: true, truncate: false };
 }
 
 /**
@@ -247,24 +227,27 @@ export function truncateTextToWidth(
   text: string,
   maxWidth: number,
 ): string {
-  if (!text || maxWidth <= 0) return ''
-  if (ctx.measureText(text).width <= maxWidth) return text
+  if (!text || maxWidth <= 0) return "";
+  if (ctx.measureText(text).width <= maxWidth) return text;
 
-  const ellipsis = '…'
-  if (ctx.measureText(ellipsis).width > maxWidth) return ''
+  const ellipsis = "…";
+  if (ctx.measureText(ellipsis).width > maxWidth) return "";
 
-  let end = text.length
-  while (end > 0 && ctx.measureText(text.slice(0, end) + ellipsis).width > maxWidth) {
-    end--
+  let end = text.length;
+  while (
+    end > 0 &&
+    ctx.measureText(text.slice(0, end) + ellipsis).width > maxWidth
+  ) {
+    end--;
   }
-  return end > 0 ? text.slice(0, end) + ellipsis : ellipsis
+  return end > 0 ? text.slice(0, end) + ellipsis : ellipsis;
 }
 
 export interface DrawCellTextOptions {
   /** 横向占用的列数（含当前列），默认 1 */
-  colSpan?: number
+  colSpan?: number;
   /** 超出 clip 宽时是否用省略号截断；默认 false（纯 clip） */
-  truncate?: boolean
+  truncate?: boolean;
 }
 
 /** Luckysheet / Excel 风格：clip + fillText（可跨列溢出，非压缩） */
@@ -277,29 +260,29 @@ export function drawCellText(
   rowH: number,
   options?: DrawCellTextOptions,
 ): void {
-  const content = String(text)
-  if (!content) return
+  const content = String(text);
+  if (!content) return;
 
-  const colSpan = Math.max(1, options?.colSpan ?? 1)
-  const truncate = options?.truncate ?? false
+  const colSpan = Math.max(1, options?.colSpan ?? 1);
+  const truncate = options?.truncate ?? false;
 
-  const clipX = cx + CELL_TEXT_PAD_X
-  const clipY = cy + CELL_TEXT_PAD_Y
-  const clipW = Math.max(0, colW * colSpan - CELL_TEXT_PAD_X * 2)
-  const clipH = Math.max(0, rowH - CELL_TEXT_PAD_Y * 2)
-  if (clipW <= 0 || clipH <= 0) return
+  const clipX = cx + CELL_TEXT_PAD_X;
+  const clipY = cy + CELL_TEXT_PAD_Y;
+  const clipW = Math.max(0, colW * colSpan - CELL_TEXT_PAD_X * 2);
+  const clipH = Math.max(0, rowH - CELL_TEXT_PAD_Y * 2);
+  if (clipW <= 0 || clipH <= 0) return;
 
   const display =
     truncate && ctx.measureText(content).width > clipW
       ? truncateTextToWidth(ctx, content, clipW)
-      : content
+      : content;
 
-  ctx.save()
-  ctx.beginPath()
-  ctx.rect(clipX, clipY, clipW, clipH)
-  ctx.clip()
-  ctx.fillText(display, clipX, cy + rowH / 2)
-  ctx.restore()
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(clipX, clipY, clipW, clipH);
+  ctx.clip();
+  ctx.fillText(display, clipX, cy + rowH / 2);
+  ctx.restore();
 }
 
 export function renderSheet(
@@ -309,12 +292,17 @@ export function renderSheet(
   const {
     layout,
     cells,
+    merges = [],
+    mergeCtx: mergeCtxIn,
     selection,
     isSelecting = false,
     editingCell,
     clipboardRange,
     formulaRefRanges,
   } = options;
+  const mc =
+    mergeCtxIn ?? MergeContext.fromRanges(merges);
+  const mergeLookup = mc.lookup;
   const {
     totalRows,
     totalCols,
@@ -327,10 +315,11 @@ export function renderSheet(
   } = layout;
   const vw = layout.viewportW;
   const vh = layout.viewportH;
+  const M = resolveMetrics(layout);
 
   const { rowStart, rowEnd, colStart, colEnd } = getVisibleRange(layout);
 
-  const cellMap: CellMap = buildCellMap(cells)
+  const cellMap: CellMap = buildCellMap(cells);
 
   ctx.clearRect(0, 0, vw, vh);
 
@@ -345,31 +334,57 @@ export function renderSheet(
 
   ctx.strokeStyle = "#d4d4d4";
   ctx.lineWidth = 0.5;
+  // 竖线按「行段」绘制，仅在合并块内部跳过，不影响同列其它行
   for (let c = colStart; c <= colEnd + 1; c++) {
-    const x = RHW + c * colW - sx;
+    const x = c < totalCols ? gridCellX(layout, M, c) : RHW + M.totalWidth - sx;
     if (x < RHW - 1 || x > vw + 1) continue;
-    ctx.beginPath();
-    ctx.moveTo(x + 0.5, CHH);
-    ctx.lineTo(x + 0.5, vh);
-    ctx.stroke();
+    for (let r = rowStart; r <= rowEnd; r++) {
+      if (mc.isInternalColLineAtRow(c, r)) continue;
+      const y0 = gridCellY(layout, M, r);
+      const y1 = y0 + M.rowHeight(r);
+      if (y1 < CHH || y0 > vh) continue;
+      ctx.beginPath();
+      ctx.moveTo(x + 0.5, Math.max(CHH, y0));
+      ctx.lineTo(x + 0.5, Math.min(vh, y1));
+      ctx.stroke();
+    }
   }
+  // 横线按「列段」绘制，仅在合并块内部跳过
   for (let r = rowStart; r <= rowEnd + 1; r++) {
-    const y = CHH + r * rowH - sy;
+    const y =
+      r < totalRows ? gridCellY(layout, M, r) : CHH + M.totalHeight - sy;
     if (y < CHH - 1 || y > vh + 1) continue;
-    ctx.beginPath();
-    ctx.moveTo(RHW, y + 0.5);
-    ctx.lineTo(vw, y + 0.5);
-    ctx.stroke();
+    for (let c = colStart; c <= colEnd; c++) {
+      if (mc.isInternalRowLineAtCol(r, c)) continue;
+      const x0 = gridCellX(layout, M, c);
+      const x1 = x0 + M.colWidth(c);
+      if (x1 < RHW || x0 > vw) continue;
+      ctx.beginPath();
+      ctx.moveTo(Math.max(RHW, x0), y + 0.5);
+      ctx.lineTo(Math.min(vw, x1), y + 0.5);
+      ctx.stroke();
+    }
   }
 
   for (const { r, c, data } of cells) {
-    const cx = RHW + c * colW - sx;
-    const cy = CHH + r * rowH - sy;
-    if (cx + colW < 0 || cx > vw || cy + rowH < 0 || cy > vh) continue;
+    if (mergeLookup.isSlave(r, c)) continue
+
+    const merge = mergeLookup.at(r, c)
+    const isAnchor = merge != null && merge.r === r && merge.c === c
+    const pixel = isAnchor && merge
+      ? mc.pixelRect(merge, layout, M)
+      : {
+          x: gridCellX(layout, M, c),
+          y: gridCellY(layout, M, r),
+          w: M.colWidth(c),
+          h: M.rowHeight(r),
+        }
+    const { x: cx, y: cy, w: cellW, h: cellH } = pixel
+    if (cx + cellW < 0 || cx > vw || cy + cellH < 0 || cy > vh) continue
 
     if (data.bg) {
       ctx.fillStyle = data.bg;
-      ctx.fillRect(cx, cy, colW, rowH);
+      ctx.fillRect(cx, cy, cellW, cellH);
     }
 
     let font = `${data.fs ?? 11}px -apple-system, BlinkMacSystemFont, sans-serif`;
@@ -383,11 +398,7 @@ export function renderSheet(
     if (!text) continue;
 
     // 内联编辑时由 DOM input 显示文字，canvas 不再绘制（避免重影）
-    if (
-      editingCell != null &&
-      editingCell.r === r &&
-      editingCell.c === c
-    ) {
+    if (editingCell != null && editingCell.r === r && editingCell.c === c) {
       continue;
     }
 
@@ -395,23 +406,23 @@ export function renderSheet(
     let colSpan = 1;
     const useTruncate = truncate;
 
-    if (overflow) {
+    if (!isAnchor && overflow) {
       const textWidth = ctx.measureText(text).width;
-      const innerW = colW - CELL_TEXT_PAD_X * 2;
+      const innerW = cellW - CELL_TEXT_PAD_X * 2;
       if (textWidth > innerW) {
         const edc = computeOverflowEndCol(
           cellMap,
           r,
           c,
           textWidth,
-          colW,
+          cellW,
           totalCols,
         );
         colSpan = edc - c + 1;
       }
     }
 
-    drawCellText(ctx, text, cx, cy, colW, rowH, {
+    drawCellText(ctx, text, cx, cy, cellW, cellH, {
       colSpan,
       truncate: useTruncate,
     });
@@ -435,16 +446,17 @@ export function renderSheet(
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
-  ctx.strokeStyle = "#c0c0c0";
-  ctx.lineWidth = 0.5;
   for (let c = colStart; c <= colEnd; c++) {
-    const left = RHW + c * colW - sx;
-    const cx = left + colW / 2;
+    const left = gridCellX(layout, M, c);
+    const cx = left + M.colWidth(c) / 2;
     ctx.fillText(colToLetter(c), cx, CHH / 2);
   }
 
+  ctx.strokeStyle = "#c0c0c0";
+  ctx.lineWidth = 0.5;
+
   for (let c = colStart; c <= colEnd + 1; c++) {
-    const x = RHW + c * colW - sx;
+    const x = c < totalCols ? gridCellX(layout, M, c) : RHW + M.totalWidth - sx;
     if (x < RHW - 1 || x > vw + 1) continue;
     ctx.beginPath();
     ctx.moveTo(x + 0.5, 0);
@@ -466,10 +478,24 @@ export function renderSheet(
   ctx.fillStyle = "#555";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
+
   for (let r = rowStart; r <= rowEnd; r++) {
-    const cy = CHH + r * rowH - sy + rowH / 2;
+    const top = gridCellY(layout, M, r);
+    const cy = top + M.rowHeight(r) / 2;
     ctx.fillText(String(r + 1), RHW / 2, cy);
   }
+  ctx.strokeStyle = "#c0c0c0";
+  ctx.lineWidth = 0.5;
+  for (let r = rowStart; r <= rowEnd + 1; r++) {
+    const y =
+      r < totalRows ? gridCellY(layout, M, r) : CHH + M.totalHeight - sy;
+    if (y < CHH - 1 || y > vh + 1) continue;
+    ctx.beginPath();
+    ctx.moveTo(0, y + 0.5); // 行头左缘
+    ctx.lineTo(RHW, y + 0.5); // 行头右缘（与格子交界）
+    ctx.stroke();
+  }
+
   ctx.restore();
 
   // ---- Corner box ----
@@ -479,84 +505,80 @@ export function renderSheet(
   ctx.lineWidth = 0.5;
   ctx.strokeRect(0, 0, RHW, CHH);
 
-  // ---- Selection ----
+  // ---- Selection（对齐 Luckysheet：范围框 + 焦点框；焦点在合并区内则按整块 merge 画） ----
   const r0 = selection.row[0],
     r1 = selection.row[1],
     c0 = selection.column[0],
     c1 = selection.column[1];
   const ar = selection.anchor?.r ?? r0;
   const ac = selection.anchor?.c ?? c0;
-  const selX = RHW + c0 * colW - sx;
-  const selY = CHH + r0 * rowH - sy;
-  const selW = (c1 - c0 + 1) * colW;
-  const selH = (r1 - r0 + 1) * rowH;
+  const rangeRect = selectionBox(layout, M, r0, c0, r1, c1);
+  const { x: selX, y: selY, w: selW, h: selH } = rangeRect;
+  const focusRect = mc.focusPixelRect(ar, ac, layout, M);
   const isMultiCell = r0 !== r1 || c0 !== c1;
+  const matchingMerge = mc.findMatchingSelection(r0, c0, r1, c1);
+  const focusMerge = mergeLookup.at(ar, ac);
+  const isMergedFocus =
+    focusMerge != null &&
+    focusMerge.r === ar &&
+    focusMerge.c === ac &&
+    (focusMerge.rs > 1 || focusMerge.cs > 1);
+  const unifiedRect = matchingMerge
+    ? mc.pixelRect(matchingMerge, layout, M)
+    : isMergedFocus && !isMultiCell
+      ? focusRect
+      : null;
+  const isEditingFocus =
+    editingCell != null && editingCell.r === ar && editingCell.c === ac;
+
+  const strokeFocus = (rect: { x: number; y: number; w: number; h: number }) => {
+    const ins = CELL_SELECTION_INSET;
+    ctx.strokeStyle = "#1a73e8";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(
+      rect.x + ins,
+      rect.y + ins,
+      rect.w - ins * 2,
+      rect.h - ins * 2,
+    );
+  };
 
   if (selX + selW > 0 && selX < vw && selY + selH > 0 && selY < vh) {
-    // 范围浅底：按格填充，避免盖住网格线
-    ctx.fillStyle = "rgba(26,115,232,0.08)";
-    for (let r = r0; r <= r1; r++) {
-      for (let c = c0; c <= c1; c++) {
-        const cx = RHW + c * colW - sx;
-        const cy = CHH + r * rowH - sy;
-        if (cx + colW < RHW || cx > vw || cy + rowH < CHH || cy > vh) continue;
-        ctx.fillRect(cx + 1, cy + 1, colW - 1, rowH - 1);
-      }
-    }
-    // 这里暂时不用再绘制一遍网格线（rect会有收缩）
-    // ctx.strokeStyle = "#d4d4d4";
-    // ctx.lineWidth = 0.5;
-    // for (let c = c0; c <= c1 + 1; c++) {
-    //   const x = RHW + c * colW - sx;
-    //   if (x < selX - 1 || x > selX + selW + 1) continue;
-    //   if (x < RHW - 1 || x > vw + 1) continue;
-    //   ctx.beginPath();
-    //   ctx.moveTo(x + 0.5, Math.max(CHH, selY));
-    //   ctx.lineTo(x + 0.5, Math.min(vh, selY + selH));
-    //   ctx.stroke();
-    // }
-    // for (let r = r0; r <= r1 + 1; r++) {
-    //   const y = CHH + r * rowH - sy;
-    //   if (y < selY - 1 || y > selY + selH + 1) continue;
-    //   if (y < CHH - 1 || y > vh + 1) continue;
-    //   ctx.beginPath();
-    //   ctx.moveTo(Math.max(RHW, selX), y + 0.5);
-    //   ctx.lineTo(Math.min(vw, selX + selW), y + 0.5);
-    //   ctx.stroke();
-    // }
-
-    // 范围外框：多选 / 拖拽时为细实线
-    if (isMultiCell || isSelecting) {
-      ctx.strokeStyle = "#1a73e8";
-      ctx.lineWidth = 1;
-      ctx.strokeRect(selX + 0.5, selY + 0.5, selW - 1, selH - 1);
-    }
-
-    // 锚点单元格粗框（内联编辑时由 DOM input 画边框，此处跳过）
-    const ax = RHW + ac * colW - sx;
-    const ay = CHH + ar * rowH - sy;
-    const isEditingAnchor =
-      editingCell != null && editingCell.r === ar && editingCell.c === ac;
-    if (
-      !isEditingAnchor &&
-      ax + colW > RHW &&
-      ax < vw &&
-      ay + rowH > CHH &&
-      ay < vh
-    ) {
-      ctx.strokeStyle = "#1a73e8";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(
-        ax + CELL_SELECTION_INSET,
-        ay + CELL_SELECTION_INSET,
-        colW - CELL_SELECTION_INSET * 2,
-        rowH - CELL_SELECTION_INSET * 2,
+    const drawFill = (rect: { x: number; y: number; w: number; h: number }) => {
+      ctx.fillStyle = "rgba(26,115,232,0.08)";
+      ctx.fillRect(
+        rect.x + 1,
+        rect.y + 1,
+        Math.max(0, rect.w - 1),
+        Math.max(0, rect.h - 1),
       );
+    };
+
+    const focusSameAsRange =
+      Math.abs(focusRect.x - selX) < 1 &&
+      Math.abs(focusRect.y - selY) < 1 &&
+      Math.abs(focusRect.w - selW) < 1 &&
+      Math.abs(focusRect.h - selH) < 1;
+
+    if (unifiedRect) {
+      drawFill(unifiedRect);
+      if (!isEditingFocus) strokeFocus(unifiedRect);
+    } else if (isMultiCell) {
+      drawFill(rangeRect);
+      if ((isMultiCell || isSelecting) && !focusSameAsRange) {
+        ctx.strokeStyle = "#1a73e8";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(selX + 0.5, selY + 0.5, selW - 1, selH - 1);
+      }
+      if (!isEditingFocus) strokeFocus(focusRect);
+    } else {
+      drawFill(focusRect);
+      if (!isEditingFocus) strokeFocus(focusRect);
     }
 
-    // 填充手柄（范围右下角）
-    const hx = selX + selW - 5;
-    const hy = selY + selH - 5;
+    const handleRect = unifiedRect ?? (isMultiCell ? rangeRect : focusRect);
+    const hx = handleRect.x + handleRect.w - 5;
+    const hy = handleRect.y + handleRect.h - 5;
     if (hx > 0 && hy > 0 && !isSelecting) {
       ctx.fillStyle = "#1a73e8";
       ctx.fillRect(hx, hy, 5, 5);
@@ -570,10 +592,12 @@ export function renderSheet(
       const rr1 = ref.row[1];
       const cc0 = ref.column[0];
       const cc1 = ref.column[1];
-      const rx = RHW + cc0 * colW - sx;
-      const ry = CHH + rr0 * rowH - sy;
-      const rw = (cc1 - cc0 + 1) * colW;
-      const rh = (rr1 - rr0 + 1) * rowH;
+      const {
+        x: rx,
+        y: ry,
+        w: rw,
+        h: rh,
+      } = selectionBox(layout, M, rr0, cc0, rr1, cc1);
       if (rx + rw <= 0 || rx >= vw || ry + rh <= 0 || ry >= vh) continue;
       ctx.save();
       ctx.fillStyle = ref.color;
@@ -595,10 +619,12 @@ export function renderSheet(
     const cr1 = clipboardRange.row[1];
     const cc0 = clipboardRange.column[0];
     const cc1 = clipboardRange.column[1];
-    const clipX = RHW + cc0 * colW - sx;
-    const clipY = CHH + cr0 * rowH - sy;
-    const clipW = (cc1 - cc0 + 1) * colW;
-    const clipH = (cr1 - cr0 + 1) * rowH;
+    const {
+      x: clipX,
+      y: clipY,
+      w: clipW,
+      h: clipH,
+    } = selectionBox(layout, M, cr0, cc0, cr1, cc1);
     if (clipX + clipW > 0 && clipX < vw && clipY + clipH > 0 && clipY < vh) {
       ctx.save();
       ctx.strokeStyle = "#1a73e8";
@@ -610,29 +636,42 @@ export function renderSheet(
     }
   }
 
-  // ---- Header highlight ----
-  const colLeft = RHW + c0 * colW - sx;
-  const colRight = colLeft + selW;
-  const rowTop = CHH + r0 * rowH - sy;
-  const rowBottom = rowTop + selH;
+  // ---- Header highlight（行列范围与 Luckysheet selectTitlesMap 一致，含合并区） ----
+  const headerBounds = mc.displayBounds(selection);
+  const hr0 = headerBounds.r0;
+  const hr1 = headerBounds.r1;
+  const hc0 = headerBounds.c0;
+  const hc1 = headerBounds.c1;
+  const {
+    x: headerX,
+    y: headerY,
+    w: headerW,
+    h: headerH,
+  } = selectionBox(layout, M, hr0, hc0, hr1, hc1);
+  const colLeft = headerX;
+  const colRight = headerX + headerW;
+  const rowTop = headerY;
+  const rowBottom = headerY + headerH;
 
   ctx.fillStyle = "#E7E9E8";
-  for (let c = c0; c <= c1; c++) {
-    const left = RHW + c * colW - sx;
-    if (left + colW < RHW || left > vw) continue;
-    ctx.fillRect(left, 0, colW, CHH);
+  for (let c = hc0; c <= hc1; c++) {
+    const left = gridCellX(layout, M, c);
+    const cw = M.colWidth(c);
+    if (left + cw < RHW || left > vw) continue;
+    ctx.fillRect(left, 0, cw, CHH);
   }
-  for (let r = r0; r <= r1; r++) {
-    const top = CHH + r * rowH - sy;
-    if (top + rowH < CHH || top > vh) continue;
-    ctx.fillRect(0, top, RHW, rowH);
+  for (let r = hr0; r <= hr1; r++) {
+    const top = gridCellY(layout, M, r);
+    const rh = M.rowHeight(r);
+    if (top + rh < CHH || top > vh) continue;
+    ctx.fillRect(0, top, RHW, rh);
   }
 
   // 表头内竖线 / 横线（铺底后再画，避免 F|G 之间线消失）
   ctx.strokeStyle = "#c0c0c0";
   ctx.lineWidth = 0.5;
-  for (let c = c0; c <= c1 + 1; c++) {
-    const x = RHW + c * colW - sx;
+  for (let c = hc0; c <= hc1 + 1; c++) {
+    const x = c < totalCols ? gridCellX(layout, M, c) : RHW + M.totalWidth - sx;
     if (x < colLeft - 1 || x > colRight + 1) continue;
     if (x < RHW - 1 || x > vw + 1) continue;
     ctx.beginPath();
@@ -640,8 +679,9 @@ export function renderSheet(
     ctx.lineTo(x + 0.5, CHH);
     ctx.stroke();
   }
-  for (let r = r0; r <= r1 + 1; r++) {
-    const y = CHH + r * rowH - sy;
+  for (let r = hr0; r <= hr1 + 1; r++) {
+    const y =
+      r < totalRows ? gridCellY(layout, M, r) : CHH + M.totalHeight - sy;
     if (y < rowTop - 1 || y > rowBottom + 1) continue;
     if (y < CHH - 1 || y > vh + 1) continue;
     ctx.beginPath();
@@ -668,16 +708,18 @@ export function renderSheet(
   ctx.lineTo(RHW, rowBottom);
   ctx.stroke();
 
-  for (let c = c0; c <= c1; c++) {
-    const cx = RHW + c * colW - sx + colW / 2;
-    if (cx > RHW - colW && cx < vw + colW) {
+  for (let c = hc0; c <= hc1; c++) {
+    const left = gridCellX(layout, M, c);
+    const cx = left + M.colWidth(c) / 2;
+    if (cx > RHW - M.colWidth(c) && cx < vw + M.colWidth(c)) {
       ctx.fillStyle = "#555";
       ctx.fillText(colToLetter(c), cx, CHH / 2);
     }
   }
-  for (let r = r0; r <= r1; r++) {
-    const cy = CHH + r * rowH - sy + rowH / 2;
-    if (cy > CHH - rowH && cy < vh + rowH) {
+  for (let r = hr0; r <= hr1; r++) {
+    const top = gridCellY(layout, M, r);
+    const cy = top + M.rowHeight(r) / 2;
+    if (cy > CHH - M.rowHeight(r) && cy < vh + M.rowHeight(r)) {
       ctx.fillStyle = "#555";
       ctx.fillText(String(r + 1), RHW / 2, cy);
     }
@@ -690,12 +732,13 @@ export function cellFromPoint(
   canvasRect: DOMRect,
   layout: GridLayout,
 ): { r: number; c: number } {
+  const M = resolveMetrics(layout);
   const x = clientX - canvasRect.left - layout.rowHeaderWidth + layout.scrollX;
   const y =
     clientY - canvasRect.top - layout.columnHeaderHeight + layout.scrollY;
   return {
-    r: Math.floor(y / layout.defaultRowHeight),
-    c: Math.floor(x / layout.defaultColWidth),
+    r: M.rowAtY(y),
+    c: M.colAtX(x),
   };
 }
 
@@ -717,11 +760,21 @@ export function cellRect(
   r: number,
   c: number,
   layout: GridLayout,
+  merge?: MergeContext | MergeRange[],
 ): { x: number; y: number; w: number; h: number } {
+  const M = resolveMetrics(layout);
+  const mc =
+    merge instanceof MergeContext
+      ? merge
+      : MergeContext.fromRanges(merge ?? []);
+  if (!mc.isEmpty) {
+    const m = mc.at(r, c);
+    if (m) return mc.pixelRect(m, layout, M);
+  }
   return {
-    x: layout.rowHeaderWidth + c * layout.defaultColWidth,
-    y: layout.columnHeaderHeight + r * layout.defaultRowHeight,
-    w: layout.defaultColWidth,
-    h: layout.defaultRowHeight,
+    x: layout.rowHeaderWidth + M.colLeft(c),
+    y: layout.columnHeaderHeight + M.rowTop(r),
+    w: M.colWidth(c),
+    h: M.rowHeight(r),
   };
 }

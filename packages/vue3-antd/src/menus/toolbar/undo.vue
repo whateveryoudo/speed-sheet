@@ -1,7 +1,7 @@
 <template>
   <s-keymap-tip :title="editableCpt ? t('toolbar.undo') : null" :key-map="keyMap">
     <a-button
-      :disabled="!editableCpt"
+      :disabled="!editableCpt || !canUndoCpt"
       type="text"
       class="shadow-btn-wrapper"
       @click="undo"
@@ -13,6 +13,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { UndoOutlined } from '@ant-design/icons-vue'
 import { getShortcutTipByKey } from '../../helpers/registKeyMap'
@@ -20,7 +21,12 @@ import { useSheetToolbar } from '../../composables/useSheetToolbar'
 
 const { t } = useI18n()
 const keyMap = getShortcutTipByKey('undo')
-const { sheet, editableCpt } = useSheetToolbar()
+const { sheet, editableCpt, revision } = useSheetToolbar()
+
+const canUndoCpt = computed(() => {
+  void revision.value
+  return sheet.value?.canUndo() ?? false
+})
 
 function undo() {
   sheet.value?.chain().undo().run()

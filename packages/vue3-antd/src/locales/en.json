@@ -12,7 +12,8 @@
     "colUnit": "cols",
     "deleteRow": "Delete row {rows}",
     "deleteCol": "Delete column {cols}",
-    "mergeCells": "Merge cells"
+    "mergeCells": "Merge cells",
+    "unmergeCells": "Unmerge cells"
   },
   "sheetTabMenu": {
     "delete": "Delete",

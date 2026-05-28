@@ -95,16 +95,20 @@ const ui = computed(() => ({
   columnHeaderHeight: props.columnHeaderHeight,
 }))
 
-const workbookFile = computed(() => props.sheetData ?? props.data)
+const luckysheetFile = computed(() => props.luckysheetData ?? props.data)
 
 const sheetOptions = computed(() => ({
-  data: workbookFile.value,
-  snapshot: props.snapshot,
+  snapshot: props.sheetData,
+  data: luckysheetFile.value,
   extensions: props.extensions,
   ydoc: props.ydoc,
   onUpdate: (s: Sheet) => {
-    const file = s.toLuckysheetFile()
-    if (file) props.onChange?.(file)
+    const snapshot = s.toSnapshot()
+    if (snapshot) props.onChange?.(snapshot)
+    if (props.onLuckysheetChange) {
+      const file = s.toLuckysheetFile()
+      if (file) props.onLuckysheetChange(file)
+    }
   },
   onBeforeLayoutChange: (s: Sheet) => {
     canvasRef.value?.endEditingForLayoutChange()
@@ -145,8 +149,24 @@ provide(SHEET_TOOLBAR_KEY, {
   findReplaceOpen,
 })
 
+function commitFormulaEditIfActive(): void {
+  const s = sheet.value
+  if (!s || !formulaEdit.active.value) return
+  const { r, c } = formulaEdit.anchor.value
+  const val = formulaEdit.text.value
+  if (isFormulaText(val)) {
+    s.chain().setCellFormula({ r, c, formula: val }).run()
+  } else if (val !== '') {
+    s.chain().setCellValue({ r, c, value: val }).run()
+  }
+  formulaEdit.cancel()
+}
+
 function onCellClick(r: number, c: number): void {
   if (handleFormulaCellClick(r, c)) return
+  if (formulaEdit.active.value) {
+    commitFormulaEditIfActive()
+  }
   const s = sheet.value
   if (!s) return
   if (formatPainterActive.value && copiedStyle.value) {

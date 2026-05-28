@@ -3,7 +3,8 @@ import type { SheetT } from '../../i18n'
 import { getShortcutTipByKey } from '../../helpers/registKeyMap'
 import type { ContextMenuActionContext } from '../../types'
 import type { ContextMenuTarget } from '../../types'
-import { ArrowUpOutlined, ArrowDownOutlined, ArrowRightOutlined, ArrowLeftOutlined } from '@ant-design/icons-vue'
+import { ArrowUpOutlined, DeleteOutlined, ArrowDownOutlined, ArrowRightOutlined, ArrowLeftOutlined, MergeCellsOutlined } from '@ant-design/icons-vue'
+import { MergeContext } from '@speed-sheet/core'
 import {
   formatColLabel,
   formatRowLabel,
@@ -14,17 +15,17 @@ import {
 
 export type ProcessedContextMenuItem =
   | { type: 'divider' }
-  | { type: 'item'; key: string; title: string; disabled?: boolean; shortcut?: string }
+  | { type: 'item'; key: string; prefixIcon?: () => VNode; title: string; disabled?: boolean; shortcut?: string }
   | {
       type: 'insert'
       key: string
       direction: 'row-above' | 'row-below' | 'col-left' | 'col-right'
-      prefixIcon: VNode
+      prefixIcon: () => VNode
       label: string
       unit: string
       defaultCount: number
     }
-  | { type: 'merge'; key: string; title: string; disabled?: boolean }
+  | { type: 'merge'; key: string; prefixIcon: () => VNode; title: string; disabled?: boolean }
 
 function clipboardItems(t: SheetT): ProcessedContextMenuItem[] {
   return [
@@ -50,7 +51,7 @@ function insertItems(
         type: 'insert',
         key: 'insertRowAbove',
         direction: 'row-above',
-        prefixIcon: <ArrowUpOutlined />,
+        prefixIcon: () => <ArrowUpOutlined />,
         label: t('contextMenu.insertRowAbove'),
         unit: t('contextMenu.rowUnit'),
         defaultCount: rowCount,
@@ -59,7 +60,7 @@ function insertItems(
         type: 'insert',
         key: 'insertRowBelow',
         direction: 'row-below',
-        prefixIcon: <ArrowDownOutlined />,
+        prefixIcon: () => <ArrowDownOutlined />,
         label: t('contextMenu.insertRowBelow'),
         unit: t('contextMenu.rowUnit'),
         defaultCount: rowCount,
@@ -72,7 +73,7 @@ function insertItems(
         type: 'insert',
         key: 'insertColLeft',
         direction: 'col-left',
-        prefixIcon: <ArrowLeftOutlined />,
+        prefixIcon: () => <ArrowLeftOutlined />,
         label: t('contextMenu.insertColLeft'),
         unit: t('contextMenu.colUnit'),
         defaultCount: colCount,
@@ -81,7 +82,7 @@ function insertItems(
         type: 'insert',
         key: 'insertColRight',
         direction: 'col-right',
-        prefixIcon: <ArrowRightOutlined />,
+        prefixIcon: () => <ArrowRightOutlined />,
         label: t('contextMenu.insertColRight'),
         unit: t('contextMenu.colUnit'),
         defaultCount: colCount,
@@ -100,10 +101,19 @@ export function buildContextMenuItems(
   if (!selection) return []
 
   const target = ctx.target ?? 'cell'
-  const rowCount = selectionRowCount(selection)
-  const colCount = selectionColCount(selection)
-  const rowLabel = formatRowLabel(selection.row)
-  const colLabel = formatColLabel(selection.column)
+  const mc = ctx.sheet
+    ? ctx.sheet.createMergeContext()
+    : MergeContext.empty()
+  const display = mc.displayBounds(selection)
+  const displaySel = {
+    ...selection,
+    row: [display.r0, display.r1] as [number, number],
+    column: [display.c0, display.c1] as [number, number],
+  }
+  const rowCount = mc.rowCountForSelection(selection)
+  const colCount = mc.colCountForSelection(selection)
+  const rowLabel = formatRowLabel(displaySel.row)
+  const colLabel = formatColLabel(displaySel.column)
 
   const items: ProcessedContextMenuItem[] = [...clipboardItems(t)]
   items.push({ type: 'divider' })
@@ -117,6 +127,7 @@ export function buildContextMenuItems(
     items.push({
       type: 'item',
       key: 'deleteRows',
+      prefixIcon: () => <DeleteOutlined />,
       title: t('contextMenu.deleteRow', { rows: rowLabel }),
     })
   }
@@ -124,15 +135,26 @@ export function buildContextMenuItems(
     items.push({
       type: 'item',
       key: 'deleteCols',
+      prefixIcon: () => <DeleteOutlined />,
       title: t('contextMenu.deleteCol', { cols: colLabel }),
     })
   }
 
-  if ((target === 'range' || target === 'cell') && isMultiCellSelection(selection)) {
+  const activeMerge = mc.mergeAtFocus(selection)
+  if ((target === 'range' || target === 'cell') && activeMerge) {
+    items.push({ type: 'divider' })
+    items.push({
+      type: 'merge',
+      key: 'unmergeCells',
+      prefixIcon: () => <MergeCellsOutlined />,
+      title: t('contextMenu.unmergeCells'),
+    })
+  } else if ((target === 'range' || target === 'cell') && isMultiCellSelection(displaySel)) {
     items.push({ type: 'divider' })
     items.push({
       type: 'merge',
       key: 'mergeCells',
+      prefixIcon: () => <MergeCellsOutlined />,
       title: t('contextMenu.mergeCells'),
       disabled: rowCount === 1 && colCount === 1,
     })

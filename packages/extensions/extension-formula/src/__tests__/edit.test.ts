@@ -1,5 +1,27 @@
 import { describe, expect, it } from 'vitest'
-import { patchFormulaWithRef } from '../edit'
+import { canPickFormulaRef, canPickFormulaRefAtCaret, patchFormulaWithRef } from '../edit'
+
+describe('canPickFormulaRefAtCaret', () => {
+  it('allows after =', () => {
+    expect(canPickFormulaRefAtCaret('=', 1)).toBe(true)
+  })
+
+  it('allows after operator', () => {
+    expect(canPickFormulaRefAtCaret('=A1+', 5)).toBe(true)
+    expect(canPickFormulaRefAtCaret('=SUM(A1,', 8)).toBe(true)
+    expect(canPickFormulaRefAtCaret('=IF(A1>', 7)).toBe(true)
+  })
+
+  it('disallows after complete ref', () => {
+    expect(canPickFormulaRefAtCaret('=A1+B1', 6)).toBe(false)
+    expect(canPickFormulaRefAtCaret('=A1', 3)).toBe(false)
+  })
+
+  it('session flag enables pick without operator', () => {
+    expect(canPickFormulaRef('=A1+B1', 6, true)).toBe(true)
+    expect(canPickFormulaRef('=A1+B1', 6, false)).toBe(false)
+  })
+})
 
 describe('patchFormulaWithRef', () => {
   it('appends after operator', () => {

@@ -1,5 +1,6 @@
 import { Extension } from '../Extension'
 import type { CommandContext } from '../types'
+import { transactUser } from '../../yjs/transact'
 
 export const CellEditingExtension = Extension.create({
   name: 'cellEditing',
@@ -102,13 +103,15 @@ export const CellEditingExtension = Extension.create({
           const r1 = Math.max(sel.row[0], sel.row[1])
           const c0 = Math.min(sel.column[0], sel.column[1])
           const c1 = Math.max(sel.column[0], sel.column[1])
-          state.root.doc?.transact(() => {
-            for (let r = r0; r <= r1; r++) {
-              for (let c = c0; c <= c1; c++) {
-                state.deleteCell(r, c)
+          if (state.root.doc) {
+            transactUser(state.root.doc, () => {
+              for (let r = r0; r <= r1; r++) {
+                for (let c = c0; c <= c1; c++) {
+                  state.deleteCell(r, c)
+                }
               }
-            }
-          })
+            })
+          }
           return true
         }
       },
