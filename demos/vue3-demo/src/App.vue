@@ -11,7 +11,7 @@ import { SpeedSheet } from '@speed-sheet/vue3-antd'
 import { luckysheetFileToSnapshot } from '@speed-sheet/core'
 import type { WorkbookSnapshot } from '@speed-sheet/shared'
 import type { LuckysheetFile } from '@speed-sheet/shared'
-
+import { createDefaultDocumentContent } from '@speed-sheet/core'
 /** 仅用于生成初始 snapshot；日常存盘/onChange 请用 WorkbookSnapshot */
 // const seedLuckysheet: LuckysheetFile = [
 //   {
@@ -31,6 +31,10 @@ import type { LuckysheetFile } from '@speed-sheet/shared'
 //     celldata: [{ r: 12, c: 3, v: { v: 99, m: '99' } }],
 //   },
 // ]
+const { content, nodeJson } = createDefaultDocumentContent({
+  sheetName: 'SheetA',
+})
+console.log(content, nodeJson)
 const sheetData = ref<WorkbookSnapshot>({
   sheets: [
     {

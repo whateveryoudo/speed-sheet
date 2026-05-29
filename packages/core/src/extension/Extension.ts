@@ -84,7 +84,7 @@ export class Extension<S = any> {
 
   destroy(): void {
     if (this.config.onDestroy) {
-      this.config.onDestroy()
+      this.config.onDestroy.call(this)
     }
   }
 

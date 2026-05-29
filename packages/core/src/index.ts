@@ -15,6 +15,15 @@ export { Sheet } from './Sheet'
 export type { SheetOptions, LuckysheetRange } from './Sheet'
 
 export {
+  createDefaultWorkbookSnapshot,
+  createDefaultDocumentContent,
+} from './persistence/default-document'
+export type {
+  CreateDefaultDocumentContentOptions,
+  DefaultDocumentContent,
+} from './persistence/default-document'
+
+export {
   Extension,
   KeyboardExtension,
   SelectionExtension,
