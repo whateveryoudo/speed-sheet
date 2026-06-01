@@ -43,6 +43,7 @@ export type {
 
 export { CommandManager } from './commands/CommandManager'
 export { SheetState } from './state/SheetState'
+export { clearCellRichContent, cellHasRichContent } from './state/cell-rich-content'
 
 export { YOriginUser, YOriginSystem } from './yjs/origins'
 export { transact, transactUser, transactSystem } from './yjs/transact'
@@ -125,6 +126,7 @@ export {
   selectRangeFromContextAction,
   isPrintableKey,
   resolveKeyboardNav,
+  hitCheckboxAt,
 } from './interaction'
 export type {
   CanvasPointer,

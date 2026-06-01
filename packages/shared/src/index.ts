@@ -41,6 +41,15 @@ export interface CellFormat {
   t: 's' | 'n' | 'b' | 'd'  // type: string, number, boolean, date
 }
 
+/** 单元格附件（对齐知识库 attachment 上传结果） */
+export interface CellAttachmentMeta {
+  id: string
+  fileName: string
+  fileType?: string
+  fileSize?: string | number
+  previewUrl?: string
+}
+
 export interface CellAttributes extends CellStyle {
   v: string | number | boolean | null
   f?: string     // formula string, e.g. "=SUM(A1:A10)"
@@ -51,6 +60,54 @@ export interface CellAttributes extends CellStyle {
   em?: string
   ct?: CellFormat
   qp?: number    // quote prefix
+  /** 单元格内附件元数据 */
+  att?: CellAttachmentMeta
+}
+
+/** 数据验证（对齐 Luckysheet dataVerification；复选框、下拉列表等） */
+export type DataVerificationType = 'checkbox' | 'dropdown'
+
+export interface DropdownListOption {
+  value: string
+  /** 选项展示色（开启「颜色」时使用） */
+  color?: string
+}
+
+export interface DataVerificationRule {
+  type: DataVerificationType
+  /** checkbox：是否勾选 */
+  checked?: boolean
+  /** checkbox 旁可选标签，写入单元格 m */
+  label?: string
+  /** dropdown：选项列表 */
+  options?: DropdownListOption[]
+  /** dropdown：是否多选 */
+  multiSelect?: boolean
+  /** dropdown：是否为选项着色 */
+  useColor?: boolean
+  /** dropdown：当前值（多选时为逗号拼接或 string[]） */
+  value?: string | string[]
+}
+
+export function dataVerificationKey(r: number, c: number): string {
+  return `${r}_${c}`
+}
+
+/** 浮动图片（对齐 Luckysheet images，锚定单元格） */
+export interface SheetImageItem {
+  id: string
+  src: string
+  row: number
+  col: number
+  /** 当前/历史展示宽高（兼容旧数据；有 originWidth/Height 时渲染以原始尺寸自适应单元格） */
+  width: number
+  height: number
+  /** 图片原始像素宽高，用于拖拽行列后按单元格等比缩放 */
+  originWidth?: number
+  originHeight?: number
+  /** 相对单元格左上角的像素偏移 */
+  offsetLeft?: number
+  offsetTop?: number
 }
 
 // ----- Sheet config -----
@@ -110,6 +167,10 @@ export interface SheetSnapshot {
   /** Sparse cells keyed by `rowId:colId` */
   cells: Record<string, CellAttributes>
   config: SheetConfig
+  /** 数据验证规则，键为 `row_col` */
+  dataVerification?: Record<string, DataVerificationRule>
+  /** 浮动图片 */
+  images?: Record<string, SheetImageItem>
 }
 
 export interface WorkbookSnapshot {

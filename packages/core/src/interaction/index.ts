@@ -70,3 +70,4 @@ export {
   resolveKeyboardNav,
   type KeyboardNavResult,
 } from './keyboard-nav'
+export { hitCheckboxAt } from './checkbox-hit'

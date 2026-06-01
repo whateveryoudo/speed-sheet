@@ -1,0 +1,70 @@
+---
+description: 用户要求「参考/对齐 xxx」时：先读架构、再出方案对比、最后才写代码
+alwaysApply: true
+---
+
+# 参考现有实现：先架构、后编码
+
+当用户说 **参考、对齐、像 xxx 一样、按 tiptap 那套** 等，**禁止**直接改文件或堆补丁。必须按下面三步走；第 3 步前若方案有分歧，先给用户看对比表并确认。
+
+**开工前强制**：阅读仓库内所有 `alwaysApply: true` 的 rules（至少 `vue3-layering.mdc`）。分层冲突时 **以 vue3-layering 为准**，不得为了赶进度把 UI 塞进 vue3。
+
+## 第 1 步：读已有实现（只读）
+
+先定位**参考源**与**落点**，再读调用链（从 App 配置 → Provider → 扩展/NodeView → 气泡/UI），不要只读单个 Vue 文件。
+
+### 本 monorepo 常见对照
+
+| 能力 | 参考源（先读） | speed-sheet 落点 |
+|------|----------------|------------------|
+| 编辑器上下文 | `speed-tiptap-editor/src/hooks/useSpeedEditorContext.ts`、`editor.vue` | `useSpeedSheetProvider`、`SpeedSheet.vue` |
+| App 级 API/upload | `main.ts` + `speedUseTiptapConfig` | `installSpeedSheetUi` + `useSheetGlobalConfig` |
+| 图片预览 | `helpers/previews.ts` + `previewInstance` | `helpers/sheetPreviewImage.ts` + `useSpeedSheet` |
+| 附件/文件下载 | `attachment/index.ts` emit + `Wrapper.vue` + `useCustomUpload` | `downloadSheetImage` + `Layer.vue` |
+| 气泡菜单 | `bubbleMenus/*` + `BubbleContainer` + `useBubble` | `bubbleMenus/*` + `SheetBubbleMenu` |
+| 扩展分层 | `extensions/*/index.ts` + `Wrapper.vue` | `extension-*` headless + `vue3-antd/extensions/*` |
+
+### 必读清单（逐项回答「谁 provide、谁 inject、谁创建实例、命令/事件怎么走」）
+
+1. **配置从哪进**：`app.use` / props / provide 键名  
+2. **实例上下文**：是否单一 Provider（如 `useSpeedEditor`）  
+3. **生命周期**：实例何时创建/销毁（如 `editor.onCreate`）  
+4. **UI 薄厚**：菜单是否只调 context + chain，定位是否交给底层  
+5. **与参考源的差异**：表格无 ProseMirror 选区、浮动图在 overlay 等——**差异要显式写出**，不能假装一样  
+
+交付：用 5～10 行说明参考源的**架构模式**（不是功能列表）。
+
+## 第 2 步：给出落地方案 + 优缺点（仍不写业务代码）
+
+结合 **speed-sheet 现状**（`vue3-layering.mdc`：core → vue3 headless → vue3-antd），给出 1～2 个可选方案，表格对比：
+
+| 维度 | 方案 A | 方案 B |
+|------|--------|--------|
+| 与参考源一致度 | | |
+| 改动面 / 风险 | | |
+| 表格场景适配（选区、layout、Yjs） | | |
+| 可维护性（是否重复造轮子） | | |
+
+**必须说明**：哪些能 1:1 迁移，哪些必须适配（例如气泡定位从 `editor.selection` 改为 `cellRect + viewportTick`）。
+
+推荐明确写 **Recommend：方案 X**，并等用户确认或用户已明确「按 tiptap 架构迁移」后再进入第 3 步。
+
+## 第 3 步：写代码
+
+- 按确认的方案实现；优先 **复用** 参考源的模式名与分层（Provider、命令、NodeView 注册 hook），避免在菜单里堆 watch/临时 state。  
+- 若需新依赖（如 `viewerjs`），先改 `package.json` 并 `pnpm install`，再写 import。  
+- 改 headless 包后记得 rebuild 对应 `dist`（`extension-image`、`core` 等）。  
+- 交付时对照参考源说明：**对齐了哪几条调用链**、**哪几条因场景不同而适配**。
+
+## 反例（禁止）
+
+- 未读 `vue3-layering.mdc` 就把 `Layer.vue`、预览类、antd 菜单写进 `@speed-sheet/vue3`。  
+- 未读 `useSpeedEditorProvider` / `EditorPreviewImage` 就在菜单里 `window.open`。  
+- 未读 attachment 的 emit + Wrapper 监听，就在 bubble 里直接调 `fileDownload` API。  
+- 用户说「参考」却只做字段级 copy，不抽 Provider / hook / 命令。  
+- 一次 PR 混做架构对齐 + 无关功能（尺寸、对齐、新插入类型）——应拆分。
+
+## 与 `search-before-implement` 的关系
+
+- **search-before-implement**（若存在）：防重复函数/契约。  
+- **本规则**：防**架构模式**未对齐就开写。两者都要满足后再动代码。

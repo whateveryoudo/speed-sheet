@@ -1,4 +1,9 @@
-import type { CellAttributes, MergeRange, Selection } from "@speed-sheet/shared";
+import type {
+  CellAttributes,
+  DataVerificationRule,
+  MergeRange,
+  Selection,
+} from "@speed-sheet/shared";
 import { MergeContext } from "../merge";
 import { getVisibleRangeFromMetrics } from "./grid-metrics";
 import {
@@ -36,6 +41,116 @@ export interface RenderOptions {
     column: [number, number];
     color: string;
   }>;
+  /** 数据验证（复选框等），键 `row_col` */
+  dataVerifications?: Map<string, DataVerificationRule>;
+}
+
+const CHECKBOX_SIZE = 14;
+const CHECKBOX_GAP = 6;
+const DROPDOWN_ARROW_W = 14;
+
+/** 在单元格内绘制复选框（Canvas；状态来自 dataVerification.checked） */
+export function drawCellCheckbox(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  cellW: number,
+  cellH: number,
+  rule: DataVerificationRule,
+): number {
+  const size = CHECKBOX_SIZE;
+  const boxX = cx + CELL_TEXT_PAD_X;
+  const boxY = cy + (cellH - size) / 2;
+  const checked = !!rule.checked;
+
+  ctx.save();
+  if (checked) {
+    ctx.fillStyle = "#00b96b";
+    ctx.strokeStyle = "#00b96b";
+    roundRect(ctx, boxX, boxY, size, size, 3);
+    ctx.fill();
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(boxX + 3, boxY + size / 2);
+    ctx.lineTo(boxX + size / 2 - 0.5, boxY + size - 4);
+    ctx.lineTo(boxX + size - 3, boxY + 3);
+    ctx.stroke();
+  } else {
+    ctx.strokeStyle = "#bfbfbf";
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, boxX, boxY, size, size, 3);
+    ctx.stroke();
+  }
+  ctx.restore();
+  return boxX + size + CHECKBOX_GAP;
+}
+
+function dropdownDisplayText(
+  data: CellAttributes,
+  rule: DataVerificationRule,
+): string {
+  const fromRule = rule.value
+  if (fromRule != null && fromRule !== '') {
+    return Array.isArray(fromRule) ? fromRule.join(', ') : String(fromRule)
+  }
+  return cellDisplayText(data)
+}
+
+/** 下拉列表：文本 + 右侧三角 */
+export function drawCellDropdown(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  cellW: number,
+  cellH: number,
+  data: CellAttributes,
+  rule: DataVerificationRule,
+): void {
+  const padX = CELL_TEXT_PAD_X
+  const arrowX = cx + cellW - padX - DROPDOWN_ARROW_W
+  const text = dropdownDisplayText(data, rule)
+  const textW = Math.max(0, arrowX - (cx + padX) - 4)
+
+  if (text) {
+    ctx.fillStyle = data.fc ?? '#333'
+    drawCellText(ctx, text, cx + padX, cy, textW, cellH, {
+      colSpan: 1,
+      truncate: true,
+    })
+  }
+
+  const midY = cy + cellH / 2
+  ctx.save()
+  ctx.fillStyle = '#8c8c8c'
+  ctx.beginPath()
+  const ax = arrowX + DROPDOWN_ARROW_W / 2
+  ctx.moveTo(ax - 4, midY - 2)
+  ctx.lineTo(ax + 4, midY - 2)
+  ctx.lineTo(ax, midY + 3)
+  ctx.closePath()
+  ctx.fill()
+  ctx.restore()
+}
+
+function roundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+): void {
+  const rad = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rad, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rad);
+  ctx.arcTo(x + w, y + h, x, y + h, rad);
+  ctx.arcTo(x, y + h, x, y, rad);
+  ctx.arcTo(x, y, x + w, y, rad);
+  ctx.closePath();
 }
 
 /** Visible row/col index range (inclusive) from scroll + viewport */
@@ -299,6 +414,7 @@ export function renderSheet(
     editingCell,
     clipboardRange,
     formulaRefRanges,
+    dataVerifications,
   } = options;
   const mc =
     mergeCtxIn ?? MergeContext.fromRanges(merges);
@@ -394,11 +510,49 @@ export function renderSheet(
     ctx.fillStyle = data.fc ?? "#333";
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
+
+    const dvKey = `${r}_${c}`;
+    const dvRule = dataVerifications?.get(dvKey);
+    const isEditing =
+      editingCell != null && editingCell.r === r && editingCell.c === c;
+
+    if (dvRule?.type === "checkbox") {
+      if (!isEditing) {
+        const textStartX = drawCellCheckbox(ctx, cx, cy, cellW, cellH, dvRule);
+        const label = cellDisplayText(data);
+        if (label) {
+          ctx.fillStyle = data.fc ?? "#333";
+          const clipW = Math.max(0, cx + cellW - textStartX - CELL_TEXT_PAD_X);
+          drawCellText(ctx, label, textStartX, cy, clipW, cellH, {
+            colSpan: 1,
+            truncate: true,
+          });
+        }
+      }
+      continue;
+    }
+
+    if (dvRule?.type === "dropdown" && !isEditing) {
+      drawCellDropdown(ctx, cx, cy, cellW, cellH, data, dvRule);
+      continue;
+    }
+
+    if (data.att && !isEditing) {
+      const label = data.m ?? data.att.fileName ?? "附件";
+      const display = `📎 ${label}`;
+      ctx.fillStyle = data.fc ?? "#1677ff";
+      drawCellText(ctx, display, cx + CELL_TEXT_PAD_X, cy, cellW, cellH, {
+        colSpan: 1,
+        truncate: true,
+      });
+      continue;
+    }
+
     const text = cellDisplayText(data);
     if (!text) continue;
 
     // 内联编辑时由 DOM input 显示文字，canvas 不再绘制（避免重影）
-    if (editingCell != null && editingCell.r === r && editingCell.c === c) {
+    if (isEditing) {
       continue;
     }
 

@@ -62,6 +62,7 @@ Headless 在线表格引擎：Luckysheet 兼容数据模型 + Yjs 协同 + TipTa
 - ✔️ Luckysheet 文件互转（`luckysheetFileToSnapshot`）
 - ✔️ 默认文档内容生成（`createDefaultDocumentContent`）
 - ✔️ 内置扩展：键盘、选区、历史、剪贴板、单元格编辑、行列操作、合并单元格
+- ✔️ 单元格插入命令：复选框、**下拉列表**（`insertDropdown` / `setDropdownValue` / `removeDropdown`）
 - ✔️ Yjs `UndoManager` 撤销 / 重做
 - ✔️ rowId / colId + rowOrder / colOrder 布局 v2（插删行列不重建 cell key）
 
@@ -74,6 +75,7 @@ Headless 在线表格引擎：Luckysheet 兼容数据模型 + Yjs 协同 + TipTa
 - ✔️ 右键上下文菜单（复制 / 剪切 / 粘贴 / 插删行列 / 合并拆分 / 清除）
 - ✔️ 公式栏富文本输入（支持单元格引用点选）
 - ✔️ 公式错误提示
+- ✔️ 扩展气泡宿主 `SheetBubbleMenusHost`；`resolveCellDblClick` 供产品层拦截双击
 
 #### 公式引擎（`@speed-sheet/extension-formula`）
 
@@ -88,11 +90,15 @@ Headless 在线表格引擎：Luckysheet 兼容数据模型 + Yjs 协同 + TipTa
 - ✔️ `SpeedSheet` 一站式组件（工具栏 + 公式栏 + Canvas + 页签栏）
 - ✔️ 工具栏：撤销 / 重做 / 格式刷 / 清除格式 / 字号 / 加粗 / 斜体 / 下划线
 - ✔️ 工具栏：字体颜色 / 背景色 / 对齐 / 链接 / 查找替换 / 公式菜单
+- ✔️ **插入菜单**（语雀式）：复选框、**下拉列表**、图片、链接、附件、备注、公式（`insertMenuKeys` 可配）
+- ✔️ **下拉列表**：Canvas 渲染 + 单击取值气泡 / 双击配置面板；数据验证 `insertDropdown` / `removeDropdown`
+- ✔️ **图片插入**：扩展层 + 选区气泡菜单；App 级 `upload` 配置
 - ✔️ Sheet 页签栏（新增 / 切换 / 拖拽排序）
 - ✔️ 页签右键菜单（重命名 / 复制 / 删除 / 隐藏 / 标签颜色）
 - ✔️ 语雀式工作表列表 Popover
 - ✔️ 中英文 i18n（`lang="zh" | "en"`）
 - ✔️ 支持 `ydoc` 协同模式与 `sheet-data` 只读快照模式
+- ✔️ `installSpeedSheetUi`：`ensureSpeedComponents` 与 SpeedComponents 共存无重复 plugin 警告
 
 #### 协同
 
@@ -106,7 +112,7 @@ Headless 在线表格引擎：Luckysheet 兼容数据模型 + Yjs 协同 + TipTa
 - [ ] React Headless 适配层完善（`@speed-sheet/react`）
 - [ ] 冻结行列（冻结窗格）
 - [ ] 条件格式
-- [ ] 数据验证
+- [x] 数据验证 — **下拉列表**（多选 / 颜色等待完善）
 - [ ] 虚拟滚动 + 按需加载单元格块
 - [ ] 主题 API（`createTheme()` 注入颜色 / 字体）
 
@@ -117,7 +123,7 @@ Headless 在线表格引擎：Luckysheet 兼容数据模型 + Yjs 协同 + TipTa
 
 #### UI 与交互
 
-- [ ] 工具栏「插入」菜单接入表格命令（图片 / 链接等待实现）
+- [x] 工具栏「插入」菜单 — 复选框 / 下拉 / 图片等（链接 / 附件等待完善）
 - [ ] 页签「标签颜色」选择器
 - [ ] 暗色主题
 - [ ] 远程协同选区光标 UI 展示

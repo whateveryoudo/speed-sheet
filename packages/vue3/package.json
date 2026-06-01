@@ -24,6 +24,7 @@
     "@speed-sheet/core": "workspace:^",
     "@speed-sheet/extension-formula": "workspace:^",
     "@speed-sheet/shared": "workspace:^",
+    "@floating-ui/dom": "^1.6.0",
     "yjs": "^13.6.0"
   },
   "devDependencies": {

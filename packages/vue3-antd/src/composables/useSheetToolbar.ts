@@ -43,7 +43,7 @@ export function useSheetToolbar() {
     return cellMap.value.get(`${r}_${c}`) ?? null
   })
 
-  const editableCpt = computed(() => !!ctx.sheet.value)
+  const editableCpt = computed(() => ctx.editable.value && !!ctx.sheet.value)
 
   function forEachSelectedCell(fn: (r: number, c: number) => void): void {
     const sel = selection.value

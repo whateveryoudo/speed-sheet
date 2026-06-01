@@ -1,6 +1,17 @@
 <template>
-  <div class="sheet-canvas-root" ref="rootEl" tabindex="0" @keydown="onKeyDown">
-    <div class="sheet-viewport" ref="viewportEl">
+  <div
+    class="sheet-canvas-root"
+    :class="{ 'is-readonly': !editableCpt }"
+    ref="rootEl"
+    tabindex="0"
+    @keydown="onKeyDown"
+  >
+    <div
+      class="sheet-viewport"
+      ref="viewportEl"
+      @dragover.prevent="onViewportDragOver"
+      @drop.prevent="onViewportDrop"
+    >
       <div class="sheet-scroll" ref="scrollEl" @scroll="handleScroll">
         <div class="sheet-spacer" :style="{ width: totalW + 'px', height: totalH + 'px' }" aria-hidden="true" />
       </div>
@@ -83,6 +94,8 @@
           @mousedown.stop="onThumbDragStart('y', $event)"
         />
       </div>
+      <SheetExtensionViews :sheet="props.sheet" />
+      <SheetBubbleMenusHost :sheet="props.sheet" :boundary="viewportEl" />
       <canvas
         ref="canvasEl"
         class="sheet-canvas"
@@ -126,6 +139,7 @@ import { ref, computed, onUnmounted, toRef, inject, watch, nextTick } from 'vue'
 import { MergeContext, type Sheet } from '@speed-sheet/core'
 import type { ContextMenuState } from '../types/context-menu'
 import { FORMULA_EDIT_KEY } from '../composables/useFormulaEdit'
+import { useSheetEditorOptional } from '../composables/useSheetEditorContext'
 import { useSheetLayout } from '../composables/useSheetLayout'
 import { useSheetCanvasData } from '../composables/useSheetCanvasData'
 import { useSheetResizeDrag } from '../composables/useSheetResizeDrag'
@@ -141,7 +155,9 @@ import { useSheetKeyboard } from '../composables/useSheetKeyboard'
 import { useSheetCanvasPointer } from '../composables/useSheetCanvasPointer'
 import { useSheetCanvasScroll } from '../composables/useSheetCanvasScroll'
 import FormulaRichInput from './FormulaRichInput.vue'
-
+import SheetExtensionViews from './SheetExtensionViews.vue'
+import SheetBubbleMenusHost from './SheetBubbleMenusHost.vue'
+import { provideSheetViewport } from '../composables/useSheetViewportContext'
 const props = withDefaults(defineProps<{
   sheet: Sheet | null
   revision?: number
@@ -154,16 +170,25 @@ const props = withDefaults(defineProps<{
   }>
   formulaPickMode?: boolean
   commitBoundary?: HTMLElement | null
+  /** 查看态为 false：保留渲染与选区，屏蔽编辑类交互 */
+  editable?: boolean
+  /** 双击单元格；返回 true 时不打开默认内联编辑器 */
+  resolveCellDblClick?: (r: number, c: number) => boolean | void
 }>(), {
   revision: 0,
   formulaRefRanges: () => [],
   formulaPickMode: false,
   commitBoundary: null,
+  editable: true,
 })
 
 const sheet = computed(() => props.sheet)
 const revision = computed(() => props.revision)
 const formulaEdit = inject(FORMULA_EDIT_KEY, null)
+const sheetEditor = useSheetEditorOptional()
+const editableCpt = computed(
+  () => props.editable && (sheetEditor?.editableCpt.value ?? true),
+)
 
 const emit = defineEmits<{
   'cell-click': [r: number, c: number]
@@ -171,6 +196,8 @@ const emit = defineEmits<{
   'formula-range-pick': [r0: number, c0: number, r1: number, c1: number]
   'select-range': [r0: number, c0: number, r1: number, c1: number, anchorR: number, anchorC: number]
   'context-menu': [payload: ContextMenuState & { close: () => void }]
+  'viewport-mousedown': [e: MouseEvent]
+  'viewport-drop': [e: DragEvent]
 }>()
 
 const rootEl = ref<HTMLElement>()
@@ -196,6 +223,23 @@ const {
   columnHeaderHeight: computed(() => props.columnHeaderHeight),
 })
 
+const viewportTick = ref(0)
+function bumpViewportTick(): void {
+  viewportTick.value++
+}
+
+provideSheetViewport({
+  sheet,
+  revision,
+  layout,
+  scrollX,
+  scrollY,
+  viewportTick,
+  editable: editableCpt,
+})
+
+watch([scrollX, scrollY, revision, layout], bumpViewportTick, { deep: true })
+
 let scheduleDrawRef: () => void = () => {}
 
 const { sel, cells, activeCell, cellEntries, applySelectRange } = useSheetCanvasData({
@@ -204,6 +248,20 @@ const { sel, cells, activeCell, cellEntries, applySelectRange } = useSheetCanvas
   onSelectRange: (r0, c0, r1, c1, anchorR, anchorC) =>
     emit('select-range', r0, c0, r1, c1, anchorR, anchorC),
 })
+
+function onViewportDragOver(e: DragEvent): void {
+  if (!editableCpt.value) return
+  if (e.dataTransfer?.types.includes('Files')) {
+    e.dataTransfer.dropEffect = 'copy'
+  }
+}
+
+async function onViewportDrop(e: DragEvent): Promise<void> {
+  if (!editableCpt.value) return
+  const files = Array.from(e.dataTransfer?.files ?? [])
+  if (!files.length) return
+  emit('viewport-drop', e)
+}
 
 const inlineEdit = useSheetInlineEdit({
   sheet,
@@ -290,7 +348,10 @@ const {
 })
 
 const isPointerBlocked = () =>
-  resizeInteractionActive() || rowMoveInteractionActive() || colMoveInteractionActive()
+  !editableCpt.value ||
+  resizeInteractionActive() ||
+  rowMoveInteractionActive() ||
+  colMoveInteractionActive()
 
 const documentDrag = useSheetDocumentDrag({
   selectionDrag,
@@ -310,6 +371,7 @@ const {
   onContextMenu,
 } = useSheetContextMenu({
   canvasEl,
+  editable: editableCpt,
   getLayout: layoutForHit,
   getMetrics: gridMetrics,
   getSelection: () => sel.value,
@@ -347,6 +409,7 @@ const { scheduleDraw, onScroll } = useSheetCanvasDraw({
   rowHeaderWidth: computed(() => props.rowHeaderWidth),
   columnHeaderHeight: computed(() => props.columnHeaderHeight),
   onScrollLayout: () => {
+    bumpViewportTick()
     if (editing.value) inlineEdit.updateEditorWidth()
     closeCtxMenu()
   },
@@ -381,6 +444,7 @@ watch([totalW, totalH], () => nextTick(syncScrollMetrics))
 
 const { onKeyDown } = useSheetKeyboard({
   sheet,
+  editable: editableCpt,
   editing,
   activeCell,
   totalRows,
@@ -392,10 +456,12 @@ const { onKeyDown } = useSheetKeyboard({
   onDraw: scheduleDraw,
 })
 
-const { onCanvasMouseLeave, onCanvasMouseMove, onMouseDown, onDblClick } =
+const { onCanvasMouseLeave, onCanvasMouseMove, onMouseDown: onPointerMouseDown, onDblClick } =
   useSheetCanvasPointer({
     rootEl,
     canvasEl,
+    sheet,
+    editable: editableCpt,
     getLayout: layoutForHit,
     gridMetrics,
     isPointerBlocked,
@@ -416,11 +482,24 @@ const { onCanvasMouseLeave, onCanvasMouseMove, onMouseDown, onDblClick } =
     openEditor,
     cellEditInitial,
     onCellClick: (r, c) => emit('cell-click', r, c),
+    onCellDblClick: (r, c) => !!props.resolveCellDblClick?.(r, c),
     scheduleDraw,
     hideErrorTip,
     updateErrorTipFromEvent,
     getMergeContext: () => sheet.value?.createMergeContext() ?? MergeContext.empty(),
   })
+
+function onMouseDown(e: MouseEvent): void {
+  props.sheet?.extensions.forEach((ext) => ext.handleViewportMouseDown(e))
+  emit('viewport-mousedown', e)
+  onPointerMouseDown(e)
+}
+
+watch(editableCpt, (canEdit) => {
+  if (canEdit) return
+  inlineEdit.cancelEdit()
+  closeCtxMenu()
+})
 
 onUnmounted(() => {
   endDragSelect()
@@ -440,6 +519,10 @@ defineExpose({
 </script>
 
 <style scoped>
+.sheet-canvas-root.is-readonly {
+  cursor: default;
+}
+
 .sheet-canvas-root {
   flex: 1 1 0;
   min-height: 0;

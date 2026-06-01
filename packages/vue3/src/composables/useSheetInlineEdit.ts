@@ -179,6 +179,15 @@ export function useSheetInlineEdit(options: {
     const fe = options.formulaEdit
     if (!fe?.active.value) return
     const { r, c } = fe.anchor.value
+    if (options.sheet.value?.state.cellHasImages(r, c)) {
+      fe.cancel()
+      return
+    }
+    const dvSync = options.sheet.value?.state.getDataVerification(r, c)
+    if (dvSync?.type === 'dropdown') {
+      fe.cancel()
+      return
+    }
     const text = fe.text.value
     const caretPos = fe.caret.value
 
@@ -269,6 +278,9 @@ export function useSheetInlineEdit(options: {
   }
 
   function openEditor(r: number, c: number, initial = ''): void {
+    if (options.sheet.value?.state.cellHasImages(r, c)) return
+    const dv = options.sheet.value?.state.getDataVerification(r, c)
+    if (dv?.type === 'dropdown') return
     editR.value = r
     editC.value = c
     editorValue.value = initial

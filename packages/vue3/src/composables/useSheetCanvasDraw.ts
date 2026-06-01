@@ -53,6 +53,12 @@ export function useSheetCanvasDraw(options: {
   function scheduleDraw(): void {
     if (drawDirty) return
     drawDirty = true
+    // 后台标签页会节流 rAF，协同远程变更需立即绘制
+    if (typeof document !== 'undefined' && document.hidden) {
+      drawDirty = false
+      draw()
+      return
+    }
     rafId = requestAnimationFrame(() => {
       drawDirty = false
       draw()
@@ -95,13 +101,15 @@ export function useSheetCanvasDraw(options: {
         totalRows: metrics.totalRows,
         totalCols: metrics.totalCols,
       }
-      if (
-        prev.viewportW !== w ||
-        prev.viewportH !== h ||
-        prev.scrollX !== nextLayout.scrollX ||
-        prev.scrollY !== nextLayout.scrollY
-      ) {
-        options.layout.value = nextLayout
+      // 行列高宽变更后 metrics 会变，必须同步 layout（否则浮动层仍用旧 metrics，需滚动才刷新）
+      options.layout.value = nextLayout
+
+      const dvMap = new Map<string, import('@speed-sheet/shared').DataVerificationRule>()
+      const state = options.sheet.value?.state
+      if (state) {
+        for (const item of state.getAllDataVerifications()) {
+          dvMap.set(`${item.r}_${item.c}`, item.rule)
+        }
       }
 
       renderSheet(ctx, {
@@ -115,6 +123,7 @@ export function useSheetCanvasDraw(options: {
           : undefined,
         clipboardRange: options.sheet.value?.getClipboardRange?.() ?? null,
         formulaRefRanges: options.formulaRefRanges.value,
+        dataVerifications: dvMap,
       })
     } finally {
       isDrawing = false
@@ -155,7 +164,12 @@ export function useSheetCanvasDraw(options: {
     () => scheduleDraw(),
   )
 
+  function onVisibilityChange(): void {
+    if (!document.hidden) scheduleDraw()
+  }
+
   onMounted(() => {
+    document.addEventListener('visibilitychange', onVisibilityChange)
     resizeObs = new ResizeObserver((entries) => {
       const entry = entries[entries.length - 1]
       if (!entry) return
@@ -184,6 +198,7 @@ export function useSheetCanvasDraw(options: {
   })
 
   onUnmounted(() => {
+    document.removeEventListener('visibilitychange', onVisibilityChange)
     resizeObs?.disconnect()
     cancelAnimationFrame(rafId)
     cancelAnimationFrame(resizeRafId)

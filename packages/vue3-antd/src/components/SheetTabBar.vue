@@ -27,12 +27,14 @@ const props = withDefaults(
   defineProps<{
     sheet: Sheet | null
     revision: number
+    editable?: boolean
     lang?: SpeedSheetProps['lang']
     menuKeys?: SheetTabMenuItemConfig[]
     excludeMenuKeys?: string[]
   }>(),
   {
     lang: 'zh',
+    editable: true,
   },
 )
 
@@ -158,6 +160,7 @@ function onPickerOpenChange(open: boolean): void {
 }
 
 function openTabMenu(tabId: string): void {
+  if (!props.editable) return
   props.sheet?.switchSheet(tabId)
   activeSheetId.value = tabId
   menuOpenSheetId.value = tabId
@@ -174,6 +177,7 @@ function onSwitchFromList(id: string): void {
 }
 
 function onAddSheet(): void {
+  if (!props.editable) return
   const id = props.sheet?.addSheet()
   if (id) {
     activeSheetId.value = id
@@ -182,6 +186,7 @@ function onAddSheet(): void {
 }
 
 function onDragEnd(): void {
+  if (!props.editable) return
   const ids = tabItems.value.map((t) => t.id)
   props.sheet?.reorderSheets(ids)
   nextTick(updateTabScrollState)
@@ -210,6 +215,7 @@ defineExpose({
           tag="ul"
           class="sheet-tab-list"
           handle=".sheet-tab-list-drag"
+          :disabled="!editable"
           :animation="150"
           ghost-class="sheet-tab-list-ghost"
           @end="onDragEnd"
@@ -269,6 +275,7 @@ defineExpose({
           item-key="id"
           class="sheet-tabs-draggable"
           handle=".sheet-tab-drag-handle"
+          :disabled="!editable"
           :animation="150"
           ghost-class="sheet-tab-ghost"
           @end="onDragEnd"
@@ -281,12 +288,16 @@ defineExpose({
               @contextmenu.prevent="openTabMenu(tab.id)"
             >
               <span
-                class="sheet-tab-drag-handle sheet-tab-label"
+                :class="[
+                  'sheet-tab-label',
+                  editable ? 'sheet-tab-drag-handle' : 'sheet-tab-label-readonly',
+                ]"
                 @click="onSwitchSheet(tab.id)"
               >
                 {{ tab.label }}
               </span>
               <a-dropdown
+                v-if="editable"
                 :open="isMenuOpen(tab.id)"
                 :trigger="['click']"
                 placement="topLeft"
@@ -338,6 +349,7 @@ defineExpose({
     </div>
 
     <a-button
+      v-if="editable"
       type="text"
       size="small"
       class="sheet-tab-add-btn insert-sheet-tab"

@@ -1,5 +1,91 @@
 # speed-sheet 开发日志
 
+## 2026-06-01 — 插入菜单、下拉列表、图片气泡与 UI 集成
+
+### 背景
+
+对齐语雀 / Speed Tiptap Editor 的插入能力与扩展气泡模式；`@speed-sheet/vue3-antd` 补齐下拉数据验证、图片插入，并收敛扩展 overlay 与样式变量约定。
+
+### 插入菜单（`menus/insert/`）
+
+- Key 驱动注册：`insertMenuKeys` / `insertMenuConfig`（`SpeedSheet` props）
+- 默认项：复选框、**下拉列表**、图片、链接、附件、备注、公式（见 `defaultInsertMenuKeys`）
+- 工具栏 `InsertMenu.vue` 接入 `useInsertMenu` + `builtins.tsx`
+- 富文本选区插入下拉前可弹确认（避免丢图片/附件）
+
+### 下拉列表（Data Verification · dropdown）
+
+**Core**
+
+- `DataVerificationRule` 扩展：`options`、`multiSelect`、`useColor`、`value`
+- 命令：`insertDropdown`、`setDropdownValue`、`removeDropdown`（`extension/core/cell-insert.ts`）
+- Canvas：`drawCellDropdown` 在单元格内绘制取值文本 + 下拉箭头（无 DOM overlay 选值层）
+
+**交互（vue3 + vue3-antd）**
+
+| 操作 | 行为 |
+|------|------|
+| 单击已有下拉的格 | 展开/收起取值气泡（`togglePick`，约 250ms 延迟，避免与双击冲突） |
+| 双击 | 打开配置气泡（`resolveCellDblClick`，不进入内联编辑） |
+| 配置面板确认 | 选项 trim 后为空 → 不应用下拉模式 |
+| 配置面板「移除」 | `removeDropdown`，恢复普通单元格 |
+| Delete / Backspace | 选区内批量 `removeDropdown`（`SheetDropdown` 扩展快捷键） |
+
+**配置面板**（`bubbleMenus/dropdownConfigMenu/DropdownListPanel.vue`）
+
+- 默认 3 个空输入，打开聚焦第一项；支持多选/颜色开关、增删选项
+- 通过 `provideDropdownConfigPanel` + 插入菜单 / 双击打开
+
+**取值气泡**（`bubbleMenus/dropdownPickMenu/`）
+
+- 32px 行高，选中项右侧 √（`--ant-*` 变量）
+- 单选选后关闭；多选 toggle 数组值
+
+**架构**
+
+- `SheetDropdown` 扩展 → `addBubbleMenu()` → `dropdownMenus/index.vue`（config + pick）
+- 与图片一致：由 `SheetBubbleMenusHost` 挂载，**不在** `SpeedSheet` Teleport
+- `BubbleContainer` 统一浮层 padding / 背景 / 阴影；子菜单勿再覆盖外壳样式
+
+**vue3 headless 补充**
+
+- `SheetCanvas`：`resolveCellDblClick` prop，返回 `true` 时跳过默认内联编辑器
+- `useSheetKeyboard`：焦点在 input/textarea 等表单控件时不拦截按键（配置面板可输入）
+
+### 图片插入（摘要，同批落地）
+
+- `@speed-sheet/extension-image` + `SheetImage` 扩展 + `imageMenu` 气泡
+- App 级 `upload` / `useSpeedSheetProvider`；插入首张图可清单元格文本
+- 行高列宽变更时 `layout` 同步，图片随格缩放
+
+### 样式与 Cursor 规则
+
+- 气泡 / 下拉 UI 优先 `var(--ant-*)`，业务色 `--speed-*` 见 `style/base.less`
+- `.cursor/rules/vue3-layering.mdc` 增补 **bubbleMenus / 扩展 overlay** 变量与目录约定
+
+### 宿主集成（`install.ts`）
+
+- `app.use(SpeedComponents)` 改为 **`ensureSpeedComponents`**（已安装则只 `setConfig` 合并 `iconfontUrl`，避免 Vue 重复 plugin 警告）
+- Sheet 的 `apis` / `upload` 仍走 `setSpeedSheetGlobalConfig`，与 SpeedComponents 全局 config 分层
+
+### 涉及文件（摘要）
+
+| 区域 | 路径 |
+|------|------|
+| Core 命令 / 渲染 | `packages/core/src/extension/core/cell-insert.ts`、`renderer/canvas-renderer.ts` |
+| vue3 | `SheetCanvas.vue`、`useSheetCanvasPointer.ts`、`useSheetKeyboard.ts` |
+| vue3-antd 扩展 | `extensions/dropdown/`、`extensions/image/` |
+| 气泡 | `bubbleMenus/dropdownConfigMenu/`、`dropdownPickMenu/`、`BubbleContainer.vue` |
+| 菜单 | `menus/insert/` |
+| 外壳 | `SpeedSheet.vue`、`install.ts` |
+
+### 相关文档
+
+- 架构：[`ARCHITECTURE.md`](../ARCHITECTURE.md) § vue3-antd
+- Cursor：[`/.cursor/rules/vue3-layering.mdc`](../.cursor/rules/vue3-layering.mdc)
+
+---
+
 ## 2026-05-27 — Undo/Redo 调研 + Luckysheet 对照规则
 
 ### 结论

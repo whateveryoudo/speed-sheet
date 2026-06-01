@@ -10,6 +10,7 @@ import type { ClipboardPayload } from './extension/core/clipboard'
 import { sheetCompatApi, type LuckysheetRange } from './api/sheet-compat'
 import { canRedoSheet, canUndoSheet, getSheetUndoManager } from './yjs/undo-manager'
 import { transactSystem, transactUser } from './yjs/transact'
+import { YOriginUser } from './yjs/origins'
 
 export type { LuckysheetRange } from './api/sheet-compat'
 
@@ -52,6 +53,8 @@ export class Sheet {
 
   private _isDestroyed = false
   private _activeSheetId = '0'
+  /** 外部 ydoc 协同：远程事务到达时刷新 UI */
+  private _collabUpdateHandler: ((update: Uint8Array, origin: unknown) => void) | null = null
 
   constructor(options: SheetOptions = {}) {
     this.options = options
@@ -63,8 +66,27 @@ export class Sheet {
     this._initExtensions(options)
     this._initData(options)
     this._initCommands()
+    this._initCollabSync()
 
     options.onUpdate?.(this)
+  }
+
+  /** 订阅共享 Y.Doc 的远程变更，驱动 revision / 画布重绘 */
+  private _initCollabSync(): void {
+    if (!this.options.ydoc) return
+
+    this._collabUpdateHandler = (_update, origin) => {
+      if (origin === YOriginUser) return
+      this.notifyUpdate()
+    }
+    this.ydoc.on('update', this._collabUpdateHandler)
+  }
+
+  private _teardownCollabSync(): void {
+    if (this._collabUpdateHandler) {
+      this.ydoc.off('update', this._collabUpdateHandler)
+      this._collabUpdateHandler = null
+    }
   }
 
   // ---- Initialization ----
@@ -196,6 +218,12 @@ export class Sheet {
           ySheet.set('colWidth', objectToYMap(sheetSnap.config.colWidth))
           ySheet.set('rowHidden', objectToYMap(sheetSnap.config.rowHidden))
           ySheet.set('colHidden', objectToYMap(sheetSnap.config.colHidden))
+        }
+        if (sheetSnap.dataVerification) {
+          ySheet.set('dataVerification', objectToYMap(sheetSnap.dataVerification))
+        }
+        if (sheetSnap.images) {
+          ySheet.set('images', objectToYMap(sheetSnap.images))
         }
 
         sheetsMap.set(sheetSnap.id, ySheet)
@@ -527,6 +555,8 @@ export class Sheet {
   destroy(): void {
     if (this._isDestroyed) return
     this._isDestroyed = true
+
+    this._teardownCollabSync()
 
     for (const ext of this.extensions) {
       ext.destroy()

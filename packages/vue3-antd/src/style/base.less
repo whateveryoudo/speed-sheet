@@ -1,6 +1,6 @@
 // 业务语义变量（挂在 .speed-sheet 根上，子组件 scoped 样式内用 var(--speed-*) 引用）
 // 命名：--speed-{类别}-{用途}-{色值描述}-{分类号}，例 --speed-color-border-gray-1
-// ant token：speed-components useAntdCssVars 注入 --ant-*，优先 fallback 到 var(--ant-color-primary) 等
+// ant token：speed-components useAntdCssVars 注入 --ant-*；组件样式优先 var(--ant-*)，见 .cursor/rules/vue3-layering.mdc
 .speed-sheet {
   --speed-color-border-gray: #e8e8e8;
   --speed-color-bg-gray: #f5f5f5;

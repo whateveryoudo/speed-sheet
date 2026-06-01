@@ -1,10 +1,13 @@
-import type { Ref, ComputedRef } from 'vue'
+import type { Ref, ComputedRef, MaybeRefOrGetter } from 'vue'
+import { toValue } from 'vue'
 import {
   resolveCanvasPointerTarget,
   resolvePointerCursor,
+  hitCheckboxAt,
   MergeContext,
   type GridLayout,
   type GridMetrics,
+  type Sheet,
 } from '@speed-sheet/core'
 import type { useSheetSelectionDrag } from './useSheetSelectionDrag'
 import type { useSheetInlineEdit } from './useSheetInlineEdit'
@@ -15,6 +18,8 @@ type InlineEdit = ReturnType<typeof useSheetInlineEdit>
 export function useSheetCanvasPointer(options: {
   rootEl: Ref<HTMLElement | undefined>
   canvasEl: Ref<HTMLCanvasElement | undefined>
+  sheet: Ref<Sheet | null>
+  editable: MaybeRefOrGetter<boolean>
   getLayout: () => GridLayout
   gridMetrics: ComputedRef<GridMetrics>
   isPointerBlocked: () => boolean
@@ -42,6 +47,8 @@ export function useSheetCanvasPointer(options: {
   openEditor: (r: number, c: number, initial?: string) => void
   cellEditInitial: (r: number, c: number) => string
   onCellClick: (r: number, c: number) => void
+  /** 返回 true 时不打开默认单元格编辑器（如双击编辑下拉配置） */
+  onCellDblClick?: (r: number, c: number) => boolean | void
   scheduleDraw: () => void
   hideErrorTip: () => void
   updateErrorTipFromEvent: (e: MouseEvent) => void
@@ -63,6 +70,7 @@ export function useSheetCanvasPointer(options: {
 
   /** 表头 resize / 行拖拽命中；命中则已处理并返回 true */
   function handleHeaderPointerDown(e: MouseEvent): boolean {
+    if (!toValue(options.editable)) return false
     const canvas = options.canvasEl.value
     const coords = canvasCoords(e)
     if (!canvas || !coords) return false
@@ -141,7 +149,30 @@ export function useSheetCanvasPointer(options: {
     const range = mc.rangeForHit(raw.r, raw.c)
     const { anchor } = range
 
-    if (options.effectiveFormulaPick.value) {
+    if (toValue(options.editable)) {
+      const coords = canvasCoords(e)
+      const s = options.sheet.value
+      if (coords && s) {
+        const rule = s.state.getDataVerification(anchor.r, anchor.c)
+        if (
+          hitCheckboxAt(
+            coords.cx,
+            coords.cy,
+            anchor.r,
+            anchor.c,
+            options.getLayout(),
+            options.gridMetrics.value,
+            rule,
+          )
+        ) {
+          s.chain().toggleCheckbox({ r: anchor.r, c: anchor.c }).run()
+          options.scheduleDraw()
+          return
+        }
+      }
+    }
+
+    if (toValue(options.editable) && options.effectiveFormulaPick.value) {
       e.preventDefault()
       if (options.inlineEdit.isEditingCell(anchor.r, anchor.c)) return
       options.inlineEdit.startFormulaPick(anchor.r, anchor.c)
@@ -167,9 +198,11 @@ export function useSheetCanvasPointer(options: {
   }
 
   function onDblClick(e: MouseEvent): void {
+    if (!toValue(options.editable)) return
     const pt = options.selectionDrag.cellPointFromEvent(e)
     if (!pt) return
     options.endDragSelect()
+    if (options.onCellDblClick?.(pt.r, pt.c)) return
     options.openEditor(pt.r, pt.c, options.cellEditInitial(pt.r, pt.c))
   }
 

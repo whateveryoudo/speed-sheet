@@ -1,4 +1,4 @@
-import { ref, computed, type Ref, type ComputedRef } from 'vue'
+import { ref, computed, toValue, type Ref, type ComputedRef, type MaybeRefOrGetter } from 'vue'
 import {
   pointerFromMouseEvent,
   resolveContextMenuHit,
@@ -13,6 +13,7 @@ import type { ContextMenuState } from '../types/context-menu'
 
 export function useSheetContextMenu(options: {
   canvasEl: Ref<HTMLCanvasElement | undefined>
+  editable: MaybeRefOrGetter<boolean>
   getLayout: () => GridLayout
   getMetrics: ComputedRef<GridMetrics> | Ref<GridMetrics>
   getSelection: () => import('@speed-sheet/shared').Selection
@@ -89,6 +90,7 @@ export function useSheetContextMenu(options: {
     const hit = resolveHit(e)
     if (!hit) return
     applyHit(hit)
+    if (!toValue(options.editable)) return
     ctxMenu.value = { show: true, ...hit }
     options.onContextMenu({ ...hit, close: closeCtxMenu })
   }

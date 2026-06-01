@@ -30,6 +30,13 @@ export interface ExtensionConfig<S = any> {
   onSelectionChange?: (selection: any) => void
   onSheetSwitch?: (sheetId: string) => void
 
+  /** Framework overlay (Vue/React component). Resolved at init; opaque to core. */
+  addNodeView?: (this: Extension<S>, ctx: ExtensionCommandContext) => unknown
+  /** Floating bubble menu UI (Vue/React). Resolved at init; opaque to core. */
+  addBubbleMenu?: (this: Extension<S>, ctx: ExtensionCommandContext) => unknown
+  /** Click on sheet viewport background (e.g. clear floating image selection). */
+  onViewportMouseDown?: (this: Extension<S>, e: MouseEvent) => void
+
   addExtensions?: () => Extension[]
 }
 
@@ -41,6 +48,10 @@ export class Extension<S = any> {
   public priority: number
   public options: Record<string, any> = {}
   public storage: S = {} as S
+  /** Resolved overlay component from addNodeView (framework-specific). */
+  public nodeView: unknown = null
+  /** Resolved bubble menu component from addBubbleMenu (framework-specific). */
+  public bubbleMenu: unknown = null
 
   private config: ExtensionConfig<S>
   private parentExtension: Extension | null = null
@@ -80,6 +91,24 @@ export class Extension<S = any> {
     if (this.config.onInit) {
       this.config.onInit.call(this, sheet)
     }
+    if (this.config.addNodeView) {
+      this.nodeView = this.config.addNodeView.call(this, { sheet })
+    }
+    if (this.config.addBubbleMenu) {
+      this.bubbleMenu = this.config.addBubbleMenu.call(this, { sheet })
+    }
+  }
+
+  getNodeView(): unknown {
+    return this.nodeView
+  }
+
+  getBubbleMenu(): unknown {
+    return this.bubbleMenu
+  }
+
+  handleViewportMouseDown(e: MouseEvent): void {
+    this.config.onViewportMouseDown?.call(this, e)
   }
 
   destroy(): void {

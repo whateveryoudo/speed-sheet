@@ -6,6 +6,8 @@ export interface SheetToolbarContext {
   sheet: Ref<Sheet | null | undefined>
   /** 与 useSheet.revision 同步，驱动工具栏读取 sheet.state */
   revision: Ref<number>
+  /** 是否可编辑（查看态为 false） */
+  editable: Ref<boolean>
   formatPainterActive: Ref<boolean>
   copiedStyle: Ref<Partial<CellAttributes> | null>
   findReplaceOpen: Ref<boolean>

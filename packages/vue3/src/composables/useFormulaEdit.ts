@@ -59,6 +59,7 @@ export function provideFormulaEdit(): FormulaEditContext {
       if (isFormulaText(initial)) ctx.syncHighlights(null)
     },
     beginAtCell(sheet, r, c, fresh = false) {
+      if (sheet.state.cellHasImages(r, c)) return
       const initial = fresh ? '=' : getCellFormulaInitial(sheet, r, c)
       ctx.start(r, c, initial)
       caret.value = initial === '=' ? 1 : initial.length
@@ -107,6 +108,7 @@ export function provideFormulaEdit(): FormulaEditContext {
       caret.value = caretPos
     },
     pickFunction(sheet, r, c, fn) {
+      if (sheet.state.cellHasImages(r, c)) return
       const sameCell =
         active.value && anchor.value.r === r && anchor.value.c === c
       const snippet = `${fn}()`

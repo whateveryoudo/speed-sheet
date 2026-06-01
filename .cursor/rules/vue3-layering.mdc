@@ -28,6 +28,21 @@ globs:
 | `SheetCanvas`：canvas、滚动、单元格编辑、选区同步 | 公式栏、底部页签条、工具栏 DOM |
 | `useSheet` → `sheet` + `revision` | `SheetChromeOptions`、antd / element |
 | `#context-menu` slot（坐标 + close，无 UI） | 页签 Pop、工具栏按钮 |
+| **扩展挂载胶水**（无 antd/业务 UI）：`VueSheetOverlayRenderer`、`VueSheetBubbleRenderer`、`SheetExtensionViews`、`SheetBubbleMenusHost` + `useSheetBubbleFloating` | 具体扩展 UI：`Layer.vue`、`bubbleMenus/imageMenu`、图标按钮菜单 |
+| `provideSheetViewport` / upload inject（数据通道） | `viewerjs`、预览类、`useCustomUpload`、文件下载 UI |
+
+### headless 边界（改 vue3 前必答）
+
+1. 新增 `.vue` 是否含 **业务菜单/图标/预览**？→ 只能放 **vue3-antd**（或未来 element 包）。  
+2. 新增依赖是否仅为 **某一 UI 皮** 服务（如 viewerjs、antd）？→ 不进 vue3。  
+3. vue3 允许的是 **与 UI 库无关的挂载/定位引擎**（对标 `@tiptap/vue-3` 的 NodeViewRenderer / BubbleMenu 插件，不是 `bubbleMenus/imageMenu` 本身）。  
+4. **拿不准时**：先写 3 行说明落哪个包，对照下表，**不要先提交 vue3 代码**。
+
+| 层级 | 示例 |
+|------|------|
+| core / extension-* | 命令、`layout.ts`、无 Vue |
+| vue3 | `SheetCanvas`、`useSheetBubbleFloating`、扩展组件 **注册器** |
+| vue3-antd | `Layer.vue`、`BubbleContainer`、`imageMenu`、`SheetPreviewImage` |
 
 ### 响应式要点
 
@@ -70,21 +85,66 @@ SheetTabBar → vuedraggable + a-dropdown（▾ click / 页签 contextmenu）→
 
 **禁止**用 `<style scoped src="*.less">` 外链整块 chrome；各 SFC 样式写在各自文件内。共享变量放 `style/base.less`，不要共享组件局部 class 文件。
 
-### CSS 变量
+### CSS 变量（强制，含 bubbleMenus / 扩展 overlay）
 
-- 可直接使用 antd 注入的 **`var(--ant-*)`**（`useAntdCssVars`）。
-- 业务语义色在 **`.speed-sheet`** 下定义于 `style/base.less`。
-- 自定义变量命名：**`--speed-{类别}-{用途}-{色值描述}-{分类号}`**  
-  例：`--speed-color-border-gray-1`、`--speed-color-bg-gray-2`。新增变量只加在 `base.less`，组件内用 `var(--speed-*)`，并尽量带 `var(--ant-*)` 作 fallback。
-- 检查清单：避免硬编码 `#hex`；优先 `--ant-*`，其次 `--speed-*`。
+antd 通过 `useAntdCssVars` 注入 **`--ant-*`**。所有 **vue3-antd 渲染 UI**（工具栏、菜单、`bubbleMenus/*`、扩展气泡内容）必须用变量，**禁止**在 `<style>` / Uno 里写死 `#hex`、`rgba(0,0,0,0.88)` 等。
 
-### 菜单目录
+#### 优先级
+
+1. **`var(--ant-*)`** — 颜色、字号、间距、圆角、阴影、动效（见下表常用 token）。
+2. **`var(--speed-*)`** — 仅当 antd 无合适语义时，在 **`packages/vue3-antd/src/style/base.less`** 的 `.speed-sheet` 下新增，命名 `--speed-{类别}-{用途}-{描述}-{序号}`，并 **fallback 到 ant**：  
+   `color: var(--speed-color-border-gray, var(--ant-color-border));`
+3. **组件 scoped 局部变量** — 仅该 SFC 独有、且不会复用时，可在根选择器上定义 `--sheet-dropdown-pick-item-height: 32px` 等，仍优先引用 `--ant-*`。
+
+#### 常用 `--ant-*` 对照（写样式时直接抄）
+
+| 用途 | 变量 |
+|------|------|
+| 正文 / 标题 | `--ant-color-text`、`--ant-font-size`、`--ant-font-weight-strong` |
+| 弱化 / 图标灰 | `--ant-color-text-secondary`、`--ant-color-text-tertiary`、`--ant-color-text-quaternary` |
+| 主色 / 选中底 | `--ant-color-primary`、`--ant-color-primary-bg` |
+| 危险 / 删除 | `--ant-color-error`、`--ant-color-error-hover` |
+| 容器底 / 浮层 | `--ant-color-bg-container`、`--ant-color-bg-elevated` |
+| 悬停行 | `--ant-control-item-bg-hover` |
+| 边框 | `--ant-color-border`、`--ant-color-border-secondary` |
+| 间距 | `--ant-size-xs`、`--ant-size-sm`、`--ant-size-md` |
+| 圆角 / 阴影 | `--ant-border-radius`、`--ant-box-shadow-secondary` |
+| 过渡 | `--ant-motion-duration-mid` |
+
+写法建议带 fallback：`padding: var(--ant-size-sm, 12px);`（token 未注入时仍可读）。
+
+#### 扩展气泡 / `BubbleContainer`
+
+- **外壳**（白底、padding、圆角、阴影）只由 `bubbleMenus/BubbleContainer.vue` 的 `.sheet-bubble-menu-wrapper` 用 `--ant-color-bg-elevated`、`--ant-border-radius`、`--ant-box-shadow-secondary` 承担。
+- **子菜单**（`dropdownPickMenu`、`dropdownConfigMenu`、`imageMenu` 等）**不要**再设 `bubble-class-name` 去覆盖透明/无阴影/重复背景；只写**内容区** class（列表行高、选中态等）。
+- 列表项示例：`color: var(--ant-color-text)`；`:hover { background: var(--ant-control-item-bg-hover); }`；`.is-selected { background: var(--ant-color-primary-bg); }`；勾选 `color: var(--ant-color-primary)`。
+- 模板里 destructive 图标用 scoped class + `var(--ant-color-error)`，**不要** `text-[#bfbfbf]` / `text-[#f00]`；禁用态用 `--ant-color-text-quaternary`。
+
+#### UnoCSS 与变量
+
+- 简单布局可用 Uno（`flex`、`gap-2`）。
+- **颜色、字号**优先 scoped + `var(--ant-*)`；若必须用 Uno 原子色，写成 `text-[var(--ant-color-text-tertiary)]`，禁止裸 hex。
+
+#### 检查清单（样式）
+
+- [ ] 无 `#` / `rgb(` 硬编码（动态单元格色除外）。
+- [ ] 气泡子组件未重复 BubbleContainer 的背景/阴影。
+- [ ] 新语义色已进 `base.less` 而非多个 SFC 各写一份。
+
+### 菜单与气泡目录
 
 ```
 menus/
   toolbar/          # 顶部工具栏
+  insert/           # 插入菜单（仅入口；配置面板在 bubbleMenus）
   contextMenu/      # 单元格右键（antd Menu）
   sheetTabMenu/     # 页签右键 / ▾（antd Menu + SubMenu）
+bubbleMenus/
+  BubbleContainer.vue       # 统一浮层外壳（--ant-* 背景/阴影）
+  dropdownConfigMenu/       # 下拉配置 + DropdownListPanel.vue
+  dropdownPickMenu/         # 下拉取值列表
+  imageMenu/                # 图片气泡
+  dropdownMenus/index.vue   # SheetDropdown 扩展聚合挂载
 components/
   SheetFormulaBar.vue
   SheetTabBar.vue
@@ -104,9 +164,10 @@ components/
 
 ## 改代码时的检查清单 
 
+0. **是否已读本文件 + `reference-architecture-before-code.mdc`？** 用户说「参考/对齐」时必须先架构方案，再编码。  
 1. 新 UI 是否依赖 antd？→ 放 **vue3-antd**，不要放进 vue3。
 2. 新数据能力？→ **core `Sheet`** + `notifyUpdate`。
 3. canvas 是否要重绘？→ 确保 `revision` 递增或 watch `revision`。
 4. 布局是否可用 `a-flex` / `a-space`？→ 优先 antd，其次 UnoCSS，再 scoped class。
 5. 样式是否写在当前 SFC 的 `<style scoped>`？→ 禁止 `src` 外链组件样式；变量进 `base.less`。
-6. 是否硬编码 hex？→ 改用 `var(--ant-*)` 或 `var(--speed-*)`。
+6. 是否硬编码 hex / rgba？→ 改用 `var(--ant-*)` 或 `base.less` 的 `var(--speed-*)`；气泡勿重复 BubbleContainer 外壳样式。

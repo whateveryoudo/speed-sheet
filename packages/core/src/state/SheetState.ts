@@ -1,6 +1,15 @@
 import * as Y from 'yjs'
 import { cellIdKey, parseCellIdKey } from '@speed-sheet/shared'
-import type { CellAttributes, MergeRange, SheetConfig, Selection, SheetSnapshot } from '@speed-sheet/shared'
+import type {
+  CellAttributes,
+  DataVerificationRule,
+  MergeRange,
+  SheetConfig,
+  SheetImageItem,
+  Selection,
+  SheetSnapshot,
+} from '@speed-sheet/shared'
+import { dataVerificationKey } from '@speed-sheet/shared'
 import { transactUser } from '../yjs/transact'
 import { MIN_COL_WIDTH, MIN_ROW_HEIGHT } from '../renderer/grid-metrics'
 import { mapColIndexAfterMove } from '../renderer/col-move-hit'
@@ -122,6 +131,78 @@ export class SheetState {
     if (!this.root.has('rowHidden')) this.root.set('rowHidden', new Y.Map())
     if (!this.root.has('colHidden')) this.root.set('colHidden', new Y.Map())
     if (!this.root.has('freeze')) this.root.set('freeze', new Y.Map())
+    if (!this.root.has('dataVerification')) this.root.set('dataVerification', new Y.Map())
+    if (!this.root.has('images')) this.root.set('images', new Y.Map())
+  }
+
+  get dataVerification(): Y.Map<unknown> {
+    return this.root.get('dataVerification') as Y.Map<unknown>
+  }
+
+  get images(): Y.Map<unknown> {
+    return this.root.get('images') as Y.Map<unknown>
+  }
+
+  getDataVerification(r: number, c: number): DataVerificationRule | null {
+    const raw = this.dataVerification.get(dataVerificationKey(r, c))
+    if (!raw || typeof raw !== 'object') return null
+    return raw as DataVerificationRule
+  }
+
+  setDataVerification(r: number, c: number, rule: DataVerificationRule | null): void {
+    const key = dataVerificationKey(r, c)
+    this._transact(() => {
+      if (rule == null) this.dataVerification.delete(key)
+      else this.dataVerification.set(key, rule)
+    })
+  }
+
+  getAllDataVerifications(): Array<{ r: number; c: number; rule: DataVerificationRule }> {
+    const out: Array<{ r: number; c: number; rule: DataVerificationRule }> = []
+    this.dataVerification.forEach((val, key) => {
+      const [rs, cs] = key.split('_')
+      const r = Number(rs)
+      const c = Number(cs)
+      if (!Number.isFinite(r) || !Number.isFinite(c)) return
+      if (val && typeof val === 'object') {
+        out.push({ r, c, rule: val as DataVerificationRule })
+      }
+    })
+    return out
+  }
+
+  getImage(id: string): SheetImageItem | null {
+    const raw = this.images.get(id)
+    if (!raw || typeof raw !== 'object') return null
+    return raw as SheetImageItem
+  }
+
+  getAllImages(): SheetImageItem[] {
+    const out: SheetImageItem[] = []
+    this.images.forEach((val) => {
+      if (val && typeof val === 'object') out.push(val as SheetImageItem)
+    })
+    return out
+  }
+
+  getImagesAtCell(r: number, c: number): SheetImageItem[] {
+    return this.getAllImages().filter((img) => img.row === r && img.col === c)
+  }
+
+  cellHasImages(r: number, c: number): boolean {
+    return this.getImagesAtCell(r, c).length > 0
+  }
+
+  setImage(item: SheetImageItem): void {
+    this._transact(() => {
+      this.images.set(item.id, item)
+    })
+  }
+
+  deleteImage(id: string): void {
+    this._transact(() => {
+      this.images.delete(id)
+    })
   }
 
   // ---- Layout accessors ----
@@ -701,6 +782,8 @@ export class SheetState {
         filters: [],
         freeze: this.freeze.toJSON() as SheetConfig['freeze'],
       },
+      dataVerification: this.dataVerification.toJSON() as Record<string, DataVerificationRule>,
+      images: this.images.toJSON() as Record<string, SheetImageItem>,
     }
   }
 }

@@ -1,0 +1,29 @@
+{
+  "name": "@speed-sheet/extension-image",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Floating sheet image commands and layout helpers for speed-sheet",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@speed-sheet/core": "workspace:^",
+    "@speed-sheet/shared": "workspace:^"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.0"
+  }
+}

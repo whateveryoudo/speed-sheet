@@ -70,12 +70,16 @@ packages/core/src/
 - 把 `scrollX/Y`、`viewportW/H` 传给 `renderSheet`
 - 绑定鼠标/键盘到 `sheet.chain()`，选区在 canvas 内同步到 `sheet`
 - **`#context-menu` slot**（仅 payload，无 UI 库）
+- **`SheetBubbleMenusHost`**：扩展 `getBubbleMenu()` 登记的气泡 UI（无 antd 业务组件）
+- **`resolveCellDblClick`**：宿主/产品层可拦截双击（如下拉格打开配置而非内联编辑）
 
 ### @speed-sheet/vue3-antd 职责
 
 - **`SpeedSheet`** = `SheetFormulaBar` + `SheetToolbarHost` + `SheetCanvas` + `SheetTabBar`
-- 菜单：`menus/toolbar`、`menus/contextMenu`、`menus/sheetTabMenu`（antd）
+- 菜单：`menus/toolbar`、`menus/insert`、`menus/contextMenu`、`menus/sheetTabMenu`（antd）
+- 扩展 UI：`extensions/image`、`extensions/dropdown`；气泡 `bubbleMenus/*`（经 `SheetBubbleMenusHost` 挂载，对标 tiptap `addBubbleMenu`）
 - 样式：`.speed-sheet` + `style/base.less`；优先 `var(--ant-color-*)`（见 speed-components `useAntdCssVars`）
+- 安装：`installSpeedSheetUi` 合并内置扩展、`ensureSpeedComponents`（iconfont 并集，不重复 `app.use`）
 - 约定详见 [`.cursor/rules/vue3-layering.mdc`](.cursor/rules/vue3-layering.mdc)、[`docs/DEVLOG.md`](docs/DEVLOG.md)
 
 ### 协同（Yjs）

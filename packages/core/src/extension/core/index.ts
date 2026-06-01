@@ -5,6 +5,7 @@ import { ClipboardExtension } from './clipboard'
 import { CellEditingExtension } from './cell-editing'
 import { RowColExtension } from './row-col'
 import { MergeExtension } from './merge'
+import { CellInsertExtension } from './cell-insert'
 
 export {
   KeyboardExtension,
@@ -14,6 +15,7 @@ export {
   CellEditingExtension,
   RowColExtension,
   MergeExtension,
+  CellInsertExtension,
 }
 
 /** Built-in extensions always loaded by Sheet */
@@ -25,4 +27,5 @@ export const CORE_EXTENSIONS = [
   CellEditingExtension,
   RowColExtension,
   MergeExtension,
+  CellInsertExtension,
 ]

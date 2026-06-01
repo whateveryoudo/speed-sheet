@@ -50,6 +50,13 @@ export interface SpeedSheetProps {
   toolbarItems?: string[]
   /** 从默认工具栏排除的 key（与 toolbarKeys 同时传时仅 toolbarKeys 生效） */
   excludeToolbarKeys?: string[]
+  /**
+   * 左上角插入菜单项（'|' 为分隔符；默认对齐语雀：复选框/下拉/图链附注/公式）
+   * @see defaultInsertMenuKeys
+   */
+  insertMenuKeys?: import('./menus/insert/types').InsertMenuItemConfig[]
+  /** 插入菜单：includeKeys / excludeKeys / items / groups 覆盖 */
+  insertMenuConfig?: import('./menus/insert/types').InsertMenuConfig
   showSheetTabs?: boolean
   devicePixelRatio?: number
   /** 单元格右键菜单项；未传则用默认内置项 */
@@ -65,4 +72,8 @@ export interface SpeedSheetProps {
   defaultFontSize?: number
   extensions?: (Extension | ExtensionConfig)[]
   ydoc?: Y.Doc
+  /** 是否可编辑；false 为查看态（同一套渲染，屏蔽写入类交互） */
+  editable?: boolean
+  /** 覆盖 App 级 upload（一般无需传，在 app.use(SpeedSheetUi) 配置） */
+  upload?: import('@speed-sheet/vue3').SheetUploadConfig
 }

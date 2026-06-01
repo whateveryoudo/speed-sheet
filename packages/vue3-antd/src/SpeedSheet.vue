@@ -1,5 +1,9 @@
 <template>
-  <div ref="rootEl" class="speed-sheet speed-sheet-root">
+  <div
+    ref="rootEl"
+    class="speed-sheet speed-sheet-root"
+    :class="{ 'is-editable': ui.editable }"
+  >
     <SheetToolbarHost v-if="ui.showToolbar">
       <SheetToolbarMenuBar :toolbar-keys="props.toolbarKeys" :exclude-keys="props.excludeToolbarKeys" />
     </SheetToolbarHost>
@@ -14,14 +18,17 @@
       ref="canvasRef"
       :sheet="sheet"
       :revision="revision"
+      :editable="ui.editable"
       :row-header-width="ui.rowHeaderWidth"
       :column-header-height="ui.columnHeaderHeight"
       :formula-ref-ranges="formulaRefRanges"
       :formula-pick-mode="formulaPickMode"
       :commit-boundary="rootEl"
+      :resolve-cell-dbl-click="resolveCellDblClick"
       @cell-click="onCellClick"
       @formula-pick="onFormulaPick"
       @formula-range-pick="onFormulaRangePick"
+      @viewport-drop="onViewportDrop"
     >
       <template #context-menu="{ r, c, clientX, clientY, target, close }">
         <CellContextMenu
@@ -45,6 +52,7 @@
       ref="tabBarRef"
       :sheet="sheet"
       :revision="revision"
+      :editable="ui.editable"
       :lang="props.lang"
       :menu-keys="props.sheetTabContextMenu"
       :exclude-menu-keys="props.excludeSheetTabMenuKeys"
@@ -53,13 +61,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, provide, ref } from 'vue'
-import {
-  SheetCanvas,
-  useSheet,
-  provideFormulaEdit,
-  useFormulaCanvas,
-} from '@speed-sheet/vue3'
+import { computed, provide, ref, toRef, watch, onMounted, onUnmounted } from 'vue'
+import { SheetCanvas, useSheet, useFormulaCanvas } from '@speed-sheet/vue3'
 import type { Sheet } from '@speed-sheet/core'
 import { isFormulaText } from '@speed-sheet/extension-formula'
 import type { CellAttributes } from '@speed-sheet/shared'
@@ -68,41 +71,87 @@ import { SheetToolbarMenuBar, CellContextMenu } from './menus'
 import SheetFormulaBar from './components/SheetFormulaBar.vue'
 import SheetTabBar from './components/SheetTabBar.vue'
 import SheetToolbarHost from './components/SheetToolbarHost.vue'
+import { useSheetFileInsert } from '@speed-sheet/vue3'
+import { useSheetImageInsert } from './extensions/image'
 import { SHEET_TOOLBAR_KEY } from './composables/useSheetToolbarContext'
 import { useSheetLocale } from './composables/useSheetLocale'
+import { useSpeedSheetProvider } from './composables/useSpeedSheetProvider'
+import { provideInsertMenu } from './composables/useInsertMenuContext'
+import { provideDropdownConfigPanel } from './composables/useDropdownConfigPanel'
+import { provideDropdownPickPanel } from './composables/useDropdownPickPanel'
+import { SheetPreviewImage } from './helpers/sheetPreviewImage'
+import { mergeSpeedSheetExtensions } from './composables/sheetBuiltin'
 
 const props = withDefaults(defineProps<SpeedSheetProps>(), {
   showToolbar: true,
   showSheetTabs: true,
   showFormulaBar: true,
   lang: 'zh',
+  editable: true,
+  upload: undefined,
 })
 
 useSheetLocale(() => props.lang)
 
-const formulaEdit = provideFormulaEdit()
+const { formulaEdit, previewInstance } = useSpeedSheetProvider({
+  editable: toRef(() => props.editable ?? true),
+  upload: toRef(() => props.upload),
+})
+
+provideInsertMenu({
+  insertMenuKeys: toRef(() => props.insertMenuKeys),
+  insertMenuConfig: toRef(() => props.insertMenuConfig),
+})
+
+const { openPanel: openDropdownConfig, closePanel: closeDropdownConfig } =
+  provideDropdownConfigPanel()
+const { togglePick, closePick } = provideDropdownPickPanel()
+
+/** 延迟展开取值层，避免双击时先闪出 pick 再开配置 */
+const DROPDOWN_PICK_CLICK_DELAY_MS = 250
+let dropdownPickClickTimer: ReturnType<typeof setTimeout> | null = null
+
+function cancelPendingDropdownPick(): void {
+  if (dropdownPickClickTimer) {
+    clearTimeout(dropdownPickClickTimer)
+    dropdownPickClickTimer = null
+  }
+}
+
+function scheduleDropdownPickToggle(r: number, c: number): void {
+  cancelPendingDropdownPick()
+  dropdownPickClickTimer = setTimeout(() => {
+    dropdownPickClickTimer = null
+    togglePick({ r, c })
+  }, DROPDOWN_PICK_CLICK_DELAY_MS)
+}
 
 const rootEl = ref<HTMLElement | null>(null)
 const canvasRef = ref<InstanceType<typeof SheetCanvas> | null>(null)
 const tabBarRef = ref<InstanceType<typeof SheetTabBar> | null>(null)
 const viewportEl = computed(() => canvasRef.value?.viewportEl ?? null)
 
-const ui = computed(() => ({
-  showToolbar: props.showToolbar ?? true,
-  showSheetTabs: props.showSheetTabs ?? true,
-  showFormulaBar: props.showFormulaBar ?? true,
-  rowHeaderWidth: props.rowHeaderWidth,
-  columnHeaderHeight: props.columnHeaderHeight,
-}))
+const ui = computed(() => {
+  const canEdit = props.editable ?? true
+  return {
+    showToolbar: (props.showToolbar ?? true) && canEdit,
+    showSheetTabs: props.showSheetTabs ?? true,
+    showFormulaBar: (props.showFormulaBar ?? true) && canEdit,
+    rowHeaderWidth: props.rowHeaderWidth,
+    columnHeaderHeight: props.columnHeaderHeight,
+    editable: canEdit,
+  }
+})
 
 const luckysheetFile = computed(() => props.luckysheetData ?? props.data)
 
 const sheetOptions = computed(() => ({
   snapshot: props.sheetData,
   data: luckysheetFile.value,
-  extensions: props.extensions,
+  extensions: mergeSpeedSheetExtensions(props.extensions),
   ydoc: props.ydoc,
   onUpdate: (s: Sheet) => {
+    if (!(props.editable ?? true)) return
     const snapshot = s.toSnapshot()
     if (snapshot) props.onChange?.(snapshot)
     if (props.onLuckysheetChange) {
@@ -129,6 +178,59 @@ const sheetOptions = computed(() => ({
 
 const { sheet, revision, switchSheet, addSheet } = useSheet(sheetOptions)
 
+onMounted(() => {
+  previewInstance.value = new SheetPreviewImage(() => sheet.value)
+})
+
+onUnmounted(() => {
+  cancelPendingDropdownPick()
+  previewInstance.value?.destroy()
+  previewInstance.value = null
+})
+
+function getDropAnchor(): { r: number; c: number } {
+  const sel = sheet.value?.state.getSelection()
+  if (!sel) return { r: 0, c: 0 }
+  return {
+    r: sel.anchor?.r ?? sel.row[0],
+    c: sel.anchor?.c ?? sel.column[0],
+  }
+}
+
+function getCellSize(r: number, c: number): { w: number; h: number } {
+  const s = sheet.value
+  if (!s) return { w: 120, h: 25 }
+  return {
+    w: s.state.getColWidth(c),
+    h: s.state.getRowHeight(r),
+  }
+}
+
+const fileInsert = useSheetFileInsert({
+  sheet,
+  getAnchor: getDropAnchor,
+})
+
+const imageInsert = useSheetImageInsert({
+  sheet,
+  getAnchor: getDropAnchor,
+  getCellSize,
+})
+
+async function onViewportDrop(e: DragEvent): Promise<void> {
+  if (!(props.editable ?? true)) return
+  const files = Array.from(e.dataTransfer?.files ?? [])
+  if (!files.length) return
+  const images = files.filter((f) => f.type.startsWith('image/'))
+  const others = files.filter((f) => !f.type.startsWith('image/'))
+  if (images.length) {
+    await imageInsert.insertImagesFromFiles(images)
+  }
+  for (const file of others) {
+    await fileInsert.insertAttachmentFromFile(file)
+  }
+}
+
 const {
   formulaPickMode,
   formulaRefRanges,
@@ -144,10 +246,23 @@ const findReplaceOpen = ref(false)
 provide(SHEET_TOOLBAR_KEY, {
   sheet,
   revision,
+  editable: toRef(() => props.editable ?? true),
   formatPainterActive,
   copiedStyle,
   findReplaceOpen,
 })
+
+watch(
+  () => props.editable,
+  (canEdit) => {
+    if (canEdit) return
+    formatPainterActive.value = false
+    copiedStyle.value = null
+    findReplaceOpen.value = false
+    formulaEdit.cancel()
+    canvasRef.value?.endEditingForLayoutChange()
+  },
+)
 
 function commitFormulaEditIfActive(): void {
   const s = sheet.value
@@ -163,17 +278,39 @@ function commitFormulaEditIfActive(): void {
 }
 
 function onCellClick(r: number, c: number): void {
+  if (!(props.editable ?? true)) return
   if (handleFormulaCellClick(r, c)) return
   if (formulaEdit.active.value) {
     commitFormulaEditIfActive()
   }
   const s = sheet.value
   if (!s) return
+  const rule = s.state.getDataVerification(r, c)
+  if (rule?.type === 'dropdown') {
+    closeDropdownConfig()
+    scheduleDropdownPickToggle(r, c)
+  } else {
+    cancelPendingDropdownPick()
+    closePick()
+  }
   if (formatPainterActive.value && copiedStyle.value) {
     s.chain().applyCellStyle({ r, c, style: copiedStyle.value }).run()
     formatPainterActive.value = false
     copiedStyle.value = null
   }
+}
+
+/** 双击下拉单元格打开配置面板，不进入内联编辑 */
+function resolveCellDblClick(r: number, c: number): boolean {
+  if (!(props.editable ?? true)) return false
+  const s = sheet.value
+  if (!s) return false
+  const rule = s.state.getDataVerification(r, c)
+  if (rule?.type !== 'dropdown') return false
+  cancelPendingDropdownPick()
+  closePick()
+  openDropdownConfig({ r, c })
+  return true
 }
 
 function onFormulaPick(r: number, c: number): void {
@@ -207,5 +344,9 @@ defineExpose({
 :deep(.speed-sheet-canvas) {
   flex: 1 1 0;
   min-height: 0;
+}
+
+.speed-sheet-root:not(.is-editable) :deep(.sheet-canvas) {
+  cursor: default;
 }
 </style>

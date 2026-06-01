@@ -1,6 +1,6 @@
 import { defineComponent, computed, type PropType } from 'vue'
 import { Space, Divider } from 'ant-design-vue'
-import InsertMenu from './insert/InsertMenu.vue'
+import InsertMenu from '../insert/InsertMenu.vue'
 import Undo from './undo.vue'
 import Redo from './redo.vue'
 import FormatPainter from './formatPainter.vue'
