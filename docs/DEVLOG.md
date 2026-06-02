@@ -1,5 +1,61 @@
 # speed-sheet 开发日志
 
+## 2026-06-01 — 列筛选（extension-filter + 协同/快照持久化）
+
+### 背景
+
+表格文档需要列筛选：内容 / 颜色 / 条件；表头绿色标记与数据区绿色实线描边；支持私有视图与全员共享；编辑态 Y.Doc 协同，查看态对齐语雀（静态快照、刷新更新）。
+
+### 包与扩展（`@speed-sheet/extension-filter`）
+
+- `FilterExtension`：命令 `prepareFilterFromSelection`、`applyFilterSession`、`clearFilter`、`updateFilterColumnContent` 等
+- **范围**：单格截断列 / 框选多列；框选时同步选区 + `headerRow`
+- **求值**：`computeHiddenRows`、`buildInitialColumnRules`；条件含 common（重复/唯一/空/非空）
+- **颜色**：单选网格；`FILTER_COLOR_NONE` 无背景优先
+- **持久化**：
+  - 共享 → `sheetFilter`
+  - 私有 → `sheetFilterPrivate[userId]`（按登录 id 分桶，**不用 localStorage**）
+- **同步**：`applyEffectiveFilterView`（共享优先 → 当前用户私有）；`bindFilterYdocSync` 监听双 key
+- **初始化修复**：`onInit` 用 `queueMicrotask` 绑定 observer（`sheet.state` 在 `_initData` 后才就绪）；切 sheet `rebindFilterYdocSync`
+
+### Core
+
+- `FilterViewState` + `Sheet.setFilterView()` / `getFilterView()`
+- Canvas：`drawFilterMarker`、`drawFilterDataOutline`（绿色实线 2px）；隐藏行不参与布局
+- **快照**：`SheetSnapshot.sheetFilter` / `sheetFilterPrivate` 导出与 `_loadSnapshot` 恢复（查看态落库）
+
+### UI（`@speed-sheet/vue3-antd`）
+
+| 能力 | 说明 |
+|------|------|
+| 工具栏筛选 | 有会话 → 清除；无 → 创建并开面板 |
+| 表头图标 | 点击绿色漏斗开 `FilterConfigPanel` |
+| 配置面板 | 内容 / 颜色 / 条件 Tab；「筛选对所有人可见」开关 |
+| `filterUserId` | SpeedSheet prop → 注入 `getCurrentUserId` |
+
+### 宿主（Speed Knowledge Client）
+
+- `SheetEditor`：`filterUserId` 来自 `useUserStore`
+- **编辑态**：Hocuspocus + Y.Doc
+- **查看态**：`node_json` 快照，不连协同；筛选从快照字段恢复
+
+### 涉及文件（摘要）
+
+| 区域 | 路径 |
+|------|------|
+| 扩展 | `packages/extensions/extension-filter/src/` |
+| Core | `Sheet.ts`、`SheetState.ts`、`canvas-renderer.ts` |
+| Shared | `packages/shared/src/index.ts`（快照字段） |
+| UI | `vue3-antd/.../filterConfigMenu/`、`menus/toolbar/filter.vue`、`SpeedSheet.vue`、`sheetBuiltin.ts` |
+| 宿主 | `speed-knowledge-client/.../SheetEditor.vue` |
+
+### 相关文档
+
+- 功能说明：[`docs/filter-notes.md`](./filter-notes.md)
+- 架构：[`ARCHITECTURE.md`](../ARCHITECTURE.md)
+
+---
+
 ## 2026-06-01 — 插入菜单、下拉列表、图片气泡与 UI 集成
 
 ### 背景

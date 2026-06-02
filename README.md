@@ -63,6 +63,8 @@ Headless 在线表格引擎：Luckysheet 兼容数据模型 + Yjs 协同 + TipTa
 - ✔️ 默认文档内容生成（`createDefaultDocumentContent`）
 - ✔️ 内置扩展：键盘、选区、历史、剪贴板、单元格编辑、行列操作、合并单元格
 - ✔️ 单元格插入命令：复选框、**下拉列表**（`insertDropdown` / `setDropdownValue` / `removeDropdown`）
+- ✔️ **列筛选视图**：`FilterViewState` + Canvas 隐藏行 / 绿色标记与描边
+- ✔️ 快照读写 **`sheetFilter` / `sheetFilterPrivate`**（查看态落库）
 - ✔️ Yjs `UndoManager` 撤销 / 重做
 - ✔️ rowId / colId + rowOrder / colOrder 布局 v2（插删行列不重建 cell key）
 
@@ -93,11 +95,13 @@ Headless 在线表格引擎：Luckysheet 兼容数据模型 + Yjs 协同 + TipTa
 - ✔️ **插入菜单**（语雀式）：复选框、**下拉列表**、图片、链接、附件、备注、公式（`insertMenuKeys` 可配）
 - ✔️ **下拉列表**：Canvas 渲染 + 单击取值气泡 / 双击配置面板；数据验证 `insertDropdown` / `removeDropdown`
 - ✔️ **图片插入**：扩展层 + 选区气泡菜单；App 级 `upload` 配置
+- ✔️ **列筛选**：工具栏 + 表头漏斗；内容 / 颜色 / 条件；配置面板；私有与共享视图
 - ✔️ Sheet 页签栏（新增 / 切换 / 拖拽排序）
 - ✔️ 页签右键菜单（重命名 / 复制 / 删除 / 隐藏 / 标签颜色）
 - ✔️ 语雀式工作表列表 Popover
 - ✔️ 中英文 i18n（`lang="zh" | "en"`）
-- ✔️ 支持 `ydoc` 协同模式与 `sheet-data` 只读快照模式
+- ✔️ 支持 `ydoc` 协同模式与 `sheet-data` 只读快照模式（快照含筛选状态）
+- ✔️ `filterUserId` prop：私有筛选按用户分桶
 - ✔️ `installSpeedSheetUi`：`ensureSpeedComponents` 与 SpeedComponents 共存无重复 plugin 警告
 
 #### 协同
@@ -118,7 +122,7 @@ Headless 在线表格引擎：Luckysheet 兼容数据模型 + Yjs 协同 + TipTa
 
 #### 扩展插件
 
-- [ ] `@speed-sheet/extension-filter` — 筛选
+- [x] `@speed-sheet/extension-filter` — 列筛选（内容 / 颜色 / 条件；Y.Doc + 快照持久化）
 - [ ] `@speed-sheet/extension-import-export` — xlsx 导入导出
 
 #### UI 与交互
@@ -157,4 +161,5 @@ pnpm demo   # http://localhost:4000
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md) — 架构分层与设计原则
 - [docs/DEVLOG.md](./docs/DEVLOG.md) — 开发日志
+- [docs/filter-notes.md](./docs/filter-notes.md) — 列筛选功能说明
 - [docs/layout-and-formula-notes.md](./docs/layout-and-formula-notes.md) — 布局 v2 与公式同步说明
