@@ -9,7 +9,7 @@
 ### 插入菜单（`menus/insert/`）
 
 - Key 驱动注册：`insertMenuKeys` / `insertMenuConfig`（`SpeedSheet` props）
-- 默认项：复选框、**下拉列表**、图片、链接、附件、备注、公式（见 `defaultInsertMenuKeys`）
+- 默认项：复选框、**下拉列表**、图片、**链接**、附件、**备注**、公式（见 `defaultInsertMenuKeys`）
 - 工具栏 `InsertMenu.vue` 接入 `useInsertMenu` + `builtins.tsx`
 - 富文本选区插入下拉前可弹确认（避免丢图片/附件）
 
@@ -51,6 +51,43 @@
 
 - `SheetCanvas`：`resolveCellDblClick` prop，返回 `true` 时跳过默认内联编辑器
 - `useSheetKeyboard`：焦点在 input/textarea 等表单控件时不拦截按键（配置面板可输入）
+
+### 链接（Data Verification · link）
+
+**Core**
+
+- 规则字段：`linkType`、`linkAddress`、`linkTooltip`；单元格显示蓝色链接样式
+- 命令：`insertLink`、`updateLink`、`removeLink`
+
+**交互**
+
+| 操作 | 行为 |
+|------|------|
+| 插入菜单 / 双击 | 打开配置气泡（文本 + 地址，`linkConfigMenu`） |
+| 单击已有链接格 | 展开/收起工具条（编辑 / 打开 / 复制 / 取消链接） |
+| Delete / Backspace | 选区内批量 `removeLink`（`SheetLink` 扩展） |
+
+### 备注（Data Verification · note）
+
+**Core**
+
+- 规则字段：`noteContent`；`noteHasContent`（含仅空格也算有内容）
+- Canvas：右上角灰色三角角标；空文本格仅有备注时也绘制角标
+- `hitNoteMarkerAt`：角标热区命中
+
+**交互**
+
+| 操作 | 行为 |
+|------|------|
+| 插入菜单 / 双击 | 打开配置气泡（`placement="right-start"`，`noteConfigMenu`） |
+| 悬停角标 | 右侧预览气泡（`noteHoverMenu`，只响应角标 hover，非整格） |
+| Delete / Backspace | 选区内批量 `removeNote`（`SheetNote` 扩展） |
+
+**面板 provide**（`SpeedSheet.vue`）
+
+- `provideLinkConfigPanel` / `provideLinkToolbarPanel` / `provideNoteConfigPanel` / `provideNoteHoverPanel`
+- `closeSheetBubbles` 互斥关闭下拉 / 链接 / 备注浮层
+- `SheetCanvas`：`onNoteMarkerHover` → `useSheetCanvasPointer` 内 `hitNoteMarkerAt`
 
 ### 图片插入（摘要，同批落地）
 

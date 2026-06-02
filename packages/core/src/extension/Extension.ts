@@ -147,7 +147,7 @@ export class Extension<S = any> {
   }
 
   handleSheetSwitch(sheetId: string): void {
-    this.config.onSheetSwitch?.(sheetId)
+    this.config.onSheetSwitch?.call(this, sheetId)
   }
 
   get parent(): Extension | null {

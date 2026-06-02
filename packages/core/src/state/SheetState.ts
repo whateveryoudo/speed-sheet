@@ -765,6 +765,8 @@ export class SheetState {
   // ---- Snapshot export ----
 
   toSnapshot(id: string, name: string): SheetSnapshot {
+    const sheetFilter = this.root.get('sheetFilter')
+    const sheetFilterPrivate = this.root.get('sheetFilterPrivate')
     return {
       id,
       name,
@@ -784,6 +786,10 @@ export class SheetState {
       },
       dataVerification: this.dataVerification.toJSON() as Record<string, DataVerificationRule>,
       images: this.images.toJSON() as Record<string, SheetImageItem>,
+      ...(sheetFilter != null ? { sheetFilter } : {}),
+      ...(sheetFilterPrivate != null && typeof sheetFilterPrivate === 'object' && !Array.isArray(sheetFilterPrivate)
+        ? { sheetFilterPrivate: sheetFilterPrivate as Record<string, unknown> }
+        : {}),
     }
   }
 }

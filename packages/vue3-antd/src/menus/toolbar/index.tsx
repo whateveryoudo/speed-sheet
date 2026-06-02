@@ -14,6 +14,7 @@ import TextColor from './textColor.vue'
 import BackgroundColor from './backgroundColor.vue'
 import Align from './align'
 import Link from './link/index.vue'
+import Filter from './filter.vue'
 import FindAndReplace from './findAndReplace.vue'
 import { defaultSheetToolbarKeys } from './keys'
 import type { ToolbarItemConfig } from './types'
@@ -32,6 +33,7 @@ const componentMap = {
   textColor: TextColor,
   backgroundColor: BackgroundColor,
   align: Align,
+  filter: Filter,
   link: Link,
   findAndReplace: FindAndReplace,
 }

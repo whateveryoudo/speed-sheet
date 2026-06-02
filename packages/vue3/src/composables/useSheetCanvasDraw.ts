@@ -124,6 +124,7 @@ export function useSheetCanvasDraw(options: {
         clipboardRange: options.sheet.value?.getClipboardRange?.() ?? null,
         formulaRefRanges: options.formulaRefRanges.value,
         dataVerifications: dvMap,
+        filterView: options.sheet.value?.getFilterView() ?? null,
       })
     } finally {
       isDrawing = false

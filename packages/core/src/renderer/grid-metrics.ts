@@ -9,6 +9,8 @@ export interface GridMetricsSource {
   defaultColWidth: number
   getRowHeight?: (r: number) => number | undefined
   getColWidth?: (c: number) => number | undefined
+  /** 筛选等本地视图：返回 true 时该行高度为 0（不参与布局） */
+  isRowHidden?: (r: number) => boolean
 }
 
 export interface GridMetrics {
@@ -36,6 +38,11 @@ export function buildGridMetrics(src: GridMetricsSource): GridMetrics {
   const rowHeights: number[] = []
   const rowTops: number[] = [0]
   for (let r = 0; r < totalRows; r++) {
+    if (src.isRowHidden?.(r)) {
+      rowHeights.push(0)
+      rowTops.push(rowTops[r]!)
+      continue
+    }
     const raw = src.getRowHeight?.(r)
     const h = Math.max(MIN_ROW_HEIGHT, raw ?? defaultRowHeight)
     rowHeights.push(h)

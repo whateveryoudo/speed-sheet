@@ -21,7 +21,15 @@ const props = withDefaults(
     anchorRect: Ref<SheetBubbleAnchorRect | null> | SheetBubbleAnchorRect | null
     shouldShow: () => boolean
     boundary?: HTMLElement | null | (() => HTMLElement | null)
-    placement?: 'top' | 'bottom' | 'top-start' | 'bottom-start'
+    placement?:
+      | 'top'
+      | 'bottom'
+      | 'top-start'
+      | 'bottom-start'
+      | 'right'
+      | 'right-start'
+      | 'left'
+      | 'left-start'
     offset?: number
   }>(),
   {

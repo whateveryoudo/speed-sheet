@@ -173,6 +173,7 @@ function pickSingle(value: string): void {
   box-sizing: border-box;
   cursor: pointer;
   font-size: var(--ant-font-size);
+  border-radius: var(--ant-border-radius-sm);
   color: var(--ant-color-text);
   transition: background var(--ant-motion-duration-mid);
 

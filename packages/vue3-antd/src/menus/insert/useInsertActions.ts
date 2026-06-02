@@ -46,6 +46,8 @@ export function useInsertActions(options: {
   getAnchor: () => { r: number; c: number }
   getSelection: () => Selection | null
   onOpenDropdownPanel: (payload: { r: number; c: number }) => void
+  onOpenLinkPanel: (payload: { r: number; c: number }) => void
+  onOpenNotePanel: (payload: { r: number; c: number }) => void
 }) {
   const uploadCfg = useSheetUploadConfig()
   const formulaEdit = useFormulaEdit()
@@ -71,7 +73,6 @@ export function useInsertActions(options: {
   })
 
   const pickPanel = useDropdownPickPanelOptional()
-
   const actions: Record<string, InsertMenuAction> = {
     checkbox: ({ sheet, anchor }) => {
       sheet?.chain().insertCheckbox({ r: anchor.r, c: anchor.c, checked: false }).run()
@@ -103,8 +104,24 @@ export function useInsertActions(options: {
       const n = await imageInsert.insertImagesFromFiles(files)
       if (n < files.length) message.error('部分图片插入失败')
     },
-    link: () => {
-      message.info('单元格链接待实现')
+    link: ({ sheet, anchor, selection }) => {
+      if (!sheet) return
+      const sel = selection ?? sheet.state.getSelection()
+      const open = () => {
+        pickPanel?.closePick()
+        options.onOpenLinkPanel({ r: anchor.r, c: anchor.c })
+      }
+      if (selectionHasRichContent(sheet, sel)) {
+        Modal.confirm({
+          title: '插入链接',
+          content: '插入链接会导致选区中的图片和附件丢失，确定要继续吗？',
+          okText: '确定',
+          cancelText: '取消',
+          onOk: open,
+        })
+        return
+      }
+      open()
     },
     attachment: async () => {
       const accept = uploadCfg.value.fileAccept ?? '*'
@@ -113,8 +130,9 @@ export function useInsertActions(options: {
       const ok = await fileInsert.insertAttachmentFromFile(files[0])
       if (!ok) message.error('附件插入失败，请检查上传配置')
     },
-    note: () => {
-      message.info('备注待实现')
+    note: ({ anchor }) => {
+      pickPanel?.closePick()
+      options.onOpenNotePanel({ r: anchor.r, c: anchor.c })
     },
     formula: ({ sheet, anchor }) => {
       if (!sheet) return

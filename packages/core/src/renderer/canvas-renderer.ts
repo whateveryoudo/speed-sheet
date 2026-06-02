@@ -1,9 +1,10 @@
-import type {
-  CellAttributes,
+import {
+  type CellAttributes,
   DataVerificationRule,
   MergeRange,
   Selection,
 } from "@speed-sheet/shared";
+import { drawNoteMarkersInView } from "../interaction/note-hit";
 import { MergeContext } from "../merge";
 import { getVisibleRangeFromMetrics } from "./grid-metrics";
 import {
@@ -43,11 +44,159 @@ export interface RenderOptions {
   }>;
   /** 数据验证（复选框等），键 `row_col` */
   dataVerifications?: Map<string, DataVerificationRule>;
+  /** 本地筛选视图（标记 + 数据区框选） */
+  filterView?: import("../Sheet").FilterViewState | null;
 }
 
 const CHECKBOX_SIZE = 14;
 const CHECKBOX_GAP = 6;
 const DROPDOWN_ARROW_W = 14;
+const FILTER_MARKER_PAD = 6;
+const FILTER_MARKER_LINE_H = 1;
+const FILTER_MARKER_GAP = 2;
+const FILTER_MARKER_WIDTHS = [10, 7, 4];
+
+/** 待确认：表头单元格右侧绿色三线 */
+function drawCellFilterMarkerPending(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  cellW: number,
+  cellH: number,
+): void {
+  const blockH =
+    FILTER_MARKER_WIDTHS.length * FILTER_MARKER_LINE_H +
+    (FILTER_MARKER_WIDTHS.length - 1) * FILTER_MARKER_GAP;
+  const maxW = Math.max(...FILTER_MARKER_WIDTHS);
+
+  const blockRight = cx + cellW - FILTER_MARKER_PAD;
+  const blockBottom = cy + cellH - FILTER_MARKER_PAD;
+  const blockLeft = blockRight - maxW;
+  let y = blockBottom - blockH;
+  ctx.save();
+  ctx.fillStyle = "#52c41a";
+  for (const w of FILTER_MARKER_WIDTHS) {
+    const x = blockLeft + (maxW - w) / 2;
+    ctx.fillRect(x, y, w, FILTER_MARKER_LINE_H);
+    y += FILTER_MARKER_LINE_H + FILTER_MARKER_GAP;
+  }
+  ctx.restore();
+}
+
+/** 已应用：表头单元格右下角绿色漏斗 */
+function drawCellFilterMarkerActive(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  cellW: number,
+  cellH: number,
+): void {
+  const FILTER_MARKER_PAD = 6;
+  const w = 10;
+  const h = 10;
+  const x = cx + cellW - w - FILTER_MARKER_PAD;
+  const y = cy + cellH - h - FILTER_MARKER_PAD;
+  ctx.save();
+  ctx.fillStyle = "#52c41a";
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + w, y);
+  ctx.lineTo(x + w * 0.68, y + h * 0.5);
+  ctx.lineTo(x + w * 0.68, y + h);
+  ctx.lineTo(x + w * 0.32, y + h);
+  ctx.lineTo(x + w * 0.32, y + h * 0.5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+/** 筛选区域描边（绿色实线；颜色与普通框选蓝色实线区分） */
+function drawFilterDataOutline(
+  ctx: CanvasRenderingContext2D,
+  layout: GridLayout,
+  M: ReturnType<typeof resolveMetrics>,
+  view: import("../Sheet").FilterViewState,
+  vw: number,
+  vh: number,
+  CHH: number,
+): void {
+  const { columns, markerRow, dataStartRow, dataEndRow, hiddenRows } = view;
+  if (markerRow == null || !columns.length) return;
+
+  let lastVisible = markerRow;
+  for (let r = dataEndRow; r >= dataStartRow; r--) {
+    if (M.rowHeight(r) <= 0 || hiddenRows.has(r)) continue;
+    lastVisible = r;
+    break;
+  }
+
+  const c0 = columns[0]!;
+  const c1 = columns[columns.length - 1]!;
+  const x0 = gridCellX(layout, M, c0);
+  const y0 = gridCellY(layout, M, markerRow);
+  const x1 = gridCellX(layout, M, c1) + M.colWidth(c1);
+  const y1 = gridCellY(layout, M, lastVisible) + M.rowHeight(lastVisible);
+  if (x1 < 0 || x0 > vw || y1 < CHH || y0 > vh) return;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, CHH, Math.max(0, vw), Math.max(0, vh - CHH));
+  ctx.clip();
+  ctx.strokeStyle = "#52c41a";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(
+    Math.max(0, x0) + 1,
+    Math.max(CHH, y0) + 1,
+    Math.max(0, x1 - x0) - 2,
+    Math.max(0, y1 - y0) - 2,
+  );
+  ctx.restore();
+}
+
+function drawFilterMarkersInView(
+  ctx: CanvasRenderingContext2D,
+  layout: GridLayout,
+  M: ReturnType<typeof resolveMetrics>,
+  filterView: import("../Sheet").FilterViewState | null | undefined,
+  rowStart: number,
+  rowEnd: number,
+  colStart: number,
+  colEnd: number,
+  vw: number,
+  vh: number,
+  CHH: number,
+): void {
+  if (!filterView?.columns.length || filterView.markerRow == null) return;
+  const markerRow = filterView.markerRow;
+  if (markerRow < rowStart || markerRow > rowEnd) return;
+  if (M.rowHeight(markerRow) <= 0) return;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, CHH, Math.max(0, vw), Math.max(0, vh - CHH));
+  ctx.clip();
+
+  const drawMarker = filterView.active
+    ? drawCellFilterMarkerActive
+    : drawCellFilterMarkerPending;
+
+  for (const c of filterView.columns) {
+    if (c < colStart || c > colEnd) continue;
+    const cx = gridCellX(layout, M, c);
+    const cy = gridCellY(layout, M, markerRow);
+    const cellW = M.colWidth(c);
+    const cellH = M.rowHeight(markerRow);
+    if (cx + cellW < 0 || cx > vw || cy + cellH < CHH || cy > vh) continue;
+    drawMarker(ctx, cx, cy, cellW, cellH);
+  }
+
+  const isRangeScope = filterView.headerRow != null;
+  if (isRangeScope || filterView.active) {
+    drawFilterDataOutline(ctx, layout, M, filterView, vw, vh, CHH);
+  }
+
+  ctx.restore();
+}
 
 /** 在单元格内绘制复选框（Canvas；状态来自 dataVerification.checked） */
 export function drawCellCheckbox(
@@ -415,6 +564,7 @@ export function renderSheet(
     clipboardRange,
     formulaRefRanges,
     dataVerifications,
+    filterView,
   } = options;
   const mc =
     mergeCtxIn ?? MergeContext.fromRanges(merges);
@@ -455,6 +605,7 @@ export function renderSheet(
     const x = c < totalCols ? gridCellX(layout, M, c) : RHW + M.totalWidth - sx;
     if (x < RHW - 1 || x > vw + 1) continue;
     for (let r = rowStart; r <= rowEnd; r++) {
+      if (M.rowHeight(r) <= 0) continue;
       if (mc.isInternalColLineAtRow(c, r)) continue;
       const y0 = gridCellY(layout, M, r);
       const y1 = y0 + M.rowHeight(r);
@@ -483,6 +634,7 @@ export function renderSheet(
   }
 
   for (const { r, c, data } of cells) {
+    if (M.rowHeight(r) <= 0) continue;
     if (mergeLookup.isSlave(r, c)) continue
 
     const merge = mergeLookup.at(r, c)
@@ -537,6 +689,18 @@ export function renderSheet(
       continue;
     }
 
+    if (dvRule?.type === "link" && !isEditing) {
+      const text = cellDisplayText(data);
+      if (text) {
+        ctx.fillStyle = data.fc ?? "#1677ff";
+        drawCellText(ctx, text, cx + CELL_TEXT_PAD_X, cy, cellW, cellH, {
+          colSpan: 1,
+          truncate: true,
+        });
+      }
+      continue;
+    }
+
     if (data.att && !isEditing) {
       const label = data.m ?? data.att.fileName ?? "附件";
       const display = `📎 ${label}`;
@@ -549,7 +713,9 @@ export function renderSheet(
     }
 
     const text = cellDisplayText(data);
-    if (!text) continue;
+    if (!text) {
+      continue;
+    }
 
     // 内联编辑时由 DOM input 显示文字，canvas 不再绘制（避免重影）
     if (isEditing) {
@@ -602,7 +768,8 @@ export function renderSheet(
 
   for (let c = colStart; c <= colEnd; c++) {
     const left = gridCellX(layout, M, c);
-    const cx = left + M.colWidth(c) / 2;
+    const cw = M.colWidth(c);
+    const cx = left + cw / 2;
     ctx.fillText(colToLetter(c), cx, CHH / 2);
   }
 
@@ -634,6 +801,7 @@ export function renderSheet(
   ctx.textBaseline = "middle";
 
   for (let r = rowStart; r <= rowEnd; r++) {
+    if (M.rowHeight(r) <= 0) continue;
     const top = gridCellY(layout, M, r);
     const cy = top + M.rowHeight(r) / 2;
     ctx.fillText(String(r + 1), RHW / 2, cy);
@@ -738,6 +906,37 @@ export function renderSheet(
       ctx.fillRect(hx, hy, 5, 5);
     }
   }
+
+  // 备注角标（独立于 celldata，避免仅 dataVerification 的空格不绘制）
+  drawNoteMarkersInView(
+    ctx,
+    layout,
+    M,
+    mergeLookup,
+    dataVerifications,
+    rowStart,
+    rowEnd,
+    colStart,
+    colEnd,
+    vw,
+    vh,
+    CHH,
+    editingCell ?? undefined,
+  );
+
+  drawFilterMarkersInView(
+    ctx,
+    layout,
+    M,
+    filterView,
+    rowStart,
+    rowEnd,
+    colStart,
+    colEnd,
+    vw,
+    vh,
+    CHH,
+  );
 
   // ---- 公式引用虚线框 ----
   if (formulaRefRanges?.length) {

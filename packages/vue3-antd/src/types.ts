@@ -72,6 +72,8 @@ export interface SpeedSheetProps {
   defaultFontSize?: number
   extensions?: (Extension | ExtensionConfig)[]
   ydoc?: Y.Doc
+  /** 协作筛选：当前登录用户 id，用于私有视图分桶（Y.Doc sheetFilterPrivate） */
+  filterUserId?: string | null
   /** 是否可编辑；false 为查看态（同一套渲染，屏蔽写入类交互） */
   editable?: boolean
   /** 覆盖 App 级 upload（一般无需传，在 app.use(SpeedSheetUi) 配置） */

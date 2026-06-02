@@ -1,85 +1,71 @@
-import { Extension, type CommandContext, transactUser } from '@speed-sheet/core'
-
-export interface FilterCriteria {
-  column: number
-  type: 'value' | 'condition' | 'top10'
-  values?: string[]
-  condition?: string
-}
-
-export const FilterExtension = Extension.create<{
-  filters: Map<string, FilterCriteria[]>
-}>({
-  name: 'filter',
-
-  addStorage() {
-    return {
-      filters: new Map(),
-    }
-  },
-
-  addCommands(ctx) {
-    return {
-      applyFilter: (criteria: FilterCriteria) => {
-        return ({ state, ydoc }: CommandContext) => {
-          const sheetId = state.root.get('id') as string ?? '0'
-          const key = `filter_${sheetId}`
-
-          if (!this.storage.filters.has(key)) {
-            this.storage.filters.set(key, [])
-          }
-          const filters = this.storage.filters.get(key)!
-
-          // Replace existing filter for same column
-          const idx = filters.findIndex((f: FilterCriteria) => f.column === criteria.column)
-          if (idx >= 0) filters[idx] = criteria
-          else filters.push(criteria)
-
-          // Store in Y.Map for persistence/sync
-          const yFilters = state.root.get('_filters') as any
-          if (yFilters) {
-            transactUser(ydoc, () => {
-              yFilters.set(`col_${criteria.column}`, criteria)
-            })
-          }
-
-          return true
-        }
-      },
-
-      clearFilter: (column?: number) => {
-        return ({ state }: CommandContext) => {
-          const sheetId = state.root.get('id') as string ?? '0'
-          const key = `filter_${sheetId}`
-
-          if (column !== undefined) {
-            const filters = this.storage.filters.get(key)
-            if (filters) {
-              const idx = filters.findIndex((f: FilterCriteria) => f.column === column)
-              if (idx >= 0) filters.splice(idx, 1)
-            }
-          } else {
-            this.storage.filters.set(key, [])
-          }
-
-          return true
-        }
-      },
-
-      getFilters: () => {
-        return ({ state }: CommandContext) => {
-          const sheetId = state.root.get('id') as string ?? '0'
-          const key = `filter_${sheetId}`
-          // Query commands still use CommandFn shape (return boolean)
-          void (this.storage.filters.get(key) ?? [])
-          return true
-        }
-      },
-    }
-  },
-
-  onCellChange(r, c, newValue, oldValue) {
-    // When cell data changes, re-apply active filters
-    // In a full implementation, this would re-evaluate which rows are visible
-  },
-})
+export {
+  FilterExtension,
+  getFilterExtensionStorage,
+  getFilterSession,
+  isFilterActive,
+  hasFilterSession,
+  getFilterMarkerRow,
+  isFilterHeaderCell,
+  prepareFilterScope,
+  clearFilter,
+  dismissPendingFilter,
+  applyFilterSession,
+  resolveFilterScopeFromSelection,
+} from './extension'
+export { FILTER_EXTENSION_NAME } from './types'
+export {
+  FILTER_EMPTY_VALUE,
+  FILTER_COLOR_NONE,
+  emptyFilterSession,
+  type FilterSession,
+  type FilterColumnRule,
+  type FilterContentRule,
+  type FilterColorRule,
+  type FilterColorStat,
+  type FilterColorDimension,
+  type FilterConditionRule,
+  type FilterConditionClause,
+  type FilterConditionTypeTab,
+  type FilterConditionConnector,
+  type CommonConditionOp,
+  type TextConditionOp,
+  type NumberConditionOp,
+  type DateConditionPreset,
+  type FilterMode,
+  type FilterValueStat,
+  type FilterSortOrder,
+  type FilterTab,
+} from './types'
+export { resolveFilterScope, filterScopeToSelection, type ResolvedFilterScope } from './range'
+export {
+  collectColumnValueStats,
+  computeHiddenRows,
+  buildInitialColumnRules,
+  defaultSelectedValues,
+} from './evaluate'
+export { cellValueText, filterValueKey, filterValueLabel, isCellEmpty } from './cell-value'
+export {
+  collectColumnColorStats,
+  detectColumnColorAvailability,
+  colorStatDisplay,
+  defaultSelectedColor,
+  type ColumnColorAvailability,
+} from './color'
+export {
+  TEXT_CONDITION_OPS,
+  NUMBER_CONDITION_OPS,
+  DATE_CONDITION_PRESETS,
+  COMMON_CONDITION_OPS,
+  CONDITION_TYPE_OPTIONS,
+  defaultOperatorForType,
+  needsRightValue,
+  needsValueInput,
+  operatorsForType,
+} from './condition-meta'
+export {
+  buildInitialConditionRule,
+  createDefaultConditionClause,
+  datePresetRange,
+} from './condition'
+export type { GetFilterUserId } from './user-id'
+export { FILTER_YDOC_KEY, FILTER_PRIVATE_YDOC_KEY } from './persist'

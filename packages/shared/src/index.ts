@@ -64,8 +64,11 @@ export interface CellAttributes extends CellStyle {
   att?: CellAttachmentMeta
 }
 
-/** 数据验证（对齐 Luckysheet dataVerification；复选框、下拉列表等） */
-export type DataVerificationType = 'checkbox' | 'dropdown'
+/** 数据验证（对齐 Luckysheet dataVerification；复选框、下拉、链接、备注等） */
+export type DataVerificationType = 'checkbox' | 'dropdown' | 'link' | 'note'
+
+/** 单元格链接（对齐 Luckysheet hyperlink，存 dataVerification） */
+export type CellLinkType = 'external' | 'internal'
 
 export interface DropdownListOption {
   value: string
@@ -87,6 +90,19 @@ export interface DataVerificationRule {
   useColor?: boolean
   /** dropdown：当前值（多选时为逗号拼接或 string[]） */
   value?: string | string[]
+  /** link：链接类型 */
+  linkType?: CellLinkType
+  /** link：URL 或 Sheet!A1 */
+  linkAddress?: string
+  /** link：悬停提示 */
+  linkTooltip?: string
+  /** note：备注正文（仅空格也算有内容） */
+  noteContent?: string
+}
+
+/** 备注是否有内容（空格也算） */
+export function noteHasContent(content: string | undefined | null): boolean {
+  return content != null && content.length > 0
 }
 
 export function dataVerificationKey(r: number, c: number): string {
@@ -171,6 +187,10 @@ export interface SheetSnapshot {
   dataVerification?: Record<string, DataVerificationRule>
   /** 浮动图片 */
   images?: Record<string, SheetImageItem>
+  /** 共享筛选（与 Y.Doc sheetFilter 一致） */
+  sheetFilter?: unknown
+  /** 私有筛选分桶（与 Y.Doc sheetFilterPrivate 一致） */
+  sheetFilterPrivate?: Record<string, unknown>
 }
 
 export interface WorkbookSnapshot {

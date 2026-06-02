@@ -49,6 +49,7 @@ export function useSheetCanvasPointer(options: {
   onCellClick: (r: number, c: number) => void
   /** 返回 true 时不打开默认单元格编辑器（如双击编辑下拉配置） */
   onCellDblClick?: (r: number, c: number) => boolean | void
+  rawCellPointFromEvent: (e: MouseEvent) => { r: number; c: number } | null
   scheduleDraw: () => void
   hideErrorTip: () => void
   updateErrorTipFromEvent: (e: MouseEvent) => void

@@ -7,6 +7,7 @@ export function buildSheetGridMetrics(
   layout: Pick<GridLayout, 'defaultRowHeight' | 'defaultColWidth'>,
 ): GridMetrics {
   const state = sheet.state
+  const hidden = sheet.getFilterHiddenRows()
   return buildGridMetrics({
     totalRows: state.getRowCount(),
     totalCols: state.getColCount(),
@@ -14,5 +15,6 @@ export function buildSheetGridMetrics(
     defaultColWidth: layout.defaultColWidth,
     getRowHeight: (r) => state.rowHeight.get(String(r)) as number | undefined,
     getColWidth: (c) => state.colWidth.get(String(c)) as number | undefined,
+    isRowHidden: (r) => hidden.has(r),
   })
 }

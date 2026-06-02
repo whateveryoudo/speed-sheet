@@ -79,8 +79,14 @@ import { useSpeedSheetProvider } from './composables/useSpeedSheetProvider'
 import { provideInsertMenu } from './composables/useInsertMenuContext'
 import { provideDropdownConfigPanel } from './composables/useDropdownConfigPanel'
 import { provideDropdownPickPanel } from './composables/useDropdownPickPanel'
+import { provideLinkConfigPanel } from './composables/useLinkConfigPanel'
+import { provideLinkToolbarPanel } from './composables/useLinkToolbarPanel'
+import { provideNoteConfigPanel } from './composables/useNoteConfigPanel'
+import { provideFilterConfigPanel } from './composables/useFilterConfigPanel'
 import { SheetPreviewImage } from './helpers/sheetPreviewImage'
 import { mergeSpeedSheetExtensions } from './composables/sheetBuiltin'
+import { noteHasContent } from '@speed-sheet/shared'
+import { isFilterHeaderCell } from '@speed-sheet/extension-filter'
 
 const props = withDefaults(defineProps<SpeedSheetProps>(), {
   showToolbar: true,
@@ -106,6 +112,29 @@ provideInsertMenu({
 const { openPanel: openDropdownConfig, closePanel: closeDropdownConfig } =
   provideDropdownConfigPanel()
 const { togglePick, closePick } = provideDropdownPickPanel()
+const { openPanel: openLinkConfig, closePanel: closeLinkConfig } = provideLinkConfigPanel()
+const { toggleToolbar: toggleLinkToolbar, closeToolbar: closeLinkToolbar } =
+  provideLinkToolbarPanel()
+const { openPanel: openNoteConfig, closePanel: closeNoteConfig } = provideNoteConfigPanel()
+const { openPanel: openFilterConfig, closePanel: closeFilterConfig } = provideFilterConfigPanel()
+
+function closeSheetBubbles(except?: 'dropdown' | 'link' | 'note' | 'filter'): void {
+  if (except !== 'dropdown') {
+    closeDropdownConfig()
+    cancelPendingDropdownPick()
+    closePick()
+  }
+  if (except !== 'link') {
+    closeLinkConfig()
+    closeLinkToolbar()
+  }
+  if (except !== 'note') {
+    closeNoteConfig()
+  }
+  if (except !== 'filter') {
+    closeFilterConfig()
+  }
+}
 
 /** 延迟展开取值层，避免双击时先闪出 pick 再开配置 */
 const DROPDOWN_PICK_CLICK_DELAY_MS = 250
@@ -148,7 +177,7 @@ const luckysheetFile = computed(() => props.luckysheetData ?? props.data)
 const sheetOptions = computed(() => ({
   snapshot: props.sheetData,
   data: luckysheetFile.value,
-  extensions: mergeSpeedSheetExtensions(props.extensions),
+  extensions: mergeSpeedSheetExtensions(props.extensions, props.filterUserId),
   ydoc: props.ydoc,
   onUpdate: (s: Sheet) => {
     if (!(props.editable ?? true)) return
@@ -285,13 +314,22 @@ function onCellClick(r: number, c: number): void {
   }
   const s = sheet.value
   if (!s) return
+  if (isFilterHeaderCell(s, r, c)) {
+    closeSheetBubbles('filter')
+    openFilterConfig({ r, c })
+    return
+  }
   const rule = s.state.getDataVerification(r, c)
   if (rule?.type === 'dropdown') {
-    closeDropdownConfig()
+    closeSheetBubbles('dropdown')
     scheduleDropdownPickToggle(r, c)
+  } else if (rule?.type === 'link') {
+    closeSheetBubbles('link')
+    toggleLinkToolbar({ r, c })
+  } else if (rule?.type === 'note' && noteHasContent(rule.noteContent)) {
+    closeSheetBubbles('note')
   } else {
-    cancelPendingDropdownPick()
-    closePick()
+    closeSheetBubbles()
   }
   if (formatPainterActive.value && copiedStyle.value) {
     s.chain().applyCellStyle({ r, c, style: copiedStyle.value }).run()
@@ -306,11 +344,17 @@ function resolveCellDblClick(r: number, c: number): boolean {
   const s = sheet.value
   if (!s) return false
   const rule = s.state.getDataVerification(r, c)
-  if (rule?.type !== 'dropdown') return false
-  cancelPendingDropdownPick()
-  closePick()
-  openDropdownConfig({ r, c })
-  return true
+  if (rule?.type === 'dropdown') {
+    closeSheetBubbles('dropdown')
+    openDropdownConfig({ r, c })
+    return true
+  }
+  if (rule?.type === 'link') {
+    closeSheetBubbles('link')
+    openLinkConfig({ r, c })
+    return true
+  }
+  return false
 }
 
 function onFormulaPick(r: number, c: number): void {
@@ -337,7 +381,7 @@ defineExpose({
   height: 100%;
   width: 100%;
   min-height: 0;
-  font-size: var(--ant-font-size-sm);
+  // font-size: var(--ant-font-size-sm);
   background: var(--ant-color-bg-container);
 }
 

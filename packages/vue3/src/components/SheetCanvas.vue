@@ -483,6 +483,7 @@ const { onCanvasMouseLeave, onCanvasMouseMove, onMouseDown: onPointerMouseDown, 
     cellEditInitial,
     onCellClick: (r, c) => emit('cell-click', r, c),
     onCellDblClick: (r, c) => !!props.resolveCellDblClick?.(r, c),
+    rawCellPointFromEvent: (e) => selectionDrag.rawCellPointFromEvent(e),
     scheduleDraw,
     hideErrorTip,
     updateErrorTipFromEvent,
@@ -528,7 +529,6 @@ defineExpose({
   min-height: 0;
   min-width: 0;
   width: 100%;
-  font-size: 11px;
   outline: none;
   display: flex;
   flex-direction: column;

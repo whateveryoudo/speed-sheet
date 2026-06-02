@@ -14,6 +14,18 @@ import { YOriginUser } from './yjs/origins'
 
 export type { LuckysheetRange } from './api/sheet-compat'
 
+/** 本地筛选视图状态（canvas / 布局用，不写 Y.Doc） */
+export interface FilterViewState {
+  hiddenRows: Set<number>
+  columns: number[]
+  markerRow: number | null
+  active: boolean
+  dataStartRow: number
+  dataEndRow: number
+  /** 框选时表头行；单格筛选为 null */
+  headerRow: number | null
+}
+
 // ============================================================
 // Sheet — Headless spreadsheet editor (TipTap's Editor pattern)
 // ============================================================
@@ -225,6 +237,12 @@ export class Sheet {
         if (sheetSnap.images) {
           ySheet.set('images', objectToYMap(sheetSnap.images))
         }
+        if (sheetSnap.sheetFilter != null) {
+          ySheet.set('sheetFilter', sheetSnap.sheetFilter)
+        }
+        if (sheetSnap.sheetFilterPrivate) {
+          ySheet.set('sheetFilterPrivate', sheetSnap.sheetFilterPrivate)
+        }
 
         sheetsMap.set(sheetSnap.id, ySheet)
       }
@@ -286,6 +304,7 @@ export class Sheet {
     }
     this.state = new SheetState(ySheet)
     this._activeSheetId = sheetId
+    this._filterView = null
     for (const ext of this.extensions) {
       ext.handleSheetSwitch(sheetId)
     }
@@ -549,6 +568,44 @@ export class Sheet {
     const copied = (ext?.storage as { copied?: ClipboardPayload | null })?.copied
     if (!copied) return null
     return { row: copied.row, column: copied.column }
+  }
+
+  /** 本地筛选视图（不写 Y.Doc） */
+  private _filterView: FilterViewState | null = null
+
+  setFilterView(state: FilterViewState | null): void {
+    this._filterView = state
+      ? {
+          hiddenRows: new Set(state.hiddenRows),
+          columns: [...state.columns],
+          markerRow: state.markerRow,
+          active: state.active,
+          dataStartRow: state.dataStartRow,
+          dataEndRow: state.dataEndRow,
+          headerRow: state.headerRow,
+        }
+      : null
+    this.notifyUpdate()
+  }
+
+  getFilterView(): FilterViewState | null {
+    return this._filterView
+  }
+
+  getFilterHiddenRows(): ReadonlySet<number> {
+    return this._filterView?.hiddenRows ?? new Set()
+  }
+
+  getFilterColumns(): readonly number[] {
+    return this._filterView?.columns ?? []
+  }
+
+  getFilterMarkerRow(): number | null {
+    return this._filterView?.markerRow ?? null
+  }
+
+  isFilterViewActive(): boolean {
+    return !!this._filterView?.active
   }
 
   /** Destroy the sheet instance */

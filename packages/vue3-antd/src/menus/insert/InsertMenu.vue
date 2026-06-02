@@ -62,6 +62,8 @@ import { FunctionOutlined, PlusCircleFilled, RightOutlined } from '@ant-design/i
 import { useSheetToolbar } from '../../composables/useSheetToolbar'
 import { useInsertMenuContext } from '../../composables/useInsertMenuContext'
 import { useDropdownConfigPanel } from '../../composables/useDropdownConfigPanel'
+import { useLinkConfigPanel } from '../../composables/useLinkConfigPanel'
+import { useNoteConfigPanel } from '../../composables/useNoteConfigPanel'
 import { useInsertMenu } from './useInsertMenu'
 import { useInsertActions } from './useInsertActions'
 
@@ -70,6 +72,8 @@ const open = ref(false)
 const { sheet, editableCpt, revision, anchorRc, selection } = useSheetToolbar()
 const { insertMenuKeys, insertMenuConfig } = useInsertMenuContext()
 const { openPanel: openDropdownPanel } = useDropdownConfigPanel()
+const { openPanel: openLinkPanel } = useLinkConfigPanel()
+const { openPanel: openNotePanel } = useNoteConfigPanel()
 
 const {
   registerAction,
@@ -87,6 +91,14 @@ const {
   getSelection: () => selection.value ?? null,
   onOpenDropdownPanel: ({ r, c }) => {
     openDropdownPanel({ r, c })
+    open.value = false
+  },
+  onOpenLinkPanel: ({ r, c }) => {
+    openLinkPanel({ r, c })
+    open.value = false
+  },
+  onOpenNotePanel: ({ r, c }) => {
+    openNotePanel({ r, c, applySelection: true, autoFocus: true })
     open.value = false
   },
 })

@@ -12,7 +12,7 @@
 //   sheet.toSnapshot()
 
 export { Sheet } from './Sheet'
-export type { SheetOptions, LuckysheetRange } from './Sheet'
+export type { SheetOptions, LuckysheetRange, FilterViewState } from './Sheet'
 
 export {
   createDefaultWorkbookSnapshot,
@@ -127,6 +127,9 @@ export {
   isPrintableKey,
   resolveKeyboardNav,
   hitCheckboxAt,
+  hitNoteMarkerAt,
+  drawNoteMarker,
+  drawNoteMarkersInView,
 } from './interaction'
 export type {
   CanvasPointer,

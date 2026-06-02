@@ -38,7 +38,15 @@ export function useSheetBubbleFloating(options: {
   anchorRect: Ref<SheetBubbleAnchorRect | null>
   shouldShow: () => boolean
   boundary: Ref<HTMLElement | null | undefined>
-  placement?: 'top' | 'bottom' | 'top-start' | 'bottom-start'
+  placement?:
+    | 'top'
+    | 'bottom'
+    | 'top-start'
+    | 'bottom-start'
+    | 'right'
+    | 'right-start'
+    | 'left'
+    | 'left-start'
   /** floating-ui offset，默认 8；贴单元格时可设 2 */
   offset?: number
 }) {

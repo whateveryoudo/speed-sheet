@@ -71,3 +71,4 @@ export {
   type KeyboardNavResult,
 } from './keyboard-nav'
 export { hitCheckboxAt } from './checkbox-hit'
+export { hitNoteMarkerAt, drawNoteMarker, drawNoteMarkersInView } from './note-hit'
