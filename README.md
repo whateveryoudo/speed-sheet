@@ -141,6 +141,17 @@ Headless 在线表格引擎：Luckysheet 兼容数据模型 + Yjs 协同 + TipTa
 
 - [ ] **[类似语雀平台（持续更新中…）](https://github.com/whateveryoudo/speed-knowledge-client/tree/main)** — Speed Sheet 已作为表格文档编辑器接入
 
+## npm 发版（Changesets）
+
+各 `@speed-sheet/*` 子包**独立版本**，只有写了 changeset 的包才会发布（例如只改 `core` 时 `react` 不会动）。
+
+```bash
+pnpm changeset          # 选择要发的包 + bump 类型
+# 提交 .changeset/*.md，合并 PR 后 CI 会开 Version Packages PR
+```
+
+合并 Version PR 后自动 publish 到 npm。详见 [CONTRIBUTING.md](./CONTRIBUTING.md)。
+
 ## 开发
 
 ```bash

@@ -30,7 +30,7 @@
     "@speed-sheet/extension-image": "workspace:^",
     "@speed-sheet/shared": "workspace:^",
     "@speed-sheet/vue3": "workspace:^",
-    "speed-components-ui": "^0.1.40",
+    "speed-components-ui": "^1.1.3",
     "viewerjs": "^1.11.7",
     "vue-i18n": "^10.0.0",
     "vuedraggable": "^4.1.0"
@@ -59,8 +59,11 @@
     "@speed-sheet/shared": "workspace:*",
     "@speed-sheet/vue3": "workspace:*",
     "ant-design-vue": "^4.0.0",
-    "speed-components-ui": ">=0.1.40",
+    "speed-components-ui": ">=1.1.3",
     "vue": "^3.3.0",
     "vue-i18n": "^10.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
