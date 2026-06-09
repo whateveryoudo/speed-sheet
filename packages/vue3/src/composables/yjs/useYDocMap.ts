@@ -43,7 +43,8 @@ export function useYDocMap(
       sync()
       return
     }
-    yMap = s.ydoc.getMap(mapName) as typeof yMap
+    const map = s.ydoc.getMap(mapName)
+    yMap = map as NonNullable<typeof yMap>
     observer = () => sync()
     yMap.observe(observer)
     sync()

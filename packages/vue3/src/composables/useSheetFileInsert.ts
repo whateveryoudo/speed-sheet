@@ -4,7 +4,7 @@ import type { CellAttachmentMeta } from '@speed-sheet/shared'
 import { useSheetUploadConfig } from './useSheetUploadContext'
 
 export function useSheetFileInsert(options: {
-  sheet: Ref<Sheet | null>
+  sheet: Ref<Sheet | null | undefined>
   getAnchor: () => { r: number; c: number }
 }) {
   const uploadCfgRef = useSheetUploadConfig()

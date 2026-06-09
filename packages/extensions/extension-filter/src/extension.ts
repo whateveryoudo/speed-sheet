@@ -239,31 +239,32 @@ export function isFilterHeaderCell(
   return session.columns.includes(c) && r === filterMarkerRow(session)
 }
 
-type FilterSheet = {
-  chain: () => {
-    prepareFilterFromSelection: () => { run: () => void }
-    clearFilter: () => { run: () => void }
-    dismissFilterPanel: () => { run: () => void }
-    applyFilterSession: (s: FilterSession) => { run: () => void }
-  }
-  extensions: Extension[]
+type FilterCommandChain = {
+  prepareFilterFromSelection: () => { run: () => void }
+  clearFilter: () => { run: () => void }
+  dismissFilterPanel: () => { run: () => void }
+  applyFilterSession: (s: FilterSession) => { run: () => void }
 }
 
-export function prepareFilterScope(sheet: FilterSheet): boolean {
-  sheet.chain().prepareFilterFromSelection().run()
+function filterChain(sheet: Sheet): FilterCommandChain {
+  return sheet.chain() as unknown as FilterCommandChain
+}
+
+export function prepareFilterScope(sheet: Sheet): boolean {
+  filterChain(sheet).prepareFilterFromSelection().run()
   return !!getFilterSession(sheet)
 }
 
-export function clearFilter(sheet: FilterSheet): void {
-  sheet.chain().clearFilter().run()
+export function clearFilter(sheet: Sheet): void {
+  filterChain(sheet).clearFilter().run()
 }
 
-export function dismissPendingFilter(sheet: FilterSheet): void {
-  sheet.chain().dismissFilterPanel().run()
+export function dismissPendingFilter(sheet: Sheet): void {
+  filterChain(sheet).dismissFilterPanel().run()
 }
 
-export function applyFilterSession(sheet: FilterSheet, session: FilterSession): void {
-  sheet.chain().applyFilterSession(session).run()
+export function applyFilterSession(sheet: Sheet, session: FilterSession): void {
+  filterChain(sheet).applyFilterSession(session).run()
 }
 
 export function resolveFilterScopeFromSelection(

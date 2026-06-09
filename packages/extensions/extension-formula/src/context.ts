@@ -30,7 +30,7 @@ export interface FormulaContext {
 function getSheetState(sheetsMap: Y.Map<unknown>, sheetId: string): SheetState | null {
   const ySheet = sheetsMap.get(sheetId) as Y.Map<unknown> | undefined
   if (!ySheet) return null
-  return new SheetState(ySheet as Y.Map<unknown> as Y.Map<Y.Map<unknown>>)
+  return new SheetState(ySheet)
 }
 
 export function createFormulaContext(sheet: Sheet): FormulaContext {

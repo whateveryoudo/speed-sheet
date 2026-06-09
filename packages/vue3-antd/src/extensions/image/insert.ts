@@ -23,7 +23,7 @@ function loadImageSize(src: string): Promise<{ width: number; height: number }> 
 }
 
 export function useSheetImageInsert(options: {
-  sheet: Ref<Sheet | null>
+  sheet: Ref<Sheet | null | undefined>
   getAnchor: () => { r: number; c: number }
   getCellSize: (r: number, c: number) => { w: number; h: number }
 }) {

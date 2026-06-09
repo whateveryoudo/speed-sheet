@@ -70,7 +70,7 @@ function byCategory(cat: FormulaCategoryId) {
   return getBuiltinsByCategory(cat)
 }
 
-function onPick({ key }: { key: string }) {
+function onPick({ key }: { key: string | number }) {
   menuOpen.value = false
   if (key === '__browser__') {
     browserOpen.value = true

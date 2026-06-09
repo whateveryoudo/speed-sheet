@@ -101,7 +101,7 @@ export function recalculateWorkbook(sheet: Sheet): void {
   for (const sheetId of sheet.getSheetIds()) {
     const ySheet = sheetsMap.get(sheetId) as Y.Map<unknown> | undefined
     if (!ySheet) continue
-    const state = new SheetState(ySheet as Y.Map<unknown> as Y.Map<Y.Map<unknown>>)
+    const state = new SheetState(ySheet)
     for (const { r, c, data } of state.getAllCells()) {
       if (data.f && String(data.f).startsWith('=') && hasInternalRefs(String(data.f))) {
         formulas.push({ sheetId, r, c, f: String(data.f) })
@@ -116,7 +116,7 @@ export function recalculateWorkbook(sheet: Sheet): void {
       const result = evaluateFormulaString(item.f, ctx, visiting)
       const ySheet = sheetsMap.get(item.sheetId) as Y.Map<unknown> | undefined
       if (!ySheet) continue
-      const state = new SheetState(ySheet as Y.Map<unknown> as Y.Map<Y.Map<unknown>>)
+      const state = new SheetState(ySheet)
       const prev = state.getCellData(item.r, item.c)
       const patch = cellPatchFromFormulaResult(item.f, result)
       if (prev?.v !== patch.v || prev?.m !== patch.m || prev?.ef !== patch.ef) {
@@ -137,7 +137,7 @@ export function normalizeWorkbookFormulas(sheet: Sheet, dependents: Map<string, 
   for (const sheetId of sheet.getSheetIds()) {
     const ySheet = sheetsMap.get(sheetId) as Y.Map<unknown> | undefined
     if (!ySheet) continue
-    const state = new SheetState(ySheet as Y.Map<unknown> as Y.Map<Y.Map<unknown>>)
+    const state = new SheetState(ySheet)
 
     for (const { r, c, data } of state.getAllCells()) {
       const f = data.f ? String(data.f) : ''
@@ -164,7 +164,7 @@ export function updateDependents(
 ): void {
   const ySheet = sheet.ydoc.getMap('sheets').get(changedSheetId) as Y.Map<unknown> | undefined
   if (!ySheet) return
-  const state = new SheetState(ySheet as Y.Map<unknown> as Y.Map<Y.Map<unknown>>)
+  const state = new SheetState(ySheet)
   const ids = state.resolveCellIds(r, c)
   if (!ids) return
 
@@ -181,7 +181,7 @@ export function updateDependents(
     const { sheetId, rowId, colId } = parsed
     const targetSheet = sheetsMap.get(sheetId) as Y.Map<unknown> | undefined
     if (!targetSheet) continue
-    const targetState = new SheetState(targetSheet as Y.Map<unknown> as Y.Map<Y.Map<unknown>>)
+    const targetState = new SheetState(targetSheet)
     const pos = ctx.idsToDisplay(sheetId, rowId, colId)
     if (!pos) continue
     const data = targetState.getCellData(pos.r, pos.c)

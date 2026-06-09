@@ -23,7 +23,11 @@ const props = withDefaults(
   defineProps<{
     bubbleClassName?: string
     shouldShow: () => boolean
-    anchorRect: Ref<SheetBubbleAnchorRect | null> | ComputedRef<SheetBubbleAnchorRect | null>
+    anchorRect:
+      | Ref<SheetBubbleAnchorRect | null>
+      | ComputedRef<SheetBubbleAnchorRect | null>
+      | SheetBubbleAnchorRect
+      | null
     boundary?: Ref<HTMLElement | null | undefined> | HTMLElement | null | undefined
     placement?:
       | 'top'

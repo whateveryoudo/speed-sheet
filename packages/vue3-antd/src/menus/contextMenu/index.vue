@@ -140,7 +140,7 @@ function setInsertCount(key: string, val: number | null): void {
               <span class="flex-1 min-w-0">{{ item.label }}</span>
               <a-input-number :value="insertCount(item.key)" size="small" :min="1" :max="999"
                 class="cell-ctx-insert-input w-52px! flex-shrink-0 mx-1" @click.stop @mousedown.stop
-                @update:value="(v: number | null) => setInsertCount(item.key, v)" />
+                @update:value="(v) => setInsertCount(item.key, typeof v === 'number' ? v : null)" />
               <span class="flex-shrink-0 text-12px text-[var(--ant-color-text-tertiary,#999)]">
                 {{ item.unit }}
               </span>

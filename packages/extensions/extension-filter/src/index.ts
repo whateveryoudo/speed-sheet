@@ -13,6 +13,7 @@ export {
   resolveFilterScopeFromSelection,
 } from './extension'
 export { FILTER_EXTENSION_NAME } from './types'
+export type { FilterExtensionStorage } from './types'
 export {
   FILTER_EMPTY_VALUE,
   FILTER_COLOR_NONE,

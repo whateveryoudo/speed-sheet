@@ -30,7 +30,11 @@ export function useSpeedSheetProvider(options: SpeedSheetProviderOptions): Speed
   provideSheetUpload(
     computed(() => resolveSheetUploadConfig(uploadSource != null ? unref(uploadSource) : undefined)),
   )
-  const ctx: SpeedSheetContext = { formulaEdit, sheetEditor, previewInstance }
+  const ctx: SpeedSheetContext = {
+    formulaEdit,
+    sheetEditor,
+    previewInstance: previewInstance as Ref<SheetPreviewImage | null>,
+  }
   provide(SPEED_SHEET_KEY, ctx)
   return ctx
 }

@@ -25,7 +25,7 @@
         <div class="sheet-filter-panel__list">
           <label v-for="item in stats" :key="item.value" class="sheet-filter-panel__item">
             <a-checkbox :checked="isValueSelected(item.value)"
-              @change="(e: Event) => toggleValue(item.value, (e.target as HTMLInputElement).checked)" />
+              @change="(e: CheckboxChangeEvent) => toggleValue(item.value, e.target.checked)" />
             <span class="sheet-filter-panel__label">{{ item.label }}</span>
             <span class="sheet-filter-panel__item-count">({{ item.count }})</span>
           </label>
@@ -62,7 +62,7 @@
         :checked="visibleToAll"
         :disabled="!draft"
         class="sheet-filter-panel__visible-all-switch"
-        @update:checked="(v: boolean) => (visibleToAll = v)"
+        @update:checked="(v) => { visibleToAll = v === true }"
       />
     </div>
 
@@ -78,6 +78,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import type { CheckboxChangeEvent } from 'ant-design-vue/es/checkbox/interface'
 import { QuestionCircleOutlined } from '@ant-design/icons-vue'
 import { useFilterConfigPanelOptional } from '../../composables/useFilterConfigPanel'
 import type { Sheet } from '@speed-sheet/core'
@@ -428,10 +429,10 @@ function toggleValue(value: string, checked: boolean): void {
   rule.content.selectedValues = [...set]
 }
 
-function toggleAll(e: Event): void {
+function toggleAll(e: CheckboxChangeEvent): void {
   const rule = currentRule.value
   if (!rule?.content) return
-  const checked = (e.target as HTMLInputElement).checked
+  const checked = e.target.checked
   rule.content.selectedValues = checked ? stats.value.map((s) => s.value) : []
 }
 

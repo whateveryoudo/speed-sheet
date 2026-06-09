@@ -8,7 +8,7 @@ export function createLibConfig(overrides: Options = {}): Options {
   return {
     entry: ['src/index.ts'],
     format: ['esm'],
-    dts: {
+    dts: process.env.SKIP_DTS === '1' ? false : {
       resolve: true,
     },
     tsconfig: 'tsconfig.json',

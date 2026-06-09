@@ -24,5 +24,5 @@ export function useSheetYMap<T extends keyof SheetYMapFields>(
   sheetId: MaybeRefOrGetter<string>,
   pick: SheetYMapPick<T>,
 ): Ref<SheetYMapPick<T>> {
-  return useYMapKeys(sheet, { mapName: 'sheets', entryId: sheetId }, pick)
+  return useYMapKeys<SheetYMapPick<T>>(sheet, { mapName: 'sheets', entryId: sheetId }, pick)
 }
