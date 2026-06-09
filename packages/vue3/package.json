@@ -1,6 +1,6 @@
 {
   "name": "@speed-sheet/vue3",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Headless Vue 3 bindings (SheetRenderer + useSheet), no UI library",
   "main": "./dist/index.cjs",
@@ -13,7 +13,9 @@
       "require": "./dist/index.cjs"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "vite build && vue-tsc -p tsconfig.build.json",
     "dev": "vite build --watch",
