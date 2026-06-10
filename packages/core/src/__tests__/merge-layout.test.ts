@@ -5,7 +5,7 @@ import {
   isMergeInternalColLineAtRow,
   isMergeInternalRowLineAtCol,
 } from '../merge'
-import { defaultLayout } from '../renderer/canvas-renderer'
+import { defaultLayout } from '../renderer/canvas'
 import { buildGridMetrics } from '../renderer/grid-metrics'
 
 describe('merge-layout', () => {

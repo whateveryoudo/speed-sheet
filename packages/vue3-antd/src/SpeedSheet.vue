@@ -29,6 +29,7 @@
       @formula-pick="onFormulaPick"
       @formula-range-pick="onFormulaRangePick"
       @viewport-drop="onViewportDrop"
+      @freeze-invalid="onFreezeInvalid"
     >
       <template #context-menu="{ r, c, clientX, clientY, target, close }">
         <CellContextMenu
@@ -62,6 +63,7 @@
 
 <script setup lang="ts">
 import { computed, provide, ref, toRef, watch, onMounted, onUnmounted } from 'vue'
+import { Modal } from 'ant-design-vue'
 import { SheetCanvas, useSheet, useFormulaCanvas } from '@speed-sheet/vue3'
 import type { Sheet } from '@speed-sheet/core'
 import { isFormulaText } from '@speed-sheet/extension-formula'
@@ -279,6 +281,7 @@ provide(SHEET_TOOLBAR_KEY, {
   formatPainterActive,
   copiedStyle,
   findReplaceOpen,
+  getViewportState: () => canvasRef.value?.getViewportState?.() ?? null,
 })
 
 watch(
@@ -363,6 +366,14 @@ function onFormulaPick(r: number, c: number): void {
 
 function onFormulaRangePick(r0: number, c0: number, r1: number, c1: number): void {
   handleFormulaRangeSelect(r0, c0, r1, c1)
+}
+
+function onFreezeInvalid(): void {
+  Modal.error({
+    title: '操作出错了',
+    content: '冻结区域超出当前窗口可视范围，冻结线已取消。建议重新设置。',
+    okText: '知道了',
+  })
 }
 
 defineExpose({

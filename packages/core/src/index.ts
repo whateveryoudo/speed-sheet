@@ -68,11 +68,22 @@ export {
 } from './adapter/luckysheet-adapter'
 
 // Renderer
-export { renderSheet, cellFromPoint, cellRect, colToLetter, defaultLayout, getVisibleRange, CELL_SELECTION_INSET, CELL_EDITOR_OUTSET, drawCellText, truncateTextToWidth, buildCellMap, cellFontString, getCellTextColSpan, computeEditorWidth } from './renderer/canvas-renderer'
+export { renderSheet, cellFromPoint, cellRect, colToLetter, defaultLayout, getVisibleRange, CELL_SELECTION_INSET, CELL_EDITOR_OUTSET, drawCellText, truncateTextToWidth, buildCellMap, cellFontString, getCellTextColSpan, computeEditorWidth, computeSheetImageDisplaySize, computeSheetImageViewportRect, fitImageToCell, resolveSheetImageOriginSize, SHEET_IMAGE_CELL_INSET } from './renderer/canvas'
+export type { SheetImageViewportRect } from './renderer/canvas'
 export type { GridLayout } from './renderer/grid-layout'
 export { buildGridMetrics, MIN_ROW_HEIGHT, MIN_COL_WIDTH } from './renderer/grid-metrics'
 export type { GridMetrics } from './renderer/grid-metrics'
 export { buildSheetGridMetrics } from './renderer/sheet-grid-metrics'
+export {
+  selectionFreezeTarget,
+  validateFreezeInViewport,
+  validateExistingFreezeInViewport,
+  isFreezeActive,
+  freezeSplitsFromTarget,
+  frozenRowPixelHeight,
+  frozenColPixelWidth,
+} from './freeze/freeze-utils'
+export type { FreezeMode, FreezeValidationResult, FreezeValidationReason, FreezeViewportInput } from './freeze/freeze-utils'
 export {
   MergeContext,
   buildMergeLookup,
@@ -151,7 +162,7 @@ export type {
   ContextMenuPointer,
   KeyboardNavResult,
 } from './interaction'
-export type { CellEntry, RenderOptions, DrawCellTextOptions } from './renderer/canvas-renderer'
+export type { CellEntry, RenderOptions, DrawCellTextOptions } from './renderer/canvas'
 
 // Re-export shared types for convenience
 export type {

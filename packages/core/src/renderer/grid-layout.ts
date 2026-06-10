@@ -1,3 +1,4 @@
+import type { FreezeState } from '@speed-sheet/shared'
 import type { GridMetrics } from './grid-metrics'
 
 export interface GridLayout {
@@ -12,4 +13,6 @@ export interface GridLayout {
   viewportW: number
   viewportH: number
   metrics?: GridMetrics
+  /** 行列冻结：xSplit/ySplit 为左侧/顶部冻结数量 */
+  freeze?: FreezeState | null
 }

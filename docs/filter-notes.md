@@ -16,7 +16,7 @@
 │  FilterExtension · evaluate · persist · sync-ydoc            │
 ├─────────────────────────────────────────────────────────────┤
 │  @speed-sheet/core                                           │
-│  Sheet.setFilterView() · FilterViewState · canvas-renderer   │
+│  Sheet.setFilterView() · FilterViewState · renderer/canvas   │
 └─────────────────────────────────────────────────────────────┘
          持久化：Y.Doc（编辑态） / WorkbookSnapshot（查看态落库）
 ```
@@ -137,7 +137,7 @@ sheets.{sheetId}
 | 区域 | 路径 |
 |------|------|
 | 扩展 | `packages/extensions/extension-filter/src/` |
-| Core 视图 | `packages/core/src/Sheet.ts`（`FilterViewState`）、`renderer/canvas-renderer.ts` |
+| Core 视图 | `packages/core/src/Sheet.ts`（`FilterViewState`）、`renderer/canvas/` |
 | 快照 | `packages/shared/src/index.ts`（`SheetSnapshot`）、`SheetState.toSnapshot` / `Sheet._loadSnapshot` |
 | UI | `packages/vue3-antd/src/bubbleMenus/filterConfigMenu/`、`menus/toolbar/filter.vue` |
 | 宿主 | `speed-knowledge-client/.../SheetEditor.vue`（`filterUserId`、编辑/查看分流） |

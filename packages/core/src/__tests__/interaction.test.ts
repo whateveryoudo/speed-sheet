@@ -16,7 +16,7 @@ import {
   resolveKeyboardNav,
 } from '../interaction'
 import { buildGridMetrics } from '../renderer/grid-metrics'
-import { defaultLayout } from '../renderer/canvas-renderer'
+import { defaultLayout } from '../renderer/canvas'
 import type { Selection } from '@speed-sheet/shared'
 
 describe('selection-block', () => {

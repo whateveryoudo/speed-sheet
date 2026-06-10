@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@speed-sheet/core": "workspace:^",
+    "@speed-sheet/view": "workspace:^",
     "@speed-sheet/extension-formula": "workspace:^",
     "@speed-sheet/shared": "workspace:^",
     "@floating-ui/dom": "^1.6.0"

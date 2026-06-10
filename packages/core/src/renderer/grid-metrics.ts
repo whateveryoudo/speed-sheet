@@ -115,23 +115,57 @@ export function getVisibleRangeFromMetrics(
     scrollY: number
     viewportW: number
     viewportH: number
+    freeze?: { xSplit?: number; ySplit?: number } | null
   },
 ): { rowStart: number; rowEnd: number; colStart: number; colEnd: number } {
   const { rowHeaderWidth: RHW, columnHeaderHeight: CHH, scrollX: sx, scrollY: sy, viewportW: vw, viewportH: vh } =
     layout
 
-  const contentW = Math.max(0, vw - RHW)
-  const contentH = Math.max(0, vh - CHH)
+  const xSplit = layout.freeze?.xSplit ?? 0
+  const ySplit = layout.freeze?.ySplit ?? 0
 
-  const colStart = metrics.colAtX(sx)
-  const colEnd = metrics.colAtX(sx + contentW)
-  const rowStart = metrics.rowAtY(sy)
-  const rowEnd = metrics.rowAtY(sy + contentH)
+  const frozenW =
+    xSplit > 0 ? metrics.colRight(xSplit - 1) - metrics.colLeft(0) : 0
+  const frozenH =
+    ySplit > 0 ? metrics.rowBottom(ySplit - 1) - metrics.rowTop(0) : 0
+
+  const contentW = Math.max(0, vw - RHW - frozenW)
+  const contentH = Math.max(0, vh - CHH - frozenH)
+
+  let colStart: number
+  let colEnd: number
+  if (xSplit > 0) {
+    const origin = metrics.colLeft(xSplit)
+    const relScroll = Math.max(0, sx - origin)
+    colStart = 0
+    colEnd = Math.min(
+      metrics.totalCols - 1,
+      Math.max(xSplit - 1, metrics.colAtX(origin + relScroll + contentW) + 1),
+    )
+  } else {
+    colStart = Math.max(0, metrics.colAtX(sx))
+    colEnd = Math.min(metrics.totalCols - 1, metrics.colAtX(sx + Math.max(0, vw - RHW)) + 1)
+  }
+
+  let rowStart: number
+  let rowEnd: number
+  if (ySplit > 0) {
+    const origin = metrics.rowTop(ySplit)
+    const relScroll = Math.max(0, sy - origin)
+    rowStart = 0
+    rowEnd = Math.min(
+      metrics.totalRows - 1,
+      Math.max(ySplit - 1, metrics.rowAtY(origin + relScroll + contentH) + 1),
+    )
+  } else {
+    rowStart = Math.max(0, metrics.rowAtY(sy))
+    rowEnd = Math.min(metrics.totalRows - 1, metrics.rowAtY(sy + Math.max(0, vh - CHH)) + 1)
+  }
 
   return {
-    rowStart: Math.max(0, rowStart),
-    rowEnd: Math.min(metrics.totalRows - 1, rowEnd + 1),
-    colStart: Math.max(0, colStart),
-    colEnd: Math.min(metrics.totalCols - 1, colEnd + 1),
+    rowStart,
+    rowEnd,
+    colStart,
+    colEnd,
   }
 }

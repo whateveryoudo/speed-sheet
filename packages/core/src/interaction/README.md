@@ -1,10 +1,14 @@
 # interaction — 无 UI 交互层
 
-存放**与框架无关**的指针、键盘、拖拽会话逻辑。Vue `SheetCanvas` / React `SheetRenderer` 只负责：
+存放**与框架、DOM 无关**的拖拽/导航 **Session** 状态机（`SelectDragSession`、`ResizeSession` 等）。
 
-1. 读取 DOM 坐标 → 调用本目录 API
-2. 根据 preview 画 overlay
-3. 在 `mouseup` 时用 commit 结果调 `sheet.chain()`
+**DOM 绑定与编排**在 `@speed-sheet/view`（`SheetViewport` + `*Controller`），不在 vue3 composable 里重复实现。
+
+框架层只负责：
+
+1. 把 DOM 事件交给 `SheetViewport`（或 vue3 的 `useSheetCanvasView`）
+2. 根据 controller 状态画 overlay（resize 线、移动提示等）
+3. Session `commit` 已在 view 内调 `sheet.chain()`
 
 ## 文件
 
@@ -23,11 +27,15 @@
 
 ## 不要放这里
 
-- Vue `ref`、DOM `addEventListener`
-- 公式栏 / 内联 RichInput 同步（在 `vue3` composable）
+- Vue `ref`、DOM `addEventListener`（在 `@speed-sheet/view`）
+- 公式栏 / 内联 RichInput 同步（在 `vue3` `useSheetInlineEdit`）
 
-## React 复用
+## 复用方式
 
 ```ts
+// 低层：直接用 Session（测试、自定义 UI）
 import { RowMoveSession, pointerFromMouseEvent } from '@speed-sheet/core'
+
+// 推荐：整页视口
+import { SheetViewport } from '@speed-sheet/view'
 ```

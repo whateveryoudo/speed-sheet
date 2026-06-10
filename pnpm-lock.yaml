@@ -227,6 +227,22 @@ importers:
         specifier: ^5.6.0
         version: 5.9.3
 
+  packages/view:
+    dependencies:
+      '@speed-sheet/core':
+        specifier: workspace:^
+        version: link:../core
+      '@speed-sheet/shared':
+        specifier: workspace:^
+        version: link:../shared
+    devDependencies:
+      tsup:
+        specifier: ^8.3.0
+        version: 8.5.1(jiti@1.21.7)(postcss@8.5.15)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+
   packages/vue3:
     dependencies:
       '@floating-ui/dom':
@@ -241,6 +257,9 @@ importers:
       '@speed-sheet/shared':
         specifier: workspace:^
         version: link:../shared
+      '@speed-sheet/view':
+        specifier: workspace:^
+        version: link:../view
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: ^5.0.0

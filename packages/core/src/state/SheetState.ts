@@ -730,6 +730,28 @@ export class SheetState {
     return this.root.get('freeze') as Y.Map<number>
   }
 
+  getFreezeState(): import('@speed-sheet/shared').FreezeState | null {
+    const map = this.freeze
+    const xSplit = map.get('xSplit') ?? 0
+    const ySplit = map.get('ySplit') ?? 0
+    if (xSplit <= 0 && ySplit <= 0) return null
+    return { xSplit, ySplit }
+  }
+
+  setFreeze(state: import('@speed-sheet/shared').FreezeState): void {
+    this._transact(() => {
+      this.freeze.set('xSplit', Math.max(0, state.xSplit))
+      this.freeze.set('ySplit', Math.max(0, state.ySplit))
+    })
+  }
+
+  clearFreeze(): void {
+    this._transact(() => {
+      this.freeze.delete('xSplit')
+      this.freeze.delete('ySplit')
+    })
+  }
+
   // ---- Selection ----
 
   setSelection(sel: Selection): void {

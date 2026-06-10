@@ -1,5 +1,63 @@
 # speed-sheet 开发日志
 
+## 2026-06-10 — 视口层 `@speed-sheet/view` + `SheetViewport` 收敛
+
+### 背景
+
+`SheetCanvas` 原先依赖十余个 vue3 composable（`useSheetLayout`、`useSheetCanvasDraw`、`useSheetCanvasPointer`…），拆 core 后仍是一层薄转发，文件数未减、React 也难以复用。
+
+### 结论（分层）
+
+| 包 | 职责 |
+|----|------|
+| `@speed-sheet/core` | 模型、命令、`renderer/canvas` `renderSheet`、`interaction/*` Session |
+| **`@speed-sheet/view`** | **`SheetViewport`**：滚动、rAF 绘制、指针/键盘、框选与行列拖拽 |
+| `@speed-sheet/vue3` | **`useSheetCanvasView`**（唯一 viewport 胶水）+ **`useSheetInlineEdit`** + `SheetCanvas` 模板 |
+| `@speed-sheet/react` | 直接 `new SheetViewport`（待完善） |
+
+对标：core ≈ EditorState，view ≈ EditorView，vue3 ≈ `@tiptap/vue-3` 绑定。
+
+### 已完成
+
+**Core 渲染**
+
+- `canvas-renderer.ts` 拆为 `packages/core/src/renderer/canvas/`（`render-sheet.ts`、`draw-*.ts`、`hit.ts` 等）
+
+**`@speed-sheet/view`（新包）**
+
+- `SheetViewport` 编排全部 controller
+- 子模块：`layout/`、`draw/`、`scroll/`、`input/`、`overlay/`、`data/`
+- 冻结绘制与视口校验：`draw-freeze.ts`、`validateExistingFreezeInViewport`
+
+**Vue3 收敛**
+
+- 删除 12 个薄 composable（`useSheetLayout`、`useSheetCanvasDraw`…）
+- `SheetCanvas.vue` 仅：`useSheetCanvasView` + `useSheetInlineEdit` + `editorBridge`
+- `inlineEdit` 与 viewport 初始化顺序：`isEditing` 独立回调 + bridge 可选守卫（避免 watch 踩空）
+
+**冻结（同批）**
+
+- Core：`setFreeze` / `clearFreeze`、`layout-metrics` 冻结坐标
+- vue3-antd：工具栏冻结菜单；无效冻结自动清除 + Modal 提示
+
+### 涉及文件（摘要）
+
+| 区域 | 路径 |
+|------|------|
+| 视口包 | `packages/view/src/sheet-viewport.ts`、`packages/view/README.md` |
+| Core 渲染 | `packages/core/src/renderer/canvas/` |
+| Core 冻结 | `packages/core/src/freeze/`、`draw-freeze.ts` |
+| vue3 | `useSheetCanvasView.ts`、`SheetCanvas.vue`、`composables/README.md` |
+| vue3-antd | `menus/toolbar/freeze.vue` |
+
+### 相关文档
+
+- 架构：[`ARCHITECTURE.md`](../ARCHITECTURE.md)
+- 视口包：[`packages/view/README.md`](../packages/view/README.md)
+- Cursor：[`/.cursor/rules/vue3-layering.mdc`](../.cursor/rules/vue3-layering.mdc)
+
+---
+
 ## 2026-06-01 — 列筛选（extension-filter + 协同/快照持久化）
 
 ### 背景
@@ -44,7 +102,7 @@
 | 区域 | 路径 |
 |------|------|
 | 扩展 | `packages/extensions/extension-filter/src/` |
-| Core | `Sheet.ts`、`SheetState.ts`、`canvas-renderer.ts` |
+| Core | `Sheet.ts`、`SheetState.ts`、`renderer/canvas/` |
 | Shared | `packages/shared/src/index.ts`（快照字段） |
 | UI | `vue3-antd/.../filterConfigMenu/`、`menus/toolbar/filter.vue`、`SpeedSheet.vue`、`sheetBuiltin.ts` |
 | 宿主 | `speed-knowledge-client/.../SheetEditor.vue` |
@@ -143,7 +201,7 @@
 
 - `provideLinkConfigPanel` / `provideLinkToolbarPanel` / `provideNoteConfigPanel` / `provideNoteHoverPanel`
 - `closeSheetBubbles` 互斥关闭下拉 / 链接 / 备注浮层
-- `SheetCanvas`：`onNoteMarkerHover` → `useSheetCanvasPointer` 内 `hitNoteMarkerAt`
+- `SheetCanvas`：角标 hover（历史在 `useSheetCanvasPointer`；现视口逻辑在 `@speed-sheet/view` `CanvasPointerController`）
 
 ### 图片插入（摘要，同批落地）
 
@@ -165,8 +223,8 @@
 
 | 区域 | 路径 |
 |------|------|
-| Core 命令 / 渲染 | `packages/core/src/extension/core/cell-insert.ts`、`renderer/canvas-renderer.ts` |
-| vue3 | `SheetCanvas.vue`、`useSheetCanvasPointer.ts`、`useSheetKeyboard.ts` |
+| Core 命令 / 渲染 | `packages/core/src/extension/core/cell-insert.ts`、`renderer/canvas/` |
+| vue3 | `SheetCanvas.vue`、`useSheetCanvasView.ts`（历史：`useSheetCanvasPointer` 等已删除） |
 | vue3-antd 扩展 | `extensions/dropdown/`、`extensions/image/` |
 | 气泡 | `bubbleMenus/dropdownConfigMenu/`、`dropdownPickMenu/`、`BubbleContainer.vue` |
 | 菜单 | `menus/insert/` |

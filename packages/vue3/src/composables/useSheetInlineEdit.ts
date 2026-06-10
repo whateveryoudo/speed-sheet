@@ -1,15 +1,10 @@
 import { ref, computed, watch, nextTick, type Ref, type ComputedRef } from 'vue'
+import { type GridLayout, type CellEntry, type Sheet } from '@speed-sheet/core'
 import {
-  cellRect,
-  CELL_EDITOR_OUTSET,
-  buildCellMap,
-  getCellTextColSpan,
-  computeEditorWidth,
-  MergeContext,
-  type GridLayout,
-  type CellEntry,
-  type Sheet,
-} from '@speed-sheet/core'
+  computeEditorBox,
+  computeEditorWidthPx,
+  computeEditorStyles,
+} from '@speed-sheet/view'
 import type { CellAttributes } from '@speed-sheet/shared'
 import type { FormulaEditContext } from './useFormulaEdit'
 import {
@@ -56,69 +51,49 @@ export function useSheetInlineEdit(options: {
     }
   }
 
-  function editorBox(): { left: number; top: number; minW: number; minH: number } {
-    const mc = options.sheet.value?.createMergeContext() ?? MergeContext.empty()
-    const r = cellRect(editR.value, editC.value, options.layout.value, mc)
-    const o = CELL_EDITOR_OUTSET
-    return {
-      left: r.x - options.scrollX.value - o,
-      top: r.y - options.scrollY.value - o,
-      minW: r.w + o * 2,
-      minH: r.h + o * 2,
-    }
-  }
-
-  let measureCanvas: HTMLCanvasElement | null = null
-  function getMeasureCtx(): CanvasRenderingContext2D {
-    if (!measureCanvas) measureCanvas = document.createElement('canvas')
-    return measureCanvas.getContext('2d')!
+  function editorBox() {
+    return computeEditorBox({
+      editR: editR.value,
+      editC: editC.value,
+      layout: options.layout.value,
+      scrollX: options.scrollX.value,
+      scrollY: options.scrollY.value,
+      mergeContext: options.sheet.value?.createMergeContext(),
+    })
   }
 
   function updateEditorWidth(): void {
     if (!editing.value) return
-    const ctx = getMeasureCtx()
-    const cell = options.cells.value.find((x) => x.r === editR.value && x.c === editC.value)
-    const data: CellAttributes = cell?.data ?? { v: editorValue.value }
-    const cellMap = buildCellMap(options.cellEntries.value)
-    const colSpan = getCellTextColSpan(
-      cellMap,
-      editR.value,
-      editC.value,
-      data,
-      options.layout.value,
-      ctx,
-      editorValue.value,
-    )
-    const { left } = editorBox()
-    editorWidthPx.value = computeEditorWidth(
-      ctx,
-      editorValue.value,
-      cell?.data,
-      colSpan,
-      options.layout.value,
-      left,
-    )
+    editorWidthPx.value = computeEditorWidthPx({
+      editR: editR.value,
+      editC: editC.value,
+      editorValue: editorValue.value,
+      layout: options.layout.value,
+      scrollX: options.scrollX.value,
+      scrollY: options.scrollY.value,
+      cellEntries: options.cellEntries.value,
+      cells: options.cells.value,
+      mergeContext: options.sheet.value?.createMergeContext(),
+    })
   }
 
   const editorStyle = computed(() => {
-    const { left, top, minW, minH } = editorBox()
-    const maxW = Math.max(minW, options.layout.value.viewportW - left - 4)
-    const width = Math.min(maxW, Math.max(minW, editorWidthPx.value || minW))
-    return {
-      left: `${left}px`,
-      top: `${top}px`,
-      width: `${width}px`,
-      minWidth: `${minW}px`,
-      maxWidth: `${maxW}px`,
-      height: `${minH}px`,
-    }
+    const { editor } = computeEditorStyles({
+      box: editorBox(),
+      viewportW: options.layout.value.viewportW,
+      widthPx: editorWidthPx.value,
+    })
+    return editor
   })
 
-  const editorFieldStyle = computed(() => ({
-    width: '100%',
-    minWidth: editorStyle.value.minWidth,
-    maxWidth: editorStyle.value.maxWidth,
-  }))
+  const editorFieldStyle = computed(() => {
+    const { field } = computeEditorStyles({
+      box: editorBox(),
+      viewportW: options.layout.value.viewportW,
+      widthPx: editorWidthPx.value,
+    })
+    return field
+  })
 
   function inlineCanFormulaPick(): boolean {
     if (!editing.value || !isFormulaText(editorValue.value)) return false
@@ -503,3 +478,5 @@ export function useSheetInlineEdit(options: {
     isEditingCell,
   }
 }
+
+export type UseSheetInlineEditReturn = ReturnType<typeof useSheetInlineEdit>

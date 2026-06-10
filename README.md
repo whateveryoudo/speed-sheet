@@ -23,13 +23,16 @@ Headless 在线表格引擎：Luckysheet 兼容数据模型 + Yjs 协同 + TipTa
 ├─────────────────────────────────────────────────────────┤
 │  @speed-sheet/vue3-antd  ← 可选 UI（工具栏 / 公式栏等）   │
 ├─────────────────────────────────────────────────────────┤
-│  @speed-sheet/vue3  │  @speed-sheet/react  ← Headless   │
-│  SheetCanvas, useSheet（无 UI 库依赖）                   │
+│  @speed-sheet/vue3  │  @speed-sheet/react  ← 框架胶水     │
+│  SheetCanvas + useSheetCanvasView │ SheetViewport 绑定    │
+├─────────────────────────────────────────────────────────┤
+│  @speed-sheet/view  ← 视口：滚动、绘制、指针/键盘/拖拽    │
+│  SheetViewport（无 Vue / React）                         │
 ├─────────────────────────────────────────────────────────┤
 │  @speed-sheet/extension-*  ← 可选插件（公式 / 筛选…）     │
 ├─────────────────────────────────────────────────────────┤
 │  @speed-sheet/core  ← Sheet、Extension、Command、渲染 API │
-│  Y.Doc 数据 │ Canvas render │ Luckysheet 适配器           │
+│  Y.Doc │ renderer/canvas │ interaction Session            │
 ├─────────────────────────────────────────────────────────┤
 │  @speed-sheet/shared  ← 类型定义、cellKey 等工具          │
 └─────────────────────────────────────────────────────────┘
@@ -41,8 +44,9 @@ Headless 在线表格引擎：Luckysheet 兼容数据模型 + Yjs 协同 + TipTa
 | Package | 职责 |
 |---------|------|
 | `@speed-sheet/shared` | 类型定义、cellKey 等纯工具 |
-| `@speed-sheet/core` | Sheet 引擎、命令系统、Canvas 渲染 — 无 UI |
-| `@speed-sheet/vue3` / `@speed-sheet/react` | 框架适配层（Headless） |
+| `@speed-sheet/core` | Sheet 引擎、命令、`renderSheet`、interaction Session — 无 DOM |
+| `@speed-sheet/view` | `SheetViewport`：滚动、绘制调度、输入与拖拽编排 |
+| `@speed-sheet/vue3` / `@speed-sheet/react` | 框架胶水（vue3：`useSheetCanvasView` + `SheetCanvas`） |
 | `@speed-sheet/vue3-antd` | Ant Design Vue 工具栏 / 公式栏 / 页签栏 |
 | `@speed-sheet/extension-*` | 可选插件（公式、筛选、导入导出…） |
 
@@ -68,8 +72,15 @@ Headless 在线表格引擎：Luckysheet 兼容数据模型 + Yjs 协同 + TipTa
 - ✔️ Yjs `UndoManager` 撤销 / 重做
 - ✔️ rowId / colId + rowOrder / colOrder 布局 v2（插删行列不重建 cell key）
 
+#### 视口层（`@speed-sheet/view`）
+
+- ✔️ `SheetViewport` 统一编排 layout / draw / scroll / pointer / keyboard
+- ✔️ 框选、行列 resize、行列移动、自定义滚动条、右键命中、公式错误角标
+- ✔️ 内联编辑器定位 helper（`computeEditorBox` 等，组件仍在 vue3）
+
 #### 交互与编辑（`@speed-sheet/vue3`）
 
+- ✔️ `useSheetCanvasView` — 唯一 viewport Vue 胶水（不再维护十几个薄 composable）
 - ✔️ 单元格选区（单击 / 拖拽 / 键盘方向键）
 - ✔️ 单元格内联编辑（双击 / F2 / 直接输入）
 - ✔️ 行列拖拽调整宽高
@@ -113,8 +124,8 @@ Headless 在线表格引擎：Luckysheet 兼容数据模型 + Yjs 协同 + TipTa
 
 #### 核心能力
 
-- [ ] React Headless 适配层完善（`@speed-sheet/react`）
-- [ ] 冻结行列（冻结窗格）
+- [ ] React 绑 `SheetViewport`（`@speed-sheet/react`）
+- [x] 冻结行列（冻结窗格）
 - [ ] 条件格式
 - [x] 数据验证 — **下拉列表**（多选 / 颜色等待完善）
 - [ ] 虚拟滚动 + 按需加载单元格块
@@ -171,6 +182,7 @@ pnpm demo   # http://localhost:4000
 ## 文档
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md) — 架构分层与设计原则
+- [packages/view/README.md](./packages/view/README.md) — 视口层 `SheetViewport`
 - [docs/DEVLOG.md](./docs/DEVLOG.md) — 开发日志
 - [docs/filter-notes.md](./docs/filter-notes.md) — 列筛选功能说明
 - [docs/layout-and-formula-notes.md](./docs/layout-and-formula-notes.md) — 布局 v2 与公式同步说明

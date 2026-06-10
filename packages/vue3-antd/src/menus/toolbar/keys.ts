@@ -20,6 +20,7 @@ export const defaultSheetToolbarKeys: ToolbarItemConfig[] = [
   'align',
   '|',
   'filter',
+  'freeze',
   'link',
   'formula',
   '|',

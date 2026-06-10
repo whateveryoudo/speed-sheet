@@ -69,6 +69,7 @@ export function useSheetToolbar() {
 
   return {
     ...ctx,
+    getViewportState: ctx.getViewportState,
     selection,
     cells,
     cellMap,

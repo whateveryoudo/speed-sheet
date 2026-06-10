@@ -24,5 +24,8 @@ Headless 电子表格引擎（无 DOM / 无框架依赖），对标 TipTap 的 E
 
 ## 分层原则
 
-- **core**：数据语义 + 无 UI 交互 + 渲染数学
-- **vue3 / react**：DOM 事件、预览 overlay、内联编辑器
+- **core**：数据语义 + `interaction` Session + `renderer` 几何与 `renderSheet`
+- **view**（`@speed-sheet/view`）：`SheetViewport` — 滚动、绘制调度、DOM 事件编排
+- **vue3 / react**：框架胶水 + 内联编辑器 UI 组件
+
+详见 [`../../view/README.md`](../../view/README.md)、[`ARCHITECTURE.md`](../../../ARCHITECTURE.md)。

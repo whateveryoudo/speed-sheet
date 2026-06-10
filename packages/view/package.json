@@ -1,0 +1,36 @@
+{
+  "name": "@speed-sheet/view",
+  "version": "0.1.1",
+  "type": "module",
+  "description": "Framework-agnostic sheet viewport — scroll, draw, pointer sessions",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@speed-sheet/core": "workspace:^",
+    "@speed-sheet/shared": "workspace:^"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

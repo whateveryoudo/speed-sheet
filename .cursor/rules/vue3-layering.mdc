@@ -11,12 +11,17 @@ globs:
 ## 包依赖（禁止反向依赖）
 
 ```
-@speed-sheet/core          ← Sheet、chain、canvas 渲染、Luckysheet 适配
+@speed-sheet/core          ← Sheet、chain、renderSheet、interaction Session
         ↓
-@speed-sheet/vue3          ← 严格 headless：SheetCanvas + useSheet（无 UI 库）
+@speed-sheet/view          ← SheetViewport：滚动、绘制调度、指针/键盘/拖拽（无框架）
+        ↓
+@speed-sheet/vue3          ← SheetCanvas + useSheetCanvasView + useSheetInlineEdit
         ↓
 @speed-sheet/vue3-antd     ← 默认产品皮：公式栏 / 工具栏 / 页签 / antd 菜单
 ```
+
+- **禁止**在 vue3 恢复 `useSheetCanvasDraw`、`useSheetLayout` 等已删除的薄 composable；视口逻辑加在 **`@speed-sheet/view`**，Vue 只改 **`useSheetCanvasView`**。
+- **React** 应直接依赖 `view`，不要抄 vue3 hook。
 
 - **vue3-element**（规划）只依赖 `vue3`，与 `vue3-antd` **平行**，互不依赖。
 - **业务 API 唯一句柄**：`sheet` 实例（对齐 Tiptap `editor`），不要在外壳层再包一层 `getRange` 等到 `defineExpose`。
@@ -25,8 +30,10 @@ globs:
 
 | 保留 | 不放在 vue3 |
 |------|-------------|
-| `SheetCanvas`：canvas、滚动、单元格编辑、选区同步 | 公式栏、底部页签条、工具栏 DOM |
+| `SheetCanvas` 模板 + **`useSheetCanvasView`**（绑 `SheetViewport`） | 公式栏、底部页签条、工具栏 DOM |
+| **`useSheetInlineEdit`** + `FormulaRichInput` | 视口 controller 实现（应在 **view**） |
 | `useSheet` → `sheet` + `revision` | `SheetChromeOptions`、antd / element |
+| `provideSheetViewport` / upload inject | 十几个已删 composable 的复制粘贴 |
 | `#context-menu` slot（坐标 + close，无 UI） | 页签 Pop、工具栏按钮 |
 | **扩展挂载胶水**（无 antd/业务 UI）：`VueSheetOverlayRenderer`、`VueSheetBubbleRenderer`、`SheetExtensionViews`、`SheetBubbleMenusHost` + `useSheetBubbleFloating` | 具体扩展 UI：`Layer.vue`、`bubbleMenus/imageMenu`、图标按钮菜单 |
 | `provideSheetViewport` / upload inject（数据通道） | `viewerjs`、预览类、`useCustomUpload`、文件下载 UI |
@@ -40,8 +47,9 @@ globs:
 
 | 层级 | 示例 |
 |------|------|
-| core / extension-* | 命令、`layout.ts`、无 Vue |
-| vue3 | `SheetCanvas`、`useSheetBubbleFloating`、扩展组件 **注册器** |
+| core / extension-* | 命令、`renderer/`、`interaction/` Session，无 Vue |
+| view | `SheetViewport`、`*Controller`，无 Vue |
+| vue3 | `SheetCanvas`、`useSheetCanvasView`、`useSheetBubbleFloating`、扩展 **注册器** |
 | vue3-antd | `Layer.vue`、`BubbleContainer`、`imageMenu`、`SheetPreviewImage` |
 
 ### 响应式要点

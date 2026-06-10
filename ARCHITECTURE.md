@@ -10,18 +10,30 @@
 ├─────────────────────────────────────────────────────────┤
 │  @speed-sheet/vue3-antd  ← 可选 UI（Ant Design Toolbar 等）        │
 ├─────────────────────────────────────────────────────────┤
-│  @speed-sheet/vue3  │  @speed-sheet/react   ← Headless 适配层     │
-│  SheetCanvas, useSheet（无 UI 库；SheetRenderer 为别名）            │
+│  @speed-sheet/vue3  │  @speed-sheet/react   ← 框架胶水（很薄）      │
+│  SheetCanvas + useSheetCanvasView │ 直接绑 SheetViewport           │
+├─────────────────────────────────────────────────────────┤
+│  @speed-sheet/view  ← 视口编排：滚动、绘制调度、指针/键盘/拖拽      │
+│  SheetViewport + controllers（无 Vue / React）                     │
 ├─────────────────────────────────────────────────────────┤
 │  @speed-sheet/extension-*  ← 可选插件（筛选、导入导出…）       │
 ├─────────────────────────────────────────────────────────┤
 │  @speed-sheet/core  ← 无 UI：Sheet、Extension、Command、渲染 API │
-│  Y.Doc 数据 │ canvas renderSheet │ Luckysheet 适配器      │
+│  Y.Doc 数据 │ renderer/canvas renderSheet │ interaction Session   │
 ├─────────────────────────────────────────────────────────┤
 │  @speed-sheet/shared  ← 纯类型与 cellKey 等工具                │
 └─────────────────────────────────────────────────────────┘
          协同层：y-websocket / y-webrtc + 共享 Y.Doc
 ```
+
+对标关系（便于迁移思维）：
+
+| 概念 | speed-sheet | TipTap / ProseMirror |
+|------|-------------|----------------------|
+| 文档模型 | `@speed-sheet/core` `Sheet` | `Editor` / `EditorState` |
+| 视口与输入 | `@speed-sheet/view` `SheetViewport` | `EditorView` |
+| 框架绑定 | `@speed-sheet/vue3` `useSheetCanvasView` | `@tiptap/vue-3` |
+| 产品 UI | `@speed-sheet/vue3-antd` `SpeedSheet` | 业务层 |
 
 ### @speed-sheet/core 目录结构
 
@@ -40,9 +52,25 @@ packages/core/src/
 │   └── index.ts
 ├── commands/CommandManager.ts
 ├── state/SheetState.ts
-├── renderer/canvas-renderer.ts
+├── renderer/
+│   ├── grid-layout.ts、grid-metrics.ts、layout-metrics.ts …
+│   └── canvas/               # renderSheet 绘制管线（已自 canvas-renderer 拆出）
+├── interaction/              # 无 DOM Session（框选/resize/行移动…）
 ├── adapter/luckysheet-adapter.ts
 └── formula/README.md         # 占位：公式走 @speed-sheet/extension-formula
+```
+
+### @speed-sheet/view 目录结构
+
+```
+packages/view/src/
+├── sheet-viewport.ts         # SheetViewport 编排入口
+├── layout/sheet-layout.ts
+├── draw/canvas-draw.ts
+├── scroll/scroll-bar.ts
+├── input/                    # pointer、keyboard、selection/resize/move、context-menu
+├── overlay/                  # cell-error-tip、editor-layout
+└── data/canvas-data.ts
 ```
 
 可选插件在 **`packages/extensions/*`**（如 filter、import-export），不要堆进 `extension/core/`。
@@ -55,23 +83,42 @@ packages/core/src/
 | `extension/` | TipTap 风格插件：commands、快捷键、storage |
 | `CommandManager` | `chain().setCellValue().run()` |
 | `SheetState` | 单 sheet 的 Y.Map 读写 |
-| `renderer/canvas-renderer` | **主题无关**的 Canvas 绘制 API |
+| `renderer/canvas/` | **主题无关**的 `renderSheet` 绘制 API |
+| `interaction/*` | 拖拽/导航 **Session**（无 DOM） |
 | `adapter/luckysheet-adapter` | 旧 Luckysheet JSON 互转 |
+
+### @speed-sheet/view 应包含
+
+| 模块 | 职责 |
+|------|------|
+| `SheetViewport` | 编排 layout、draw、scroll、pointer、keyboard、各类拖拽 |
+| `*Controller` | 将 core `interaction` Session 绑到 DOM 事件 |
+| `overlay/editor-layout` | 内联编辑器几何（不含 RichInput 组件） |
+
+详见 [`packages/view/README.md`](./packages/view/README.md)。
 
 ### @speed-sheet/core 不应包含
 
 - ant-design-vue / 工具栏 DOM
+- `requestAnimationFrame` / `ResizeObserver` 等视口生命周期（在 **view**）
 - 公式栏、右键菜单、Sheet 标签栏（除非做成可选 headless 组件）
 - jQuery、Luckysheet 原 `controllers/handler.js` 巨型事件文件
 
 ### 框架包（vue3 / react）职责
 
-- **`SheetCanvas`**：滚动容器 + 固定视口 Canvas（`position: absolute` 相对 scrollport）
-- 把 `scrollX/Y`、`viewportW/H` 传给 `renderSheet`
-- 绑定鼠标/键盘到 `sheet.chain()`，选区在 canvas 内同步到 `sheet`
-- **`#context-menu` slot**（仅 payload，无 UI 库）
-- **`SheetBubbleMenusHost`**：扩展 `getBubbleMenu()` 登记的气泡 UI（无 antd 业务组件）
-- **`resolveCellDblClick`**：宿主/产品层可拦截双击（如下拉格打开配置而非内联编辑）
+**原则：视口逻辑在 `@speed-sheet/view`；vue3 只保留 Vue 响应式胶水，不要恢复十几个薄封装 composable。**
+
+| 包 | 保留 |
+|----|------|
+| **vue3** | `SheetCanvas` 模板 + **`useSheetCanvasView`**（绑 `SheetViewport`）+ **`useSheetInlineEdit`**（`FormulaRichInput`）+ `useSheet` |
+| **react** | 直接 `new SheetViewport(...)` + React state 订阅（`@speed-sheet/react` 待完善） |
+
+`SheetCanvas` 仍负责：
+
+- 滚动容器 + 钉在视口的 Canvas（见下文「Canvas 视口模式」）
+- `#context-menu` slot（仅 payload，无 UI 库）
+- **`SheetBubbleMenusHost`**：扩展气泡挂载
+- **`resolveCellDblClick`**：产品层拦截双击
 
 ### @speed-sheet/vue3-antd 职责
 
@@ -135,8 +182,10 @@ const sheet = new Sheet({ ydoc, extensions: [...] })
 ## 路线图（建议优先级）
 
 - [x] Core + Yjs + Extension 骨架  
-- [x] Canvas 视口渲染 + Vue3 SheetRenderer  
-- [ ] React SheetRenderer（@speed-sheet/react）  
+- [x] Canvas 视口渲染 + Vue3 `SheetCanvas`  
+- [x] `@speed-sheet/view` 视口层 + `SheetViewport` 编排  
+- [x] 冻结行列（core + toolbar）  
+- [ ] React 绑 `SheetViewport`（`@speed-sheet/react`）  
 - [ ] y-websocket 协同 demo  
 - [ ] 主题 API：`createTheme()` 注入颜色/字体到 renderSheet  
 - [ ] 虚拟滚动 + 按需加载单元格块  
