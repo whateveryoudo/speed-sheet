@@ -1,6 +1,12 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, type Ref } from 'vue'
-import { cellPointFromMouse, MergeContext, buildSheetGridMetrics } from '@speed-sheet/core'
+import { onMounted, onUnmounted, watch, type Ref } from 'vue'
+import {
+  buildSheetGridMetrics,
+  cellPointFromMouse,
+  cellViewportRect,
+  MergeContext,
+  shouldHideAtFreezeSplit,
+} from '@speed-sheet/core'
 import { noteHasContent } from '@speed-sheet/shared'
 import { useSheetViewport } from '@speed-sheet/vue3'
 import { useNoteConfigPanel } from '../../composables/useNoteConfigPanel'
@@ -10,8 +16,24 @@ const props = defineProps<{
 }>()
 
 const { sheet, revision, layout, scrollX, scrollY, viewportTick } = useSheetViewport()
-const { open, anchor, openPanel, scheduleClose, cancelScheduledClose, editing } =
+const { open, anchor, openPanel, scheduleClose, cancelScheduledClose, editing, closePanel } =
   useNoteConfigPanel()
+
+function shouldCloseForFreeze(): void {
+  if (!open.value || editing.value) return
+  const s = sheet.value
+  if (!s) return
+  const { r, c } = anchor
+  const L = layout.value
+  const metrics = buildSheetGridMetrics(s, L)
+  const mc = s.createMergeContext()
+  const rect = cellViewportRect(r, c, L, mc)
+  if (shouldHideAtFreezeSplit(r, c, rect, L, metrics)) {
+    closePanel()
+  }
+}
+
+watch([scrollX, scrollY, layout, viewportTick, open], shouldCloseForFreeze)
 
 function resolveBoundary(): HTMLElement | null {
   const b = props.boundary

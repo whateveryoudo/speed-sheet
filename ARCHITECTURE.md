@@ -16,7 +16,7 @@
 │  @speed-sheet/view  ← 视口编排：滚动、绘制调度、指针/键盘/拖拽      │
 │  SheetViewport + controllers（无 Vue / React）                     │
 ├─────────────────────────────────────────────────────────┤
-│  @speed-sheet/extension-*  ← 可选插件（筛选、导入导出…）       │
+│  @speed-sheet/extension-*  ← 可选插件（公式 / 筛选 / 条件格式…） │
 ├─────────────────────────────────────────────────────────┤
 │  @speed-sheet/core  ← 无 UI：Sheet、Extension、Command、渲染 API │
 │  Y.Doc 数据 │ renderer/canvas renderSheet │ interaction Session   │

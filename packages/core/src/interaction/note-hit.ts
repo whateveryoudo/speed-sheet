@@ -1,6 +1,10 @@
 import { noteHasContent, type DataVerificationRule } from '@speed-sheet/shared'
 import type { GridLayout } from '../renderer/grid-layout'
 import type { GridMetrics } from '../renderer/grid-metrics'
+import {
+  cellInFreezePane,
+  type FreezePaneId,
+} from '../renderer/canvas/freeze-panes'
 import { gridCellX, gridCellY } from '../renderer/layout-metrics'
 import type { MergeLookup } from '../merge/layout'
 
@@ -99,6 +103,7 @@ export function drawNoteMarkersInView(
   viewportH: number,
   columnHeaderHeight: number,
   editingCell?: { r: number; c: number },
+  freezePane: FreezePaneId | 'all' = 'all',
 ): void {
   if (!dataVerifications?.size) return
   for (const [key, rule] of dataVerifications) {
@@ -108,6 +113,7 @@ export function drawNoteMarkersInView(
     const c = Number(cs)
     if (!Number.isFinite(r) || !Number.isFinite(c)) continue
     if (r < rowStart || r > rowEnd || c < colStart || c > colEnd) continue
+    if (!cellInFreezePane(r, c, freezePane, layout)) continue
     if (mergeLookup.isSlave(r, c)) continue
     if (editingCell?.r === r && editingCell?.c === c) continue
 

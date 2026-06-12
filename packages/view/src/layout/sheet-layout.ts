@@ -61,6 +61,7 @@ export class SheetLayoutState {
   }
 
   layoutForHit(): GridLayout {
+    const freeze = this.options.getSheet()?.state.getFreezeState() ?? this.layout.freeze ?? null
     return {
       ...this.layout,
       scrollX: this.scrollX,
@@ -68,6 +69,7 @@ export class SheetLayoutState {
       metrics: this.gridMetrics,
       totalRows: this.totalRows,
       totalCols: this.totalCols,
+      freeze,
     }
   }
 

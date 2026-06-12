@@ -25,7 +25,8 @@ Headless 网格几何：可变行高/列宽、可见区域、Canvas 绘制、命
 | `cell-text.ts` | 文本测量、溢出、`drawCellText` |
 | `draw-cell-content.ts` | 复选框、下拉、公式错误角标 |
 | `draw-grid.ts` | 网格线 |
-| `draw-cells.ts` | 单元格背景与内容 |
+| `draw-cells.ts` | 单元格背景与内容（含条件格式高亮样式合并） |
+| `draw-conditional-format.ts` | 条件格式数据条 |
 | `draw-headers.ts` | 行列头、角块、表头高亮 |
 | `draw-selection.ts` | 选区、备注/筛选/公式引用/剪贴板 overlay |
 | `draw-filter.ts` | 筛选标记与绿框 |

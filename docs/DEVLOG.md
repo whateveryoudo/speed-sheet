@@ -1,5 +1,49 @@
 # speed-sheet 开发日志
 
+## 2026-06-10 — 条件格式（extension-conditional-format + 侧栏 UI）
+
+### 背景
+
+表格需要条件格式：突出显示单元格（数值 / 文本条件 + 样式）与数据条；工具栏快捷预设 + 右侧规则管理侧栏；应用范围支持在 sheet 上框选（语雀式 ESC 取消 / Enter 确认）。
+
+### 包与扩展（`@speed-sheet/extension-conditional-format`）
+
+- `ConditionalFormatExtension`：命令 `addCfRule` / `updateCfRule` / `removeCfRule` / `clearCfRules`
+- **规则类型**：`cell`（greaterThan / lessThan / between / equal / textContains）· `dataBar`（渐变 / 纯色，min/max 边界）
+- **求值**：`buildCfRenderMaps` → `cellStyles` + `dataBars`（视口 cell 范围）
+- **持久化**：Y.Doc 当前 sheet 根 `sheetConditionalFormats`；`bindCfYdocSync` observer
+- **范围**：`formatRangeA1` / `parseRangeA1` / `cellInRange`
+
+### Core + View
+
+- `draw-cells`：合并 `conditionalFormatStyles`（bg/fc/bl/it）
+- `draw-conditional-format.ts`：数据条 overlay
+- `CanvasDrawController`：每帧 `buildCfRenderMaps(getCfRules, state, cellEntries)`
+
+### UI（`@speed-sheet/vue3-antd`）
+
+| 能力 | 说明 |
+|------|------|
+| 工具栏 | 突出显示子菜单、数据条 6 色预设、新建 / 管理 / 清除 |
+| 右侧侧栏 | 规则列表 + 编辑器；Logo 占位 |
+| 应用范围选区 | `useCfRangePick` + 顶部横幅 + `formulaRefRanges` 虚线 overlay |
+| 内置扩展 | `sheetBuiltin.ts` 自动合并 `SheetConditionalFormat` |
+
+### 涉及文件（摘要）
+
+| 区域 | 路径 |
+|------|------|
+| 扩展 | `packages/extensions/extension-conditional-format/src/` |
+| Core 绘制 | `renderer/canvas/draw-cells.ts`、`draw-conditional-format.ts` |
+| View | `packages/view/src/draw/canvas-draw.ts` |
+| UI | `ConditionalFormatSidebar.vue`、`conditionalFormat.vue`、`useCfRangePick.ts` |
+
+### 相关文档
+
+- 功能说明：[`docs/conditional-format-notes.md`](./conditional-format-notes.md)
+
+---
+
 ## 2026-06-10 — 视口层 `@speed-sheet/view` + `SheetViewport` 收敛
 
 ### 背景

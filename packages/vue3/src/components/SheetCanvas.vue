@@ -162,6 +162,7 @@ const props = withDefaults(defineProps<{
   commitBoundary?: HTMLElement | null
   editable?: boolean
   resolveCellDblClick?: (r: number, c: number) => boolean | void
+  canEditCell?: (r: number, c: number) => boolean
 }>(), {
   revision: 0,
   formulaRefRanges: () => [],
@@ -187,6 +188,7 @@ const emit = defineEmits<{
   'viewport-mousedown': [e: MouseEvent]
   'viewport-drop': [e: DragEvent]
   'freeze-invalid': []
+  'edit-blocked': []
 }>()
 
 const rootEl = ref<HTMLElement>()
@@ -300,6 +302,8 @@ inlineEdit = useSheetInlineEdit({
   commitBoundary: computed(() => props.commitBoundary),
   formulaPickModeProp: toRef(props, 'formulaPickMode'),
   onDraw: scheduleDraw,
+  canEditCell: (r, c) => props.canEditCell?.(r, c) ?? true,
+  onEditBlocked: () => emit('edit-blocked'),
 })
 
 const {

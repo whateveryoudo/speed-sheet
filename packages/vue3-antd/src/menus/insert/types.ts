@@ -14,7 +14,7 @@ export type InsertMenuAction = (ctx: InsertMenuActionContext) => void | Promise<
 export interface InsertMenuItemDef {
   key: string
   label: string
-  icon?: Component
+  icon?: string | (() => VNode)
   disabled?: boolean
   /** 右侧子菜单（公式等） */
   submenu?: InsertMenuItemDef[]

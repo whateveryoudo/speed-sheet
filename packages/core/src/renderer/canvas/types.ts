@@ -2,6 +2,12 @@ import type { CellAttributes, DataVerificationRule, MergeRange, Selection, Sheet
 import type { MergeContext } from '../../merge'
 import type { GridLayout } from '../grid-layout'
 
+/** 渲染用保护区域（与 extension-protection 的 ProtectionEntry 字段兼容） */
+export interface ProtectionOverlayEntry {
+  row: [number, number]
+  column: [number, number]
+}
+
 export interface CellEntry {
   r: number
   c: number
@@ -34,8 +40,28 @@ export interface RenderOptions {
   filterView?: import('../../Sheet').FilterViewState | null
   /** 浮动图片（canvas 绘制，位于网格之上、表头/分割线之下） */
   images?: SheetImageItem[]
+  /** 保护范围（斜线填充 overlay） */
+  protections?: ProtectionOverlayEntry[]
+  /** 条件格式：单元格高亮样式（键 row_col） */
+  conditionalFormatStyles?: Map<string, CfCellRenderStyle>
+  /** 条件格式：数据条（键 row_col） */
+  conditionalFormatDataBars?: Map<string, CfDataBarRender>
   /** 图片异步加载完成后请求重绘 */
   onImageLoaded?: () => void
+}
+
+export type CfCellRenderStyle = {
+  bg?: string
+  fc?: string
+  bl?: number
+  it?: number
+  un?: number
+}
+
+export type CfDataBarRender = {
+  ratio: number
+  color: string
+  gradient?: boolean
 }
 
 export type CellMap = Map<string, CellAttributes>

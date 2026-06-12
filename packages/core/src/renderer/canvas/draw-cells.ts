@@ -27,7 +27,7 @@ export function drawCells(env: RenderEnv): void {
     totalCols,
     freezePane,
   } = env
-  const { cells, dataVerifications, editingCell } = options
+  const { cells, dataVerifications, editingCell, conditionalFormatStyles } = options
 
   for (const { r, c, data } of cells) {
     if (M.rowHeight(r) <= 0) continue
@@ -48,16 +48,21 @@ export function drawCells(env: RenderEnv): void {
     const { x: cx, y: cy, w: cellW, h: cellH } = pixel
     if (cx + cellW < 0 || cx > vw || cy + cellH < 0 || cy > vh) continue
 
-    if (data.bg) {
-      ctx.fillStyle = data.bg
+    const cfStyle = conditionalFormatStyles?.get(`${r}_${c}`)
+    const cellBg = cfStyle?.bg ?? data.bg
+    if (cellBg) {
+      ctx.fillStyle = cellBg
       ctx.fillRect(cx, cy, cellW, cellH)
     }
 
+    const cellFc = cfStyle?.fc ?? data.fc
+    const cellBl = cfStyle?.bl ?? data.bl
+    const cellIt = cfStyle?.it ?? data.it
     let font = `${data.fs ?? 11}px -apple-system, BlinkMacSystemFont, sans-serif`
-    if (data.bl) font = `bold ${font}`
-    if (data.it) font = `italic ${font}`
+    if (cellBl) font = `bold ${font}`
+    if (cellIt) font = `italic ${font}`
     ctx.font = font
-    ctx.fillStyle = data.fc ?? '#333'
+    ctx.fillStyle = cellFc ?? '#333'
     ctx.textAlign = 'left'
     ctx.textBaseline = 'middle'
 

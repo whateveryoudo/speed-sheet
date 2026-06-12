@@ -54,7 +54,25 @@
     "alignRight": "右对齐",
     "link": "插入链接",
     "insertLinkHint": "单元格链接待实现",
-    "formula": "公式"
+    "formula": "公式",
+    "protect": "保护"
+  },
+  "protection": {
+    "title": "保护",
+    "protectRows": "保护所选行",
+    "protectCols": "保护所选列",
+    "protectCells": "保护所选单元格",
+    "manage": "管理保护范围",
+    "manageTitle": "管理保护范围",
+    "manageEmpty": "当前没有已保护的范围",
+    "unprotect": "解除保护",
+    "alreadyProtectedTitle": "操作出错了",
+    "alreadyProtectedContent": "此区域已经被保护，无需重复保护",
+    "blockedTitle": "操作失败",
+    "blockedContent": "当前操作范围已经被保护，你需要先解除保护，再进行编辑",
+    "blockedCancel": "取消",
+    "blockedManage": "管理保护范围",
+    "ok": "知道了"
   },
   "formula": {
     "common": "常用",
@@ -66,5 +84,61 @@
     "example": "示例",
     "seeAlso": "另请参阅",
     "notImplementedYet": "该函数尚未接入求值引擎"
+  },
+  "conditionalFormat": {
+    "title": "条件格式",
+    "applyRange": "应用范围",
+    "ruleType": "规则类型",
+    "display": "显示",
+    "stylePreview": "样式预览",
+    "valuePlaceholder": "请输入值",
+    "value2Placeholder": "请输入第二个值",
+    "minValue": "最小值",
+    "maxValue": "最大值",
+    "gradientFill": "渐变填充",
+    "solidFill": "纯色填充",
+    "gradient": "渐变",
+    "empty": "当前没有条件格式规则",
+    "manageRules": "管理规则",
+    "cancel": "取消",
+    "confirm": "确认修改",
+    "rangePickHint": "请选择新的数据范围，按 ESC 取消",
+    "scope": {
+      "selection": "所选区域",
+      "all": "全部规则"
+    },
+    "type": {
+      "cell": "突出显示单元格",
+      "dataBar": "数据条"
+    },
+    "op": {
+      "greaterThan": "大于",
+      "lessThan": "小于",
+      "between": "介于",
+      "equal": "等于",
+      "textContains": "文本包含"
+    },
+    "bound": {
+      "min": "最小值",
+      "max": "最大值",
+      "num": "数字",
+      "percent": "百分比"
+    },
+    "color": {
+      "blue": "蓝色",
+      "green": "绿色",
+      "orange": "橙色",
+      "yellow": "黄色",
+      "red": "红色",
+      "cyan": "青色"
+    },
+    "menu": {
+      "highlight": "突出显示单元格",
+      "dataBar": "数据条",
+      "moreRules": "其他规则",
+      "newRule": "新建规则",
+      "manage": "管理已有规则",
+      "clear": "清除规则"
+    }
   }
 }

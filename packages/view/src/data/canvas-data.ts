@@ -1,5 +1,10 @@
 import type { Selection } from '@speed-sheet/shared'
-import type { Sheet, CellEntry } from '@speed-sheet/core'
+import {
+  getVisibleRange,
+  type Sheet,
+  type CellEntry,
+  type GridLayout,
+} from '@speed-sheet/core'
 
 const EMPTY_SEL: Selection = { row: [0, 0], column: [0, 0] }
 
@@ -11,6 +16,13 @@ export function getSheetSelection(sheet: Sheet | null, revision: number): Select
 export function getSheetCells(sheet: Sheet | null, revision: number) {
   void revision
   return sheet?.state.getAllCells() ?? []
+}
+
+export function getSheetCellsForViewport(sheet: Sheet | null, layout: GridLayout, revision: number) {
+  void revision
+  if (!sheet) return []
+  const bounds = getVisibleRange(layout)
+  return sheet.state.getCellsForViewport(bounds)
 }
 
 export function getActiveCell(sel: Selection): { r: number; c: number } {

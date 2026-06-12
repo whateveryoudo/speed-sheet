@@ -24,5 +24,8 @@ export {
   ClipboardExtension,
   CellEditingExtension,
   RowColExtension,
+  MergeExtension,
+  CellInsertExtension,
+  FreezeExtension,
   CORE_EXTENSIONS,
 } from './core'

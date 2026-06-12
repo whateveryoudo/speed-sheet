@@ -24,6 +24,8 @@
   },
   "dependencies": {
     "@speed-sheet/core": "workspace:^",
+    "@speed-sheet/extension-protection": "workspace:^",
+    "@speed-sheet/extension-conditional-format": "workspace:^",
     "@speed-sheet/shared": "workspace:^"
   },
   "devDependencies": {

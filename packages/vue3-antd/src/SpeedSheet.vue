@@ -13,24 +13,29 @@
       :revision="revision"
       :boundary="rootEl"
     />
-    <SheetCanvas
-      class="speed-sheet-canvas"
-      ref="canvasRef"
-      :sheet="sheet"
-      :revision="revision"
-      :editable="ui.editable"
-      :row-header-width="ui.rowHeaderWidth"
-      :column-header-height="ui.columnHeaderHeight"
-      :formula-ref-ranges="formulaRefRanges"
-      :formula-pick-mode="formulaPickMode"
-      :commit-boundary="rootEl"
-      :resolve-cell-dbl-click="resolveCellDblClick"
-      @cell-click="onCellClick"
-      @formula-pick="onFormulaPick"
-      @formula-range-pick="onFormulaRangePick"
-      @viewport-drop="onViewportDrop"
-      @freeze-invalid="onFreezeInvalid"
-    >
+    <div class="speed-sheet-canvas-wrap">
+      <CfRangePickBanner v-if="cfRangePick.active.value" />
+      <SheetCanvas
+        class="speed-sheet-canvas"
+        ref="canvasRef"
+        :sheet="sheet"
+        :revision="revision"
+        :editable="ui.editable"
+        :row-header-width="ui.rowHeaderWidth"
+        :column-header-height="ui.columnHeaderHeight"
+        :formula-ref-ranges="canvasRefRanges"
+        :formula-pick-mode="formulaPickMode"
+        :commit-boundary="rootEl"
+        :resolve-cell-dbl-click="resolveCellDblClick"
+        :can-edit-cell="canEditCell"
+        @cell-click="onCellClick"
+        @formula-pick="onFormulaPick"
+        @formula-range-pick="onFormulaRangePick"
+        @select-range="onSelectRange"
+        @viewport-drop="onViewportDrop"
+        @freeze-invalid="onFreezeInvalid"
+        @edit-blocked="onEditBlocked"
+      >
       <template #context-menu="{ r, c, clientX, clientY, target, close }">
         <CellContextMenu
           open
@@ -47,7 +52,9 @@
           @close="close"
         />
       </template>
-    </SheetCanvas>
+      </SheetCanvas>
+      <ConditionalFormatSidebar :range-pick="cfRangePick" />
+    </div>
     <SheetTabBar
       v-if="ui.showSheetTabs"
       ref="tabBarRef"
@@ -58,14 +65,17 @@
       :menu-keys="props.sheetTabContextMenu"
       :exclude-menu-keys="props.excludeSheetTabMenuKeys"
     />
+    <ProtectionManageModal />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, provide, ref, toRef, watch, onMounted, onUnmounted } from 'vue'
 import { Modal } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { SheetCanvas, useSheet, useFormulaCanvas } from '@speed-sheet/vue3'
-import type { Sheet } from '@speed-sheet/core'
+import type { CommandBlockedEvent, Sheet } from '@speed-sheet/core'
+import { isCellProtected } from '@speed-sheet/extension-protection'
 import { isFormulaText } from '@speed-sheet/extension-formula'
 import type { CellAttributes } from '@speed-sheet/shared'
 import type { SpeedSheetProps } from './types'
@@ -85,6 +95,12 @@ import { provideLinkConfigPanel } from './composables/useLinkConfigPanel'
 import { provideLinkToolbarPanel } from './composables/useLinkToolbarPanel'
 import { provideNoteConfigPanel } from './composables/useNoteConfigPanel'
 import { provideFilterConfigPanel } from './composables/useFilterConfigPanel'
+import { provideProtectionManage } from './composables/useProtectionManage'
+import { provideConditionalFormatPanel } from './composables/useConditionalFormatPanel'
+import { useCfRangePick } from './composables/useCfRangePick'
+import ProtectionManageModal from './components/ProtectionManageModal.vue'
+import ConditionalFormatSidebar from './components/ConditionalFormatSidebar.vue'
+import CfRangePickBanner from './components/CfRangePickBanner.vue'
 import { SheetPreviewImage } from './helpers/sheetPreviewImage'
 import { mergeSpeedSheetExtensions } from './composables/sheetBuiltin'
 import { noteHasContent } from '@speed-sheet/shared'
@@ -119,6 +135,34 @@ const { toggleToolbar: toggleLinkToolbar, closeToolbar: closeLinkToolbar } =
   provideLinkToolbarPanel()
 const { openPanel: openNoteConfig, closePanel: closeNoteConfig } = provideNoteConfigPanel()
 const { openPanel: openFilterConfig, closePanel: closeFilterConfig } = provideFilterConfigPanel()
+const protectionManage = provideProtectionManage()
+provideConditionalFormatPanel()
+
+const { t } = useI18n()
+
+function showProtectedEditModal(): void {
+  Modal.confirm({
+    title: t('protection.blockedTitle'),
+    content: t('protection.blockedContent'),
+    okText: t('protection.blockedManage'),
+    cancelText: t('protection.blockedCancel'),
+    onOk: () => {
+      protectionManage.openModal()
+    },
+  })
+}
+
+function onCommandBlocked(event: CommandBlockedEvent): void {
+  if (event.reason === 'already_protected') {
+    Modal.error({
+      title: t('protection.alreadyProtectedTitle'),
+      content: t('protection.alreadyProtectedContent'),
+      okText: t('protection.ok'),
+    })
+    return
+  }
+  showProtectedEditModal()
+}
 
 function closeSheetBubbles(except?: 'dropdown' | 'link' | 'note' | 'filter'): void {
   if (except !== 'dropdown') {
@@ -205,9 +249,11 @@ const sheetOptions = computed(() => ({
   onLayoutChange: () => {
     formulaEdit.cancel()
   },
+  onCommandBlocked: onCommandBlocked,
 }))
 
 const { sheet, revision, switchSheet, addSheet } = useSheet(sheetOptions)
+const cfRangePick = useCfRangePick(sheet)
 
 onMounted(() => {
   previewInstance.value = new SheetPreviewImage(() => sheet.value)
@@ -270,6 +316,20 @@ const {
   insertRefAt,
 } = useFormulaCanvas(sheet, formulaEdit)
 
+const canvasRefRanges = computed(() => {
+  const base = formulaRefRanges.value
+  const pick = cfRangePick.overlayRange.value
+  if (!pick) return base
+  return [
+    ...base,
+    {
+      row: pick.row,
+      column: pick.column,
+      color: '#1a73e8',
+    },
+  ]
+})
+
 const formatPainterActive = ref(false)
 const copiedStyle = ref<Partial<CellAttributes> | null>(null)
 const findReplaceOpen = ref(false)
@@ -311,6 +371,7 @@ function commitFormulaEditIfActive(): void {
 
 function onCellClick(r: number, c: number): void {
   if (!(props.editable ?? true)) return
+  if (cfRangePick.active.value) return
   if (handleFormulaCellClick(r, c)) return
   if (formulaEdit.active.value) {
     commitFormulaEditIfActive()
@@ -368,12 +429,35 @@ function onFormulaRangePick(r0: number, c0: number, r1: number, c1: number): voi
   handleFormulaRangeSelect(r0, c0, r1, c1)
 }
 
+function onSelectRange(
+  r0: number,
+  c0: number,
+  r1: number,
+  c1: number,
+  _anchorR: number,
+  _anchorC: number,
+): void {
+  if (cfRangePick.active.value) {
+    cfRangePick.handleSelectRange(r0, c0, r1, c1)
+  }
+}
+
 function onFreezeInvalid(): void {
   Modal.error({
     title: '操作出错了',
     content: '冻结区域超出当前窗口可视范围，冻结线已取消。建议重新设置。',
     okText: '知道了',
   })
+}
+
+function canEditCell(r: number, c: number): boolean {
+  const s = sheet.value
+  if (!s) return true
+  return !isCellProtected(s, r, c)
+}
+
+function onEditBlocked(): void {
+  showProtectedEditModal()
 }
 
 defineExpose({
@@ -394,6 +478,13 @@ defineExpose({
   min-height: 0;
   // font-size: var(--ant-font-size-sm);
   background: var(--ant-color-bg-container);
+}
+
+.speed-sheet-canvas-wrap {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
 }
 
 :deep(.speed-sheet-canvas) {

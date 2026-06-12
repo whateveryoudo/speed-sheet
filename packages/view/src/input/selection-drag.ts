@@ -5,30 +5,28 @@ import {
   type GridLayout,
   type GridMetrics,
 } from '@speed-sheet/core'
+import type { Selection } from '@speed-sheet/shared'
 
 export type SelectionDragOptions = {
   getCanvas: () => HTMLCanvasElement | undefined
   getLayout: () => GridLayout
   getMetrics: () => GridMetrics
   getMergeContext?: () => MergeContext
-  onSelectRange: (
-    r0: number,
-    c0: number,
-    r1: number,
-    c1: number,
-    anchorR: number,
-    anchorC: number,
-  ) => void
 }
 
 /** Cell pointer + range-drag session (no DOM listeners — caller wires document events). */
 export class SelectionDragController {
   private readonly session = new SelectDragSession()
+  private previewSelection: Selection | null = null
 
   constructor(private readonly options: SelectionDragOptions) {}
 
   isActive(): boolean {
     return this.session.active
+  }
+
+  getPreviewSelection(): Selection | null {
+    return this.previewSelection
   }
 
   cellPointFromEvent(e: MouseEvent): { r: number; c: number } | null {
@@ -57,6 +55,11 @@ export class SelectionDragController {
 
   start(r: number, c: number): void {
     this.session.start(r, c)
+    this.previewSelection = {
+      row: [r, r],
+      column: [c, c],
+      anchor: { r, c },
+    }
   }
 
   updateFromEvent(e: MouseEvent): boolean {
@@ -65,11 +68,20 @@ export class SelectionDragController {
     const payload = this.session.update(pt)
     if (!payload) return false
     const { anchor, row, column } = payload
-    this.options.onSelectRange(row[0], column[0], row[1], column[1], anchor.r, anchor.c)
+    const r0 = Math.min(row[0], row[1])
+    const r1 = Math.max(row[0], row[1])
+    const c0 = Math.min(column[0], column[1])
+    const c1 = Math.max(column[0], column[1])
+    this.previewSelection = {
+      row: [r0, r1],
+      column: [c0, c1],
+      anchor,
+    }
     return true
   }
 
   cancel(): void {
+    this.previewSelection = null
     this.session.cancel()
   }
 }

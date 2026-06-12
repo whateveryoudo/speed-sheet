@@ -12,7 +12,14 @@
 //   sheet.toSnapshot()
 
 export { Sheet } from './Sheet'
-export type { SheetOptions, LuckysheetRange, FilterViewState } from './Sheet'
+export type {
+  SheetOptions,
+  LuckysheetRange,
+  FilterViewState,
+  CommandBlockedEvent,
+  CommandBlockedReason,
+  CommandGuardFn,
+} from './Sheet'
 
 export {
   createDefaultWorkbookSnapshot,
@@ -31,6 +38,9 @@ export {
   ClipboardExtension,
   CellEditingExtension,
   RowColExtension,
+  MergeExtension,
+  CellInsertExtension,
+  FreezeExtension,
   CORE_EXTENSIONS,
 } from './extension'
 export type {
@@ -68,7 +78,7 @@ export {
 } from './adapter/luckysheet-adapter'
 
 // Renderer
-export { renderSheet, cellFromPoint, cellRect, colToLetter, defaultLayout, getVisibleRange, CELL_SELECTION_INSET, CELL_EDITOR_OUTSET, drawCellText, truncateTextToWidth, buildCellMap, cellFontString, getCellTextColSpan, computeEditorWidth, computeSheetImageDisplaySize, computeSheetImageViewportRect, fitImageToCell, resolveSheetImageOriginSize, SHEET_IMAGE_CELL_INSET } from './renderer/canvas'
+export { renderSheet, cellFromPoint, cellRect, cellViewportRect, colToLetter, defaultLayout, getVisibleRange, CELL_SELECTION_INSET, CELL_EDITOR_OUTSET, drawCellText, truncateTextToWidth, buildCellMap, cellFontString, getCellTextColSpan, computeEditorWidth, computeSheetImageDisplaySize, computeSheetImageViewportRect, fitImageToCell, resolveSheetImageOriginSize, SHEET_IMAGE_CELL_INSET } from './renderer/canvas'
 export type { SheetImageViewportRect } from './renderer/canvas'
 export type { GridLayout } from './renderer/grid-layout'
 export { buildGridMetrics, MIN_ROW_HEIGHT, MIN_COL_WIDTH } from './renderer/grid-metrics'
@@ -79,6 +89,7 @@ export {
   validateFreezeInViewport,
   validateExistingFreezeInViewport,
   isFreezeActive,
+  shouldHideAtFreezeSplit,
   freezeSplitsFromTarget,
   frozenRowPixelHeight,
   frozenColPixelWidth,

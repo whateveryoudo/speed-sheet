@@ -30,6 +30,8 @@ export function useSheetInlineEdit(options: {
   commitBoundary: Ref<HTMLElement | null | undefined> | ComputedRef<HTMLElement | null | undefined>
   formulaPickModeProp: Ref<boolean> | ComputedRef<boolean>
   onDraw: () => void
+  canEditCell?: (r: number, c: number) => boolean
+  onEditBlocked?: () => void
 }) {
   const editing = ref(false)
   const editorValue = ref('')
@@ -253,6 +255,10 @@ export function useSheetInlineEdit(options: {
   }
 
   function openEditor(r: number, c: number, initial = ''): void {
+    if (options.canEditCell && !options.canEditCell(r, c)) {
+      options.onEditBlocked?.()
+      return
+    }
     if (options.sheet.value?.state.cellHasImages(r, c)) return
     const dv = options.sheet.value?.state.getDataVerification(r, c)
     if (dv?.type === 'dropdown') return

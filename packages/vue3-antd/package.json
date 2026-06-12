@@ -25,7 +25,9 @@
   "dependencies": {
     "@floating-ui/dom": "^1.6.0",
     "@speed-sheet/core": "workspace:^",
+    "@speed-sheet/extension-conditional-format": "workspace:^",
     "@speed-sheet/extension-filter": "workspace:^",
+    "@speed-sheet/extension-protection": "workspace:^",
     "@speed-sheet/extension-formula": "workspace:^",
     "@speed-sheet/extension-image": "workspace:^",
     "@speed-sheet/shared": "workspace:^",
@@ -53,7 +55,9 @@
   "peerDependencies": {
     "@ant-design/icons-vue": "^7.0.0",
     "@speed-sheet/core": "workspace:*",
+    "@speed-sheet/extension-conditional-format": "workspace:*",
     "@speed-sheet/extension-filter": "workspace:*",
+    "@speed-sheet/extension-protection": "workspace:*",
     "@speed-sheet/extension-formula": "workspace:*",
     "@speed-sheet/extension-image": "workspace:*",
     "@speed-sheet/shared": "workspace:*",

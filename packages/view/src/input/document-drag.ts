@@ -1,7 +1,10 @@
+import type { Selection } from '@speed-sheet/shared'
+
 export type SelectionDragLike = {
   isActive: () => boolean
   cellPointFromEvent: (e: MouseEvent) => { r: number; c: number } | null
   updateFromEvent: (e: MouseEvent) => boolean
+  getPreviewSelection: () => Selection | null
   cancel: () => void
 }
 
@@ -19,6 +22,10 @@ export type DocumentDragOptions = {
   inlineEdit: FormulaPickDrag
   isBlocked: () => boolean
   onDraw: () => void
+  /** mouseup 结束框选时立即重绘，避免 RAF 合并导致填充柄延迟出现 */
+  flushDraw?: () => void
+  /** 框选松手时将预览选区写入 Sheet */
+  onCommitDragSelection?: (selection: Selection) => void
   onFormulaPick: (r: number, c: number) => void
   onFormulaRangePick: (r0: number, c0: number, r1: number, c1: number) => void
 }
@@ -51,10 +58,14 @@ export class DocumentDragController {
         this.options.onFormulaRangePick,
       )
     }
+    if (this.options.selectionDrag.isActive()) {
+      const preview = this.options.selectionDrag.getPreviewSelection()
+      if (preview) this.options.onCommitDragSelection?.(preview)
+    }
     this.options.selectionDrag.cancel()
     document.removeEventListener('mousemove', this.onDocumentMouseMove)
     document.removeEventListener('mouseup', this.onDocumentMouseUp)
-    this.options.onDraw()
+    ;(this.options.flushDraw ?? this.options.onDraw)()
   }
 
   attachPointerListeners(): void {

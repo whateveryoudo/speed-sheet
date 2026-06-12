@@ -110,6 +110,22 @@ importers:
         specifier: ^13.6.0
         version: 13.6.30
 
+  packages/extensions/extension-conditional-format:
+    dependencies:
+      '@speed-sheet/core':
+        specifier: workspace:^
+        version: link:../../core
+      '@speed-sheet/shared':
+        specifier: workspace:^
+        version: link:../../shared
+    devDependencies:
+      tsup:
+        specifier: ^8.3.0
+        version: 8.5.1(jiti@1.21.7)(postcss@8.5.15)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+
   packages/extensions/extension-filter:
     dependencies:
       '@speed-sheet/core':
@@ -186,6 +202,22 @@ importers:
         specifier: ^13.6.0
         version: 13.6.30
 
+  packages/extensions/extension-protection:
+    dependencies:
+      '@speed-sheet/core':
+        specifier: workspace:^
+        version: link:../../core
+      '@speed-sheet/shared':
+        specifier: workspace:^
+        version: link:../../shared
+    devDependencies:
+      tsup:
+        specifier: ^8.3.0
+        version: 8.5.1(jiti@1.21.7)(postcss@8.5.15)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+
   packages/react:
     dependencies:
       '@speed-sheet/core':
@@ -232,6 +264,12 @@ importers:
       '@speed-sheet/core':
         specifier: workspace:^
         version: link:../core
+      '@speed-sheet/extension-conditional-format':
+        specifier: workspace:^
+        version: link:../extensions/extension-conditional-format
+      '@speed-sheet/extension-protection':
+        specifier: workspace:^
+        version: link:../extensions/extension-protection
       '@speed-sheet/shared':
         specifier: workspace:^
         version: link:../shared
@@ -288,6 +326,9 @@ importers:
       '@speed-sheet/core':
         specifier: workspace:^
         version: link:../core
+      '@speed-sheet/extension-conditional-format':
+        specifier: workspace:^
+        version: link:../extensions/extension-conditional-format
       '@speed-sheet/extension-filter':
         specifier: workspace:^
         version: link:../extensions/extension-filter
@@ -297,6 +338,9 @@ importers:
       '@speed-sheet/extension-image':
         specifier: workspace:^
         version: link:../extensions/extension-image
+      '@speed-sheet/extension-protection':
+        specifier: workspace:^
+        version: link:../extensions/extension-protection
       '@speed-sheet/shared':
         specifier: workspace:^
         version: link:../shared

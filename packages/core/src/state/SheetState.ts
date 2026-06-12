@@ -10,7 +10,7 @@ import type {
   SheetSnapshot,
 } from '@speed-sheet/shared'
 import { dataVerificationKey } from '@speed-sheet/shared'
-import { transactUser } from '../yjs/transact'
+import { transactSystem, transactUser } from '../yjs/transact'
 import { MIN_COL_WIDTH, MIN_ROW_HEIGHT } from '../renderer/grid-metrics'
 import { mapColIndexAfterMove } from '../renderer/col-move-hit'
 import { mapRowIndexAfterMove } from '../renderer/row-move-hit'
@@ -23,6 +23,11 @@ import {
   ensureLayoutOnSheet,
 } from './sheet-layout'
 import { MergeContext } from '../merge'
+import {
+  expandViewportCellBounds,
+  isCellInViewportBounds,
+  type ViewportCellBounds,
+} from './viewport-cells'
 
 function readMergeRange(val: unknown): MergeRange | null {
   if (!val) return null
@@ -111,10 +116,26 @@ function buildIndexMovePermutation(
 export class SheetState {
   public root: Y.Map<unknown>
 
+  /** 选区仅驻内存，不持久化（刷新后回到 A1） */
+  private _localSelection: Selection = {
+    row: [0, 0],
+    column: [0, 0],
+    anchor: { r: 0, c: 0 },
+  }
+
   constructor(existing?: Y.Map<unknown>) {
     this.root = existing ?? new Y.Map()
     this._ensureSubstructures()
     ensureLayoutOnSheet(this.root)
+    this._discardLegacyPersistedSelection()
+  }
+
+  /** 旧版曾把选区写入 Y.Doc，加载时清掉避免刷新后仍框选 */
+  private _discardLegacyPersistedSelection(): void {
+    if (!this.root.has('_selection')) return
+    const doc = this.root.doc
+    if (doc) transactSystem(doc, () => this.root.delete('_selection'))
+    else this.root.delete('_selection')
   }
 
   private _transact(fn: () => void): void {
@@ -576,6 +597,30 @@ export class SheetState {
     return result
   }
 
+  /** Non-empty cells intersecting viewport (+ merge / overflow spillover). */
+  getCellsForViewport(bounds: ViewportCellBounds): Array<{ r: number; c: number; data: CellAttributes }> {
+    const totalRows = this.rowOrder.length
+    const totalCols = this.colOrder.length
+    const expanded = expandViewportCellBounds(
+      bounds,
+      totalRows,
+      totalCols,
+      this.getMergeRanges(),
+    )
+    const { rowIndex, colIndex } = buildIdIndexes(this.rowOrder, this.colOrder)
+    const result: Array<{ r: number; c: number; data: CellAttributes }> = []
+    this.cells.forEach((cell, key) => {
+      const ids = parseCellIdKey(key)
+      if (!ids) return
+      const r = rowIndex.get(ids.rowId)
+      const c = colIndex.get(ids.colId)
+      if (r === undefined || c === undefined) return
+      if (!isCellInViewportBounds(r, c, expanded)) return
+      result.push({ r, c, data: cell.toJSON() as CellAttributes })
+    })
+    return result
+  }
+
   /** Resolve stable ids for a display coordinate (debug / formula hooks). */
   resolveCellIds(r: number, c: number): { rowId: string; colId: string } | null {
     return this._resolveIds(r, c)
@@ -755,33 +800,16 @@ export class SheetState {
   // ---- Selection ----
 
   setSelection(sel: Selection): void {
-    if (!this.root.has('_selection')) {
-      this.root.set('_selection', new Y.Map())
-    }
-    const s = this.root.get('_selection') as Y.Map<unknown>
     const anchor = sel.anchor ?? { r: sel.row[0], c: sel.column[0] }
-    this.root.doc?.transact(() => {
-      s.set('r0', sel.row[0])
-      s.set('r1', sel.row[1])
-      s.set('c0', sel.column[0])
-      s.set('c1', sel.column[1])
-      s.set('ar', anchor.r)
-      s.set('ac', anchor.c)
-    })
+    this._localSelection = {
+      row: [sel.row[0], sel.row[1]],
+      column: [sel.column[0], sel.column[1]],
+      anchor,
+    }
   }
 
   getSelection(): Selection {
-    if (!this.root.has('_selection')) {
-      return { row: [0, 0], column: [0, 0], anchor: { r: 0, c: 0 } }
-    }
-    const s = this.root.get('_selection') as Y.Map<unknown>
-    const r0 = (s.get('r0') as number) ?? 0
-    const c0 = (s.get('c0') as number) ?? 0
-    return {
-      row: [r0, (s.get('r1') as number) ?? 0],
-      column: [c0, (s.get('c1') as number) ?? 0],
-      anchor: { r: (s.get('ar') as number) ?? r0, c: (s.get('ac') as number) ?? c0 },
-    }
+    return this._localSelection
   }
 
   // ---- Snapshot export ----

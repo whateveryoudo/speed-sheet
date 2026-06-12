@@ -137,6 +137,34 @@ describe('cell pointer & context menu', () => {
     expect(pt).toEqual({ r: 0, c: 0 })
   })
 
+  it('cellPointFromCanvasPointer respects freeze panes', () => {
+    const freezeLayout = {
+      ...layout,
+      scrollY: metrics.rowTop(8),
+      freeze: { xSplit: 0, ySplit: 2 },
+    }
+    const frozenH = metrics.rowBottom(1) - metrics.rowTop(0)
+    const ptrFrozen = pointerFromCanvasCoords(
+      layout.rowHeaderWidth + 10,
+      layout.columnHeaderHeight + 10,
+      freezeLayout,
+    )
+    expect(cellPointFromCanvasPointer(ptrFrozen, freezeLayout, metrics)).toEqual({
+      r: 0,
+      c: 0,
+    })
+
+    const ptrScroll = pointerFromCanvasCoords(
+      layout.rowHeaderWidth + 10,
+      layout.columnHeaderHeight + frozenH + 5,
+      freezeLayout,
+    )
+    expect(cellPointFromCanvasPointer(ptrScroll, freezeLayout, metrics)).toEqual({
+      r: 8,
+      c: 0,
+    })
+  })
+
   it('resolveContextMenuHit on column header', () => {
     const sel: Selection = { row: [0, 0], column: [0, 0] }
     const ptr = {

@@ -24,6 +24,7 @@ export {
   hasSheetLinkExtension,
   hasSheetNoteExtension,
   hasSheetFilterExtension,
+  hasSheetProtectionExtension,
 } from './composables/sheetBuiltin'
 export { defaultInsertMenuKeys } from './menus/insert/keys'
 export type { InsertMenuConfig, InsertMenuItemConfig } from './menus/insert/types'
@@ -31,6 +32,7 @@ export { SheetDropdown, DROPDOWN_EXTENSION_NAME } from './extensions/dropdown'
 export { SheetLink, LINK_EXTENSION_NAME } from './extensions/link'
 export { SheetNote, NOTE_EXTENSION_NAME } from './extensions/note'
 export { SheetFilter, FILTER_EXTENSION_NAME } from './extensions/filter'
+export { SheetProtection, PROTECTION_EXTENSION_NAME } from './extensions/protection'
 
 /** 内置公式能力（headless，见 @speed-sheet/vue3） */
 export {

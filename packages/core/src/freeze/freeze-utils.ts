@@ -44,6 +44,32 @@ export function isFreezeActive(state: FreezeState | null | undefined): boolean {
   return (state.xSplit ?? 0) > 0 || (state.ySplit ?? 0) > 0
 }
 
+/** 滚动区单元格浮层是否应隐藏（进入冻结带 / 触及分割线） */
+export function shouldHideAtFreezeSplit(
+  r: number,
+  c: number,
+  viewportRect: { x: number; y: number; w: number; h: number },
+  layout: GridLayout,
+  metrics: GridMetrics,
+): boolean {
+  const ySplit = layout.freeze?.ySplit ?? 0
+  const xSplit = layout.freeze?.xSplit ?? 0
+  if (ySplit <= 0 && xSplit <= 0) return false
+
+  const CHH = layout.columnHeaderHeight
+  const RHW = layout.rowHeaderWidth
+
+  if (ySplit > 0 && r >= ySplit) {
+    const splitY = CHH + frozenRowPixelHeight(metrics, ySplit)
+    if (viewportRect.y < splitY - 0.5) return true
+  }
+  if (xSplit > 0 && c >= xSplit) {
+    const splitX = RHW + frozenColPixelWidth(metrics, xSplit)
+    if (viewportRect.x < splitX - 0.5) return true
+  }
+  return false
+}
+
 export interface FreezeViewportInput {
   layout: GridLayout
   metrics: GridMetrics

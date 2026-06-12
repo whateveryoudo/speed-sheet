@@ -30,7 +30,7 @@ export {
 } from './sheet-image-layout'
 export type { SheetImageViewportRect } from './sheet-image-layout'
 
-export { cellFromPoint, cellRect, colToLetter } from './hit'
+export { cellFromPoint, cellRect, cellViewportRect, colToLetter } from './hit'
 
 export {
   CELL_EDITOR_OUTSET,

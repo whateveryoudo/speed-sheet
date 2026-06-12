@@ -6,6 +6,11 @@ import { SheetImage } from '../extensions/image'
 import { SheetLink, LINK_EXTENSION_NAME } from '../extensions/link'
 import { SheetNote, NOTE_EXTENSION_NAME } from '../extensions/note'
 import { SheetFilter, FILTER_EXTENSION_NAME } from '../extensions/filter'
+import { SheetProtection, PROTECTION_EXTENSION_NAME } from '../extensions/protection'
+import {
+  SheetConditionalFormat,
+  CF_EXTENSION_NAME,
+} from '../extensions/conditional-format'
 
 export function hasSheetImageExtension(extensions: unknown[] | undefined): boolean {
   return (extensions ?? []).some((e) => extensionName(e) === IMAGE_EXTENSION_NAME)
@@ -25,6 +30,14 @@ export function hasSheetNoteExtension(extensions: unknown[] | undefined): boolea
 
 export function hasSheetFilterExtension(extensions: unknown[] | undefined): boolean {
   return (extensions ?? []).some((e) => extensionName(e) === FILTER_EXTENSION_NAME)
+}
+
+export function hasSheetProtectionExtension(extensions: unknown[] | undefined): boolean {
+  return (extensions ?? []).some((e) => extensionName(e) === PROTECTION_EXTENSION_NAME)
+}
+
+export function hasSheetConditionalFormatExtension(extensions: unknown[] | undefined): boolean {
+  return (extensions ?? []).some((e) => extensionName(e) === CF_EXTENSION_NAME)
 }
 
 /**
@@ -49,6 +62,12 @@ export function mergeSpeedSheetExtensions(
         }),
       }) as Extension,
     )
+  }
+  if (!hasSheetProtectionExtension(user)) {
+    builtins.push(SheetProtection as Extension)
+  }
+  if (!hasSheetConditionalFormatExtension(user)) {
+    builtins.push(SheetConditionalFormat as Extension)
   }
   if (!builtins.length) return user
   return [...builtins, ...user]

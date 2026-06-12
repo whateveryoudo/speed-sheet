@@ -99,6 +99,9 @@ class ChainBuilder {
         console.warn(`[@speed-sheet/core] Unknown command: "${name}"`)
         continue
       }
+      if (!this._sheet.checkCommandAllowed(name, props, ctx)) {
+        break
+      }
       try {
         let result = fn.call(null, props)
         if (typeof result === 'function') {

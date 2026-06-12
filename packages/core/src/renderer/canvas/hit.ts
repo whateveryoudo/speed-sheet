@@ -1,7 +1,7 @@
 import type { MergeRange } from '@speed-sheet/shared'
 import { MergeContext } from '../../merge'
 import type { GridLayout } from '../grid-layout'
-import { canvasPointToCell, resolveMetrics } from '../layout-metrics'
+import { canvasPointToCell, gridCellX, gridCellY, resolveMetrics } from '../layout-metrics'
 
 export function cellFromPoint(
   clientX: number,
@@ -47,4 +47,17 @@ export function cellRect(
     w: M.colWidth(c),
     h: M.rowHeight(r),
   }
+}
+
+/** 单元格在视口 canvas 上的矩形（含冻结偏移，用于气泡/浮层定位） */
+export function cellViewportRect(
+  r: number,
+  c: number,
+  layout: GridLayout,
+  merge?: MergeContext | MergeRange[],
+): { x: number; y: number; w: number; h: number } {
+  const M = resolveMetrics(layout)
+  const mc =
+    merge instanceof MergeContext ? merge : MergeContext.fromRanges(merge ?? [])
+  return mc.pixelRectAtCell(r, c, layout, M)
 }

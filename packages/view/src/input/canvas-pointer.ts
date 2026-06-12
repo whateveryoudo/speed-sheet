@@ -192,14 +192,6 @@ export class CanvasPointerController {
     if (this.options.isEditing()) this.options.commitEdit()
 
     this.options.selectionDrag.start(anchor.r, anchor.c)
-    this.options.applySelectRange(
-      range.row[0],
-      range.column[0],
-      range.row[1],
-      range.column[1],
-      anchor.r,
-      anchor.c,
-    )
     this.options.onCellClick(anchor.r, anchor.c)
     this.options.scheduleDraw()
     this.options.attachPointerListeners()

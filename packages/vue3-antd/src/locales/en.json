@@ -54,7 +54,25 @@
     "alignRight": "Align right",
     "insertLink": "Insert link",
     "insertLinkHint": "Cell links are not available yet.",
-    "formula": "Functions"
+    "formula": "Functions",
+    "protect": "Protect"
+  },
+  "protection": {
+    "title": "Protect",
+    "protectRows": "Protect selected row(s)",
+    "protectCols": "Protect selected column(s)",
+    "protectCells": "Protect selected cell(s)",
+    "manage": "Manage protected ranges",
+    "manageTitle": "Manage protected ranges",
+    "manageEmpty": "No protected ranges",
+    "unprotect": "Unprotect",
+    "alreadyProtectedTitle": "Operation failed",
+    "alreadyProtectedContent": "This area is already protected.",
+    "blockedTitle": "Operation failed",
+    "blockedContent": "The selected range is protected. Unprotect it before editing.",
+    "blockedCancel": "Cancel",
+    "blockedManage": "Manage protected ranges",
+    "ok": "OK"
   },
   "formula": {
     "common": "Common functions",
@@ -66,5 +84,61 @@
     "example": "Example",
     "seeAlso": "See also",
     "notImplementedYet": "This function is not wired to the evaluator yet"
+  },
+  "conditionalFormat": {
+    "title": "Conditional formatting",
+    "applyRange": "Apply to range",
+    "ruleType": "Rule type",
+    "display": "Display",
+    "stylePreview": "Preview",
+    "valuePlaceholder": "Enter a value",
+    "value2Placeholder": "Enter second value",
+    "minValue": "Minimum",
+    "maxValue": "Maximum",
+    "gradientFill": "Gradient fill",
+    "solidFill": "Solid fill",
+    "gradient": "gradient",
+    "empty": "No conditional formatting rules",
+    "manageRules": "Manage rules",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "rangePickHint": "Select a new range. Press ESC to cancel.",
+    "scope": {
+      "selection": "Selected area",
+      "all": "All rules"
+    },
+    "type": {
+      "cell": "Highlight cells",
+      "dataBar": "Data bars"
+    },
+    "op": {
+      "greaterThan": "Greater than",
+      "lessThan": "Less than",
+      "between": "Between",
+      "equal": "Equal to",
+      "textContains": "Text contains"
+    },
+    "bound": {
+      "min": "Minimum",
+      "max": "Maximum",
+      "num": "Number",
+      "percent": "Percent"
+    },
+    "color": {
+      "blue": "Blue",
+      "green": "Green",
+      "orange": "Orange",
+      "yellow": "Yellow",
+      "red": "Red",
+      "cyan": "Cyan"
+    },
+    "menu": {
+      "highlight": "Highlight cells",
+      "dataBar": "Data bars",
+      "moreRules": "More rules",
+      "newRule": "New rule",
+      "manage": "Manage rules",
+      "clear": "Clear rules"
+    }
   }
 }

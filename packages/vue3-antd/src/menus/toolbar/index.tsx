@@ -15,6 +15,8 @@ import BackgroundColor from './backgroundColor.vue'
 import Align from './align'
 import Link from './link/index.vue'
 import Filter from './filter.vue'
+import Protect from './protect.vue'
+import ConditionalFormat from './conditionalFormat.vue'
 import Freeze from './freeze.vue'
 import FindAndReplace from './findAndReplace.vue'
 import { defaultSheetToolbarKeys } from './keys'
@@ -35,6 +37,8 @@ const componentMap = {
   backgroundColor: BackgroundColor,
   align: Align,
   filter: Filter,
+  conditionalFormat: ConditionalFormat,
+  protect: Protect,
   freeze: Freeze,
   link: Link,
   findAndReplace: FindAndReplace,

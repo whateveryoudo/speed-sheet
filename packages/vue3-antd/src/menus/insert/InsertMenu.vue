@@ -12,31 +12,24 @@
             <a-sub-menu v-if="item.key === 'formula'" key="formula" popup-class-name="sheet-insert-formula-sub">
               <template #title>
                 <span class="sheet-insert-menu-item__inner">
-                  <component :is="item.icon" v-if="item.icon" class="sheet-insert-menu-item__icon" />
+
+                  <s-icon-font v-if="typeof item.icon === 'string'" :type="item.icon"
+                    class="sheet-insert-menu-item__icon" />
+                  <s-icon-font v-else :iconRender="item.icon" class="sheet-insert-menu-item__icon" />
                   <span>公式</span>
                   <right-outlined class="sheet-insert-menu-item__more" />
                 </span>
               </template>
               <a-menu-item-group title="常用">
-                <a-menu-item
-                  v-for="fn in formulaFeatured()"
-                  :key="`fn:${fn.name}`"
-                  @click="onFormulaPick(fn.name)"
-                >
+                <a-menu-item v-for="fn in formulaFeatured()" :key="`fn:${fn.name}`" @click="onFormulaPick(fn.name)">
                   {{ fn.name }}({{ fn.label }})
                 </a-menu-item>
               </a-menu-item-group>
               <a-menu-divider />
-              <a-sub-menu
-                v-for="cat in formulaCategories()"
-                :key="`cat-${cat}`"
-                :title="categoryLabel(cat, sheetLocale())"
-              >
-                <a-menu-item
-                  v-for="fn in formulaByCategory(cat)"
-                  :key="`fn:${fn.name}`"
-                  @click="onFormulaPick(fn.name)"
-                >
+              <a-sub-menu v-for="cat in formulaCategories()" :key="`cat-${cat}`"
+                :title="categoryLabel(cat, sheetLocale())">
+                <a-menu-item v-for="fn in formulaByCategory(cat)" :key="`fn:${fn.name}`"
+                  @click="onFormulaPick(fn.name)">
                   {{ fn.name }}
                 </a-menu-item>
               </a-sub-menu>

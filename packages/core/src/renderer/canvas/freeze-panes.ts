@@ -50,6 +50,59 @@ export function cellInFreezePane(
   return cellFreezePane(r, c, ySplit, xSplit) === pane
 }
 
+export type SelectionSegment = {
+  r0: number
+  r1: number
+  c0: number
+  c1: number
+  pane: FreezePaneId
+}
+
+/** 跨冻结边界时拆成多个矩形，避免选区填充「冻结缝」 */
+export function splitSelectionByFreezePanes(
+  r0: number,
+  r1: number,
+  c0: number,
+  c1: number,
+  layout: GridLayout,
+): SelectionSegment[] {
+  const { xSplit, ySplit } = freezeSplits(layout)
+  const rA = Math.min(r0, r1)
+  const rB = Math.max(r0, r1)
+  const cA = Math.min(c0, c1)
+  const cB = Math.max(c0, c1)
+
+  const rowRanges: { r0: number; r1: number }[] = []
+  if (ySplit > 0) {
+    if (rA < ySplit) rowRanges.push({ r0: rA, r1: Math.min(rB, ySplit - 1) })
+    if (rB >= ySplit) rowRanges.push({ r0: Math.max(rA, ySplit), r1: rB })
+  } else {
+    rowRanges.push({ r0: rA, r1: rB })
+  }
+
+  const colRanges: { c0: number; c1: number }[] = []
+  if (xSplit > 0) {
+    if (cA < xSplit) colRanges.push({ c0: cA, c1: Math.min(cB, xSplit - 1) })
+    if (cB >= xSplit) colRanges.push({ c0: Math.max(cA, xSplit), c1: cB })
+  } else {
+    colRanges.push({ c0: cA, c1: cB })
+  }
+
+  const segments: SelectionSegment[] = []
+  for (const rr of rowRanges) {
+    for (const cr of colRanges) {
+      segments.push({
+        r0: rr.r0,
+        r1: rr.r1,
+        c0: cr.c0,
+        c1: cr.c1,
+        pane: cellFreezePane(rr.r0, cr.c0, ySplit, xSplit),
+      })
+    }
+  }
+  return segments
+}
+
 export function applyFreezePaneClip(
   ctx: CanvasRenderingContext2D,
   pane: FreezePaneId,

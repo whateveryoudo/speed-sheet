@@ -2,7 +2,7 @@ import * as Y from 'yjs'
 import type { LuckysheetFile, MergeRange, SheetSnapshot, WorkbookSnapshot } from '@speed-sheet/shared'
 import type { MergeContext } from './merge'
 import { Extension, CORE_EXTENSIONS } from './extension'
-import type { ExtensionConfig, CommandChain } from './extension'
+import type { ExtensionConfig, CommandChain, CommandContext } from './extension'
 import { CommandManager } from './commands/CommandManager'
 import { SheetState } from './state/SheetState'
 import { importFromLuckysheet, exportToLuckysheet } from './adapter/luckysheet-adapter'
@@ -13,6 +13,19 @@ import { transactSystem, transactUser } from './yjs/transact'
 import { YOriginUser } from './yjs/origins'
 
 export type { LuckysheetRange } from './api/sheet-compat'
+
+export type CommandBlockedReason = 'protected' | 'already_protected'
+
+export interface CommandBlockedEvent {
+  reason: CommandBlockedReason
+  command: string
+}
+
+export type CommandGuardFn = (
+  name: string,
+  props: unknown,
+  ctx: CommandContext,
+) => boolean
 
 /** 本地筛选视图状态（canvas / 布局用，不写 Y.Doc） */
 export interface FilterViewState {
@@ -54,6 +67,9 @@ export interface SheetOptions {
 
   /** 插删行列等结构变更后（公式重算已完成）：关闭公式编辑 UI 等 */
   onLayoutChange?: (sheet: Sheet) => void
+
+  /** 命令被保护机制拦截 */
+  onCommandBlocked?: (event: CommandBlockedEvent) => void
 }
 
 export class Sheet {
@@ -65,6 +81,7 @@ export class Sheet {
 
   private _isDestroyed = false
   private _activeSheetId = '0'
+  private _commandGuard: CommandGuardFn | null = null
   /** 外部 ydoc 协同：远程事务到达时刷新 UI */
   private _collabUpdateHandler: ((update: Uint8Array, origin: unknown) => void) | null = null
 
@@ -483,6 +500,18 @@ export class Sheet {
   /** Trigger update callback (called by CommandManager after mutations) */
   notifyUpdate(): void {
     this.options.onUpdate?.(this)
+  }
+
+  setCommandGuard(guard: CommandGuardFn | null): void {
+    this._commandGuard = guard
+  }
+
+  checkCommandAllowed(name: string, props: unknown, ctx: CommandContext): boolean {
+    return this._commandGuard?.(name, props, ctx) ?? true
+  }
+
+  notifyCommandBlocked(event: CommandBlockedEvent): void {
+    this.options.onCommandBlocked?.(event)
   }
 
   notifyBeforeLayoutChange(): void {

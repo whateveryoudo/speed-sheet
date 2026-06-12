@@ -1,6 +1,7 @@
 # 筛选功能说明
 
-> 包：`@speed-sheet/extension-filter` · UI：`@speed-sheet/vue3-antd` · 宿主：Speed Knowledge Client
+> 包：`@speed-sheet/extension-filter` · UI：`@speed-sheet/vue3-antd` · 宿主：Speed Knowledge Client  
+> 相关：[条件格式说明](./conditional-format-notes.md)
 
 ## 概述
 

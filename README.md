@@ -107,6 +107,7 @@ Headless 在线表格引擎：Luckysheet 兼容数据模型 + Yjs 协同 + TipTa
 - ✔️ **下拉列表**：Canvas 渲染 + 单击取值气泡 / 双击配置面板；数据验证 `insertDropdown` / `removeDropdown`
 - ✔️ **图片插入**：扩展层 + 选区气泡菜单；App 级 `upload` 配置
 - ✔️ **列筛选**：工具栏 + 表头漏斗；内容 / 颜色 / 条件；配置面板；私有与共享视图
+- ✔️ **条件格式**：工具栏 + 右侧侧栏；突出显示单元格 / 数据条；应用范围表格选区；Y.Doc 持久化
 - ✔️ Sheet 页签栏（新增 / 切换 / 拖拽排序）
 - ✔️ 页签右键菜单（重命名 / 复制 / 删除 / 隐藏 / 标签颜色）
 - ✔️ 语雀式工作表列表 Popover
@@ -126,7 +127,7 @@ Headless 在线表格引擎：Luckysheet 兼容数据模型 + Yjs 协同 + TipTa
 
 - [ ] React 绑 `SheetViewport`（`@speed-sheet/react`）
 - [x] 冻结行列（冻结窗格）
-- [ ] 条件格式
+- [x] 条件格式
 - [x] 数据验证 — **下拉列表**（多选 / 颜色等待完善）
 - [ ] 虚拟滚动 + 按需加载单元格块
 - [ ] 主题 API（`createTheme()` 注入颜色 / 字体）
@@ -134,6 +135,7 @@ Headless 在线表格引擎：Luckysheet 兼容数据模型 + Yjs 协同 + TipTa
 #### 扩展插件
 
 - [x] `@speed-sheet/extension-filter` — 列筛选（内容 / 颜色 / 条件；Y.Doc + 快照持久化）
+- [x] `@speed-sheet/extension-conditional-format` — 条件格式（单元格高亮 / 数据条；Y.Doc 持久化）
 - [ ] `@speed-sheet/extension-import-export` — xlsx 导入导出
 
 #### UI 与交互
@@ -185,4 +187,5 @@ pnpm demo   # http://localhost:4000
 - [packages/view/README.md](./packages/view/README.md) — 视口层 `SheetViewport`
 - [docs/DEVLOG.md](./docs/DEVLOG.md) — 开发日志
 - [docs/filter-notes.md](./docs/filter-notes.md) — 列筛选功能说明
+- [docs/conditional-format-notes.md](./docs/conditional-format-notes.md) — 条件格式功能说明
 - [docs/layout-and-formula-notes.md](./docs/layout-and-formula-notes.md) — 布局 v2 与公式同步说明

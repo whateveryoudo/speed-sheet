@@ -8,6 +8,8 @@ import {
   type Sheet,
   type RenderOptions,
 } from '@speed-sheet/core'
+import { getProtectionEntries } from '@speed-sheet/extension-protection'
+import { buildCfRenderMaps, getCfRules } from '@speed-sheet/extension-conditional-format'
 import type { Selection } from '@speed-sheet/shared'
 import type { DataVerificationRule } from '@speed-sheet/shared'
 
@@ -33,7 +35,7 @@ export type CanvasDrawOptions = {
   getScrollY: () => number
   setScrollY: (y: number) => void
   getGridMetrics: () => GridMetrics
-  getCellEntries: () => CellEntry[]
+  getCellEntries: (layout: GridLayout) => CellEntry[]
   getSelection: () => Selection
   isSelecting: () => boolean
   isEditing: () => boolean
@@ -73,6 +75,13 @@ export class CanvasDrawController {
       this.drawDirty = false
       this.draw()
     })
+  }
+
+  /** 立即重绘（mouseup 等需同步看到填充柄的场景） */
+  flushDraw(): void {
+    this.drawDirty = false
+    cancelAnimationFrame(this.rafId)
+    this.draw()
   }
 
   draw(): void {
@@ -131,9 +140,17 @@ export class CanvasDrawController {
         this.options.onFreezeInvalid?.()
       }
 
+      const cellEntries = this.options.getCellEntries(
+        freezeInvalid ? { ...nextLayout, freeze: null } : nextLayout,
+      )
+      const cfMaps =
+        sheet && state
+          ? buildCfRenderMaps(getCfRules(sheet), state, cellEntries)
+          : { cellStyles: new Map(), dataBars: new Map() }
+
       renderSheet(ctx, {
         layout: freezeInvalid ? { ...nextLayout, freeze: null } : nextLayout,
-        cells: this.options.getCellEntries(),
+        cells: cellEntries,
         mergeCtx: sheet?.createMergeContext(),
         selection: this.options.getSelection(),
         isSelecting: this.options.isSelecting(),
@@ -144,6 +161,9 @@ export class CanvasDrawController {
         formulaRefRanges: this.options.getFormulaRefRanges(),
         dataVerifications: dvMap,
         filterView: sheet?.getFilterView() ?? null,
+        protections: sheet ? getProtectionEntries(sheet) : undefined,
+        conditionalFormatStyles: cfMaps.cellStyles,
+        conditionalFormatDataBars: cfMaps.dataBars,
         images: state?.getAllImages() ?? [],
         onImageLoaded: () => this.scheduleDraw(),
       })

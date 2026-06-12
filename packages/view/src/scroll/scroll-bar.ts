@@ -4,6 +4,8 @@ import { Subscribable } from '../utils/subscribe'
 export const SCROLLBAR_SIZE = 12
 const MIN_THUMB_PX = 24
 const SCROLLBAR_HIDE_DELAY_MS = 1000
+/** 行模式滚轮每档像素（浏览器 deltaMode=1 时） */
+const WHEEL_LINE_PX = 40
 const DEFAULT_RHW = 46
 const DEFAULT_CHH = 25
 
@@ -207,8 +209,8 @@ export class ScrollBarController extends Subscribable {
     let dx = e.deltaX
     let dy = e.deltaY
     if (e.deltaMode === 1) {
-      dx *= 16
-      dy *= 16
+      dx *= WHEEL_LINE_PX
+      dy *= WHEEL_LINE_PX
     } else if (e.deltaMode === 2) {
       dx *= scroll.clientWidth
       dy *= scroll.clientHeight

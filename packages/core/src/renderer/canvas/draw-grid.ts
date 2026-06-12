@@ -1,4 +1,5 @@
 import { gridCellX, gridCellY, type RenderEnv } from './render-env'
+import { isColFreezeSplitLine, isRowFreezeSplitLine } from './draw-freeze'
 import { cellInFreezePane } from './freeze-panes'
 
 /** 单元格区背景 + 网格线（需在 clip 内调用） */
@@ -15,6 +16,7 @@ export function drawGrid(env: RenderEnv): void {
   for (let c = colStart; c <= colEnd + 1; c++) {
     const x = c < totalCols ? gridCellX(layout, M, c) : RHW + M.totalWidth - sx
     if (x < RHW - 1 || x > vw + 1) continue
+    if (isColFreezeSplitLine(x, RHW, M, layout.freeze?.xSplit ?? 0)) continue
     for (let r = rowStart; r <= rowEnd; r++) {
       if (M.rowHeight(r) <= 0) continue
       if (!cellInFreezePane(r, c, freezePane, layout)) continue
@@ -32,6 +34,7 @@ export function drawGrid(env: RenderEnv): void {
   for (let r = rowStart; r <= rowEnd + 1; r++) {
     const y = r < totalRows ? gridCellY(layout, M, r) : CHH + M.totalHeight - sy
     if (y < CHH - 1 || y > vh + 1) continue
+    if (isRowFreezeSplitLine(y, CHH, M, layout.freeze?.ySplit ?? 0)) continue
     for (let c = colStart; c <= colEnd; c++) {
       if (r < totalRows && !cellInFreezePane(r, c, freezePane, layout)) continue
       if (mc.isInternalRowLineAtCol(r, c)) continue

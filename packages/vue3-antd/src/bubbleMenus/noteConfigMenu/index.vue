@@ -22,7 +22,11 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, type ComputedRef, type Ref } from 'vue'
-import { cellRect } from '@speed-sheet/core'
+import {
+  buildSheetGridMetrics,
+  cellViewportRect,
+  shouldHideAtFreezeSplit,
+} from '@speed-sheet/core'
 import type { Extension } from '@speed-sheet/core'
 import { useSheetViewport, type SheetBubbleAnchorRect } from '@speed-sheet/vue3'
 import { useNoteConfigPanel } from '../../composables/useNoteConfigPanel'
@@ -37,6 +41,7 @@ defineProps<{
 const panelRef = ref<{ commit: () => void } | null>(null)
 const {
   open,
+  editing,
   anchor: panelAnchor,
   applySelection,
   closePanel,
@@ -60,21 +65,35 @@ function onPanelDone(): void {
   open.value = false
 }
 
-const anchorRectRef = computed((): SheetBubbleAnchorRect | null => {
-  void revision.value
-  void viewportTick.value
+function noteViewportRect(): SheetBubbleAnchorRect | null {
   const s = sheet.value
   if (!s || !open.value) return null
   const { r, c } = panelAnchor
   const mc = s.createMergeContext()
-  const rect = cellRect(r, c, layout.value, mc)
+  const L = layout.value
+  const metrics = buildSheetGridMetrics(s, L)
+  const rect = cellViewportRect(r, c, L, mc)
+  if (shouldHideAtFreezeSplit(r, c, rect, L, metrics)) return null
   return {
-    left: rect.x - scrollX.value,
-    top: rect.y - scrollY.value,
+    left: rect.x,
+    top: rect.y,
     width: rect.w,
     height: rect.h,
   }
+}
+
+const anchorRectRef = computed((): SheetBubbleAnchorRect | null => {
+  void revision.value
+  void viewportTick.value
+  void scrollX.value
+  void scrollY.value
+  return noteViewportRect()
 }) as ComputedRef<SheetBubbleAnchorRect | null>
 
 const shouldShow = () => open.value && !!sheet.value && !!anchorRectRef.value
+
+watch([scrollX, scrollY, layout, viewportTick, open], () => {
+  if (!open.value || editing.value) return
+  if (!noteViewportRect()) closePanel()
+})
 </script>

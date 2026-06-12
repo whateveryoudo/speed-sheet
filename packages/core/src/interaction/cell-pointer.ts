@@ -2,6 +2,7 @@ import type { MergeRange } from '@speed-sheet/shared'
 import { MergeContext } from '../merge'
 import type { GridLayout } from '../renderer/grid-layout'
 import type { GridMetrics } from '../renderer/grid-metrics'
+import { canvasPointToCell } from '../renderer/layout-metrics'
 import { pointerFromMouseEvent, type CanvasPointer } from './pointer'
 
 export type CellPoint = { r: number; c: number }
@@ -32,8 +33,7 @@ export function cellPointFromCanvasPointer(
 ): CellPoint | null {
   const { rowHeaderWidth: rhw, columnHeaderHeight: chh } = layout
   if (pointer.canvasX < rhw || pointer.canvasY < chh) return null
-  const r = metrics.rowAtY(pointer.contentY)
-  const c = metrics.colAtX(pointer.contentX)
+  const { r, c } = canvasPointToCell(layout, metrics, pointer.canvasX, pointer.canvasY)
   if (r < 0 || c < 0) return null
   const pt = clampCellCoords(r, c, metrics.totalRows, metrics.totalCols)
   return toMergeContext(merge).anchor(pt.r, pt.c)

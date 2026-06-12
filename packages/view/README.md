@@ -21,7 +21,7 @@
 |------|------|
 | **`SheetViewport`** | 编排类：layout、draw、scroll、pointer、keyboard、拖拽、右键、错误角标 |
 | `SheetLayoutState` | scroll、GridLayout、GridMetrics |
-| `CanvasDrawController` | rAF 绘制、`renderSheet` 调用 |
+| `CanvasDrawController` | rAF 绘制、`renderSheet` 调用（含条件格式 `buildCfRenderMaps` 胶水） |
 | `ScrollBarController` | 语雀式自定义滚动条 |
 | `SelectionDragController` 等 | 各类 interaction 的 DOM 绑定 |
 | `computeEditorBox` 等 | 内联编辑器定位（无 Vue） |
@@ -64,7 +64,7 @@ viewport.detach()
 src/
   sheet-viewport.ts      # SheetViewport 编排
   layout/                # SheetLayoutState
-  draw/                  # CanvasDrawController
+  draw/                  # CanvasDrawController（条件格式、保护范围等扩展渲染 map）
   scroll/                # ScrollBarController
   input/                 # pointer、keyboard、拖拽、右键
   overlay/               # 错误提示、编辑器布局
