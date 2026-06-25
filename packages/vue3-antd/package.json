@@ -1,6 +1,6 @@
 {
   "name": "@speed-sheet/vue3-antd",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "description": "Ant Design Vue toolbar for speed-sheet (optional UI layer)",
   "main": "./dist/index.cjs",

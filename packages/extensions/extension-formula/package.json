@@ -1,6 +1,6 @@
 {
   "name": "@speed-sheet/extension-formula",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "description": "Formula parsing and calculation for speed-sheet",
   "main": "./dist/index.js",

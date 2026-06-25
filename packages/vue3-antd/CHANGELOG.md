@@ -1,5 +1,13 @@
 # @speed-sheet/vue3-antd
 
+## 0.1.2
+
+### Patch Changes
+
+- 更新公式包的打包配置
+- Updated dependencies
+  - @speed-sheet/extension-formula@0.1.2
+
 ## 0.1.1
 
 ### Patch Changes
