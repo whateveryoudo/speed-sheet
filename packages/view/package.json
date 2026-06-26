@@ -1,6 +1,6 @@
 {
   "name": "@speed-sheet/view",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "description": "Framework-agnostic sheet viewport — scroll, draw, pointer sessions",
   "main": "./dist/index.cjs",
