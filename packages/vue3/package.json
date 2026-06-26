@@ -1,6 +1,6 @@
 {
   "name": "@speed-sheet/vue3",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "description": "Headless Vue 3 bindings (SheetRenderer + useSheet), no UI library",
   "main": "./dist/index.cjs",

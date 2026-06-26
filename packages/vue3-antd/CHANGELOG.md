@@ -1,5 +1,18 @@
 # @speed-sheet/vue3-antd
 
+## 0.1.3
+
+### Patch Changes
+
+- Updated dependencies [eed8fc4]
+  - @speed-sheet/core@0.1.2
+  - @speed-sheet/extension-conditional-format@0.1.1
+  - @speed-sheet/extension-filter@0.1.2
+  - @speed-sheet/extension-image@0.1.2
+  - @speed-sheet/extension-protection@0.1.1
+  - @speed-sheet/shared@0.1.2
+  - @speed-sheet/vue3@0.1.2
+
 ## 0.1.2
 
 ### Patch Changes
