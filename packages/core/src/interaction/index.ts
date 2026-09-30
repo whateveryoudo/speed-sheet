@@ -72,3 +72,4 @@ export {
 } from './keyboard-nav'
 export { hitCheckboxAt } from './checkbox-hit'
 export { hitNoteMarkerAt, drawNoteMarker, drawNoteMarkersInView } from './note-hit'
+export { hitSelectionHandle, getSelectionHandleRect } from './selection-handle'

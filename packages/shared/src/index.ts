@@ -29,6 +29,7 @@ export interface CellStyle {
   ff?: string   // font family
   fs?: number   // font size
   it?: number   // italic
+  cl?: number   // strikethrough (cancellation line): 0 or 1
   un?: number   // underline: 0 or 1
   vt?: number   // vertical align (0=middle, 1=top, 2=bottom)
   ht?: number   // horizontal align (0=center, 1=left, 2=right)
@@ -38,7 +39,7 @@ export interface CellStyle {
 
 export interface CellFormat {
   fa: string    // format string, e.g. "General", "@", "0.00"
-  t: 's' | 'n' | 'b' | 'd'  // type: string, number, boolean, date
+  t: 's' | 'n' | 'b' | 'd' | 'g'  // type: string, number, boolean, date, general
 }
 
 /** 单元格附件（对齐知识库 attachment 上传结果） */

@@ -181,5 +181,27 @@ export function drawCellText(
   ctx.rect(clipX, clipY, clipW, clipH)
   ctx.clip()
   ctx.fillText(display, clipX, cy + rowH / 2)
+
+  const textW = Math.min(clipW, ctx.measureText(display).width)
+  if (options?.strikethrough && textW > 0) {
+    ctx.strokeStyle = ctx.fillStyle
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    const lineY = Math.round(cy + rowH / 2)
+    ctx.moveTo(clipX, lineY)
+    ctx.lineTo(clipX + textW, lineY)
+    ctx.stroke()
+  }
+
+  if (options?.underline && textW > 0) {
+    ctx.strokeStyle = ctx.fillStyle
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    const lineY = Math.round(cy + rowH / 2 + 7)
+    ctx.moveTo(clipX, lineY)
+    ctx.lineTo(clipX + textW, lineY)
+    ctx.stroke()
+  }
+
   ctx.restore()
 }

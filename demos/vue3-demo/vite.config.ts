@@ -24,6 +24,11 @@ export default defineConfig({
   resolve: {
     alias: {
       "@sc": resolve(__dirname, "../../../speed-components/src"),
+      // 须在 @speed-sheet/vue3 之前，避免 index.ts/style.css 解析失败
+      "@speed-sheet/vue3/style.css": resolve(
+        __dirname,
+        "../../packages/vue3/dist/style.css",
+      ),
       "@speed-sheet/vue3-antd": resolve(
         __dirname,
         "../../packages/vue3-antd/src/index.ts",

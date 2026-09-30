@@ -39,8 +39,9 @@ export function useSheetToolbar() {
   })
 
   const activeCell = computed(() => {
+    void ctx.revision.value
     const { r, c } = anchorRc.value
-    return cellMap.value.get(`${r}_${c}`) ?? null
+    return ctx.sheet.value?.state.getCellData(r, c) ?? null
   })
 
   const editableCpt = computed(() => ctx.editable.value && !!ctx.sheet.value)

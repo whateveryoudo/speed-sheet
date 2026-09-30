@@ -7,8 +7,11 @@ import FormatPainter from './formatPainter.vue'
 import ClearFormat from './clearFormat.vue'
 import Bold from './bold.vue'
 import Italic from './italic.vue'
+import Strikethrough from './strikethrough.vue'
 import Underline from './underline.vue'
 import FontSize from './fontSize.vue'
+import NumberFormat from './numberFormat.vue'
+import DecimalPlaces from './decimalPlaces.vue'
 import FormulaMenu from './formula/FormulaMenu.vue'
 import TextColor from './textColor.vue'
 import BackgroundColor from './backgroundColor.vue'
@@ -28,10 +31,13 @@ const componentMap = {
   redo: Redo,
   'format-painter': FormatPainter,
   clearFormat: ClearFormat,
+  numberFormat: NumberFormat,
+  decimalPlaces: DecimalPlaces,
   fontSize: FontSize,
   formula: FormulaMenu,
   bold: Bold,
   italic: Italic,
+  strikethrough: Strikethrough,
   underline: Underline,
   textColor: TextColor,
   backgroundColor: BackgroundColor,

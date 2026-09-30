@@ -17,6 +17,7 @@ import {
   toCellEntries,
 } from './data/canvas-data'
 import { SelectionDragController } from './input/selection-drag'
+import { AutofillDragController } from './input/autofill-drag'
 import { ResizeDragController, type ResizeGuideState } from './input/resize-drag'
 import { RowMoveController, type MoveGuideState, type MoveHintState } from './input/row-move'
 import { ColMoveController } from './input/col-move'
@@ -84,6 +85,7 @@ export class SheetViewport extends Subscribable {
   private readonly resizeDrag: ResizeDragController
   private readonly rowMove: RowMoveController
   private readonly colMove: ColMoveController
+  private readonly autofillDrag: AutofillDragController
   private readonly documentDrag: DocumentDragController
   private readonly contextMenu: ContextMenuController
   private readonly errorTipCtrl: CellErrorTipController
@@ -188,7 +190,22 @@ export class SheetViewport extends Subscribable {
       },
     })
 
+    this.autofillDrag = new AutofillDragController({
+      getCanvas: options.getCanvas,
+      getLayout: layoutForHit,
+      getMetrics,
+      getMergeContext: options.getMergeContext,
+      getSheet: options.getSheet,
+    })
+
     const isPointerBlocked = () =>
+      !options.isEditable() ||
+      this.resizeDrag.isActive() ||
+      this.rowMove.isActive() ||
+      this.colMove.isActive() ||
+      this.autofillDrag.isActive()
+
+    const isDocumentDragBlocked = () =>
       !options.isEditable() ||
       this.resizeDrag.isActive() ||
       this.rowMove.isActive() ||
@@ -197,7 +214,26 @@ export class SheetViewport extends Subscribable {
     this.documentDrag = new DocumentDragController({
       selectionDrag: this.selectionDrag,
       inlineEdit: options.editor,
-      isBlocked: isPointerBlocked,
+      autofillDrag: this.autofillDrag,
+      onCommitAutofill: (res) => {
+        options.getSheet()
+          ?.chain()
+          .autofill(res)
+          .run()
+        const s = options.getSheet()?.state.getSelection()
+        if (s) {
+          options.onSelectRange?.(
+            s.row[0],
+            s.column[0],
+            s.row[1],
+            s.column[1],
+            s.anchor?.r ?? s.row[0],
+            s.anchor?.c ?? s.column[0],
+          )
+        }
+        bump()
+      },
+      isBlocked: isDocumentDragBlocked,
       onDraw: () => scheduleDraw(),
       flushDraw: () => flushDraw(),
       onCommitDragSelection: commitSelectRange,
@@ -260,6 +296,7 @@ export class SheetViewport extends Subscribable {
       getRevision: options.getRevision,
       getRowHeaderWidth: options.getRowHeaderWidth,
       getColumnHeaderHeight: options.getColumnHeaderHeight,
+      getAutofillRange: () => this.autofillDrag.getPreviewRange(),
       onScrollLayout: options.onScrollLayout,
       onFreezeInvalid: options.onFreezeInvalid,
     })
@@ -306,6 +343,9 @@ export class SheetViewport extends Subscribable {
       hideErrorTip: () => this.errorTipCtrl.hide(),
       updateErrorTipFromEvent: (e) => this.errorTipCtrl.updateFromMouseEvent(e),
       getMergeContext: options.getMergeContext,
+      getSelection: () => this.getSelection(),
+      startAutofillDrag: (sel) => this.autofillDrag.start(sel),
+      autofillDragging: () => this.autofillDrag.isActive(),
     })
 
     this.keyboard = new KeyboardController({

@@ -2,11 +2,13 @@ import {
   resolveCanvasPointerTarget,
   resolvePointerCursor,
   hitCheckboxAt,
+  hitSelectionHandle,
   MergeContext,
   type GridLayout,
   type GridMetrics,
   type Sheet,
 } from '@speed-sheet/core'
+import type { Selection } from '@speed-sheet/shared'
 import type { SelectionDragLike } from './document-drag'
 
 export type PointerSelectionDrag = SelectionDragLike & {
@@ -57,6 +59,9 @@ export type CanvasPointerOptions = {
   hideErrorTip: () => void
   updateErrorTipFromEvent: (e: MouseEvent) => void
   getMergeContext?: () => MergeContext
+  getSelection?: () => Selection | undefined
+  startAutofillDrag?: (selection: Selection) => void
+  autofillDragging?: () => boolean
 }
 
 export class CanvasPointerController {
@@ -138,6 +143,9 @@ export class CanvasPointerController {
       {
         rowMoveDragging: this.options.rowMoveDragging?.(),
         colMoveDragging: this.options.colMoveDragging?.(),
+        autofillDragging: this.options.autofillDragging?.(),
+        selection: this.options.getSelection?.(),
+        mergeCtx: this.options.getMergeContext?.(),
       },
     )
     this.options.updateErrorTipFromEvent(e)
@@ -148,6 +156,31 @@ export class CanvasPointerController {
     this.options.closeCtxMenu()
 
     if (this.handleHeaderPointerDown(e)) return
+
+    // 检查是否点击在选区右下角填充柄上（可编辑且非公式编辑状态）
+    if (this.options.isEditable() && !this.options.isFormulaPickMode()) {
+      const coords = this.canvasCoords(e)
+      const sel = this.options.getSelection?.()
+      if (
+        coords &&
+        sel &&
+        hitSelectionHandle(
+          coords.cx,
+          coords.cy,
+          this.options.getLayout(),
+          this.options.getGridMetrics(),
+          sel,
+          this.options.getMergeContext?.(),
+        )
+      ) {
+        e.preventDefault()
+        this.focusRoot()
+        if (this.options.isEditing()) this.options.commitEdit()
+        this.options.startAutofillDrag?.(sel)
+        this.options.attachPointerListeners()
+        return
+      }
+    }
 
     const raw = this.options.selectionDrag.rawCellPointFromEvent(e)
     if (!raw) return

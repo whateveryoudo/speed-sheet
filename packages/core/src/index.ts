@@ -77,6 +77,14 @@ export {
   luckysheetFileToSnapshot,
 } from './adapter/luckysheet-adapter'
 
+export {
+  formatCellValue,
+  formatDateWithPattern,
+  getFormatDecimalPlaces,
+  adjustFormatDecimalPlaces,
+  isDateFormatPattern,
+} from './format'
+
 // Renderer
 export { renderSheet, cellFromPoint, cellRect, cellViewportRect, colToLetter, defaultLayout, getVisibleRange, CELL_SELECTION_INSET, CELL_EDITOR_OUTSET, drawCellText, truncateTextToWidth, buildCellMap, cellFontString, getCellTextColSpan, computeEditorWidth, computeSheetImageDisplaySize, computeSheetImageViewportRect, fitImageToCell, resolveSheetImageOriginSize, SHEET_IMAGE_CELL_INSET } from './renderer/canvas'
 export type { SheetImageViewportRect } from './renderer/canvas'
@@ -153,6 +161,20 @@ export {
   drawNoteMarker,
   drawNoteMarkersInView,
 } from './interaction'
+export {
+  getSelectionHandleRect,
+  hitSelectionHandle,
+} from './interaction/selection-handle'
+export {
+  calcAutofillTarget,
+  shiftFormulaReferences,
+  fill1DSequence,
+} from './autofill/autofill-logic'
+export type {
+  CellRange,
+  AutofillDirection,
+  AutofillTarget,
+} from './autofill/autofill-logic'
 export type {
   CanvasPointer,
   RowMoveBlock,

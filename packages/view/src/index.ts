@@ -23,6 +23,11 @@ export {
 } from './input/selection-drag'
 
 export {
+  AutofillDragController,
+  type AutofillDragOptions,
+} from './input/autofill-drag'
+
+export {
   ResizeDragController,
   type ResizeDragOptions,
   type ResizeGuideState,

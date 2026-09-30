@@ -20,6 +20,8 @@ export interface SheetToolbarContext {
   findReplaceOpen: Ref<boolean>
   /** 读取画布当前滚动与布局，供冻结等工具栏做视口校验 */
   getViewportState?: () => SheetViewportSnapshot | null
+  /** 提交当前正在编辑的单元格（内联编辑或公式栏） */
+  commitActiveEditor?: () => void
 }
 
 export const SHEET_TOOLBAR_KEY: InjectionKey<SheetToolbarContext> =

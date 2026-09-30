@@ -334,6 +334,11 @@ const formatPainterActive = ref(false)
 const copiedStyle = ref<Partial<CellAttributes> | null>(null)
 const findReplaceOpen = ref(false)
 
+function commitActiveEditor(): void {
+  canvasRef.value?.commitEdit?.()
+  commitFormulaEditIfActive()
+}
+
 provide(SHEET_TOOLBAR_KEY, {
   sheet,
   revision,
@@ -342,6 +347,7 @@ provide(SHEET_TOOLBAR_KEY, {
   copiedStyle,
   findReplaceOpen,
   getViewportState: () => canvasRef.value?.getViewportState?.() ?? null,
+  commitActiveEditor,
 })
 
 watch(

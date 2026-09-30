@@ -1,6 +1,9 @@
 import { Extension } from '../Extension'
 import type { CommandContext } from '../types'
 import { transactUser } from '../../yjs/transact'
+import type { CellAttributes, CellFormat } from '@speed-sheet/shared'
+import { formatCellValue, adjustFormatDecimalPlaces } from '../../format/number-format'
+import { fill1DSequence, type CellRange, type AutofillDirection } from '../../autofill/autofill-logic'
 
 export const CellEditingExtension = Extension.create({
   name: 'cellEditing',
@@ -12,7 +15,40 @@ export const CellEditingExtension = Extension.create({
         return ({ state }: CommandContext) => {
           const num = Number(props.value)
           const v: string | number = !isNaN(num) && props.value !== '' ? num : props.value
-          state.setCell(props.r, props.c, { v, m: props.value })
+          const cell = state.getCellData(props.r, props.c)
+          let m = props.value
+          if (cell?.ct && cell.ct.fa !== 'General') {
+            const formatted = formatCellValue(v, cell.ct)
+            m = formatted.m
+          }
+          state.setCell(props.r, props.c, { v, m })
+          return true
+        }
+      },
+
+      setCellFormat: (props: { r: number; c: number; format: CellFormat }) => {
+        return ({ state }: CommandContext) => {
+          const cell = state.getCellData(props.r, props.c)
+          const v = cell?.v ?? ''
+          const { m } = formatCellValue(v, props.format)
+          state.setCell(props.r, props.c, {
+            ct: props.format,
+            m,
+          } as any)
+          return true
+        }
+      },
+
+      changeDecimalPlaces: (props: { r: number; c: number; delta: 1 | -1 }) => {
+        return ({ state }: CommandContext) => {
+          const cell = state.getCellData(props.r, props.c)
+          const v = cell?.v ?? ''
+          const nextFormat = adjustFormatDecimalPlaces(cell?.ct, v, props.delta)
+          const { m } = formatCellValue(v, nextFormat)
+          state.setCell(props.r, props.c, {
+            ct: nextFormat,
+            m,
+          } as any)
           return true
         }
       },
@@ -31,6 +67,15 @@ export const CellEditingExtension = Extension.create({
           const cell = state.getCellData(props.r, props.c)
           const current = cell?.it ?? 0
           state.setCell(props.r, props.c, { it: current ? 0 : 1 } as any)
+          return true
+        }
+      },
+
+      setStrikethrough: (props: { r: number; c: number }) => {
+        return ({ state }: CommandContext) => {
+          const cell = state.getCellData(props.r, props.c)
+          const current = cell?.cl ?? 0
+          state.setCell(props.r, props.c, { cl: current ? 0 : 1 } as any)
           return true
         }
       },
@@ -112,6 +157,105 @@ export const CellEditingExtension = Extension.create({
               }
             })
           }
+          return true
+        }
+      },
+
+      autofill: (props: { sourceRange: CellRange; targetRange: CellRange; direction: AutofillDirection }) => {
+        return ({ state }: CommandContext) => {
+          const { sourceRange, targetRange, direction } = props
+          const sr0 = Math.min(sourceRange.r0, sourceRange.r1)
+          const sr1 = Math.max(sourceRange.r0, sourceRange.r1)
+          const sc0 = Math.min(sourceRange.c0, sourceRange.c1)
+          const sc1 = Math.max(sourceRange.c0, sourceRange.c1)
+
+          const tr0 = Math.min(targetRange.r0, targetRange.r1)
+          const tr1 = Math.max(targetRange.r0, targetRange.r1)
+          const tc0 = Math.min(targetRange.c0, targetRange.c1)
+          const tc1 = Math.max(targetRange.c0, targetRange.c1)
+
+          const doc = state.root.doc
+          const run = () => {
+            const writeCell = (targetR: number, targetC: number, filledCell: CellAttributes) => {
+              const targetExisting = state.getCellData(targetR, targetC)
+              const hasTargetFormat =
+                targetExisting?.ct &&
+                targetExisting.ct.fa &&
+                targetExisting.ct.fa !== 'General'
+
+              const finalFormat = hasTargetFormat
+                ? targetExisting.ct
+                : filledCell.ct
+
+              let finalM = filledCell.m
+              if (finalFormat && filledCell.v != null) {
+                finalM = formatCellValue(filledCell.v, finalFormat).m
+              } else if (filledCell.v != null) {
+                finalM = String(filledCell.v)
+              }
+
+              const newCell: CellAttributes = {
+                ...(targetExisting ?? {}),
+                ...(hasTargetFormat ? {} : filledCell),
+                v: filledCell.v,
+                f: filledCell.f,
+                m: finalM,
+                ct: finalFormat,
+              }
+              state.setCell(targetR, targetC, newCell)
+            }
+
+            if (direction === 'down' || direction === 'up') {
+              for (let c = sc0; c <= sc1; c++) {
+                const sourceCol: Array<CellAttributes | null> = []
+                for (let r = sr0; r <= sr1; r++) {
+                  sourceCol.push(state.getCellData(r, c))
+                }
+                const targetCount = tr1 - tr0 + 1
+                const filled = fill1DSequence(sourceCol, targetCount, {
+                  direction: direction === 'down' ? 'forward' : 'backward',
+                  axis: 'row',
+                })
+                for (let i = 0; i < targetCount; i++) {
+                  const targetR = direction === 'down' ? tr0 + i : tr1 - i
+                  writeCell(targetR, c, filled[i])
+                }
+              }
+            } else {
+              for (let r = sr0; r <= sr1; r++) {
+                const sourceRow: Array<CellAttributes | null> = []
+                for (let c = sc0; c <= sc1; c++) {
+                  sourceRow.push(state.getCellData(r, c))
+                }
+                const targetCount = tc1 - tc0 + 1
+                const filled = fill1DSequence(sourceRow, targetCount, {
+                  direction: direction === 'right' ? 'forward' : 'backward',
+                  axis: 'col',
+                })
+                for (let i = 0; i < targetCount; i++) {
+                  const targetC = direction === 'right' ? tc0 + i : tc1 - i
+                  writeCell(r, targetC, filled[i])
+                }
+              }
+            }
+
+            const fullR0 = Math.min(sr0, tr0)
+            const fullR1 = Math.max(sr1, tr1)
+            const fullC0 = Math.min(sc0, tc0)
+            const fullC1 = Math.max(sc1, tc1)
+            state.setSelection({
+              row: [fullR0, fullR1],
+              column: [fullC0, fullC1],
+              anchor: { r: sr0, c: sc0 },
+            })
+          }
+
+          if (doc) {
+            transactUser(doc, run)
+          } else {
+            run()
+          }
+
           return true
         }
       },

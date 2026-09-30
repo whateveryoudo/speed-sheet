@@ -9,6 +9,7 @@ export const SHORTCUTS = {
   clearFormat: { mac: '⌘ + \\', win: 'Ctrl + \\' },
   bold: { mac: '⌘ + B', win: 'Ctrl + B' },
   italic: { mac: '⌘ + I', win: 'Ctrl + I' },
+  strikethrough: { mac: '⌘ + Shift + X', win: 'Alt + Shift + 5' },
   underline: { mac: '⌘ + U', win: 'Ctrl + U' },
   textColor: { mac: '⌥ + ⌘ + C', win: 'Alt + Ctrl + C' },
   backgroundColor: { mac: '⌥ + ⌘ + H', win: 'Alt + Ctrl + H' },

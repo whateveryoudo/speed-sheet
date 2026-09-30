@@ -355,7 +355,6 @@ export function useSheetInlineEdit(options: {
       nextTick(() => options.editorEl.value?.focus())
       return
     }
-    if (rel && options.commitBoundary.value?.contains(rel)) return
     if (isFormulaText(editorValue.value)) {
       clearDeferredBlurCommit()
       deferredBlurCommitTimer = setTimeout(() => {

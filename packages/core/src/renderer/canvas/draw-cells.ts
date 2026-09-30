@@ -135,6 +135,8 @@ export function drawCells(env: RenderEnv): void {
     drawCellText(ctx, text, cx, cy, cellW, cellH, {
       colSpan,
       truncate: useTruncate,
+      strikethrough: !!data.cl,
+      underline: !!data.un,
     })
 
     if (data.ef) {

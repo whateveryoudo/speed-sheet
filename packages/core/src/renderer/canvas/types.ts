@@ -28,6 +28,8 @@ export interface RenderOptions {
   editingCell?: { r: number; c: number }
   /** 复制/剪切后的虚线框区域 */
   clipboardRange?: { row: [number, number]; column: [number, number] } | null
+  /** 拖拽填充预览虚线框区域（对标语雀） */
+  autofillRange?: { row: [number, number]; column: [number, number] } | null
   /** 公式编辑时引用的单元格/区域（虚线框，按 color 区分） */
   formulaRefRanges?: Array<{
     row: [number, number]
@@ -71,4 +73,8 @@ export interface DrawCellTextOptions {
   colSpan?: number
   /** 超出 clip 宽时是否用省略号截断；默认 false（纯 clip） */
   truncate?: boolean
+  /** 是否绘制删除线 */
+  strikethrough?: boolean
+  /** 是否绘制下划线 */
+  underline?: boolean
 }

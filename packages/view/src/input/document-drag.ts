@@ -1,4 +1,6 @@
 import type { Selection } from '@speed-sheet/shared'
+import type { AutofillDragController } from './autofill-drag'
+import type { CellRange, AutofillDirection } from '@speed-sheet/core'
 
 export type SelectionDragLike = {
   isActive: () => boolean
@@ -20,6 +22,12 @@ export type FormulaPickDrag = {
 export type DocumentDragOptions = {
   selectionDrag: SelectionDragLike
   inlineEdit: FormulaPickDrag
+  autofillDrag?: AutofillDragController
+  onCommitAutofill?: (result: {
+    sourceRange: CellRange
+    targetRange: CellRange
+    direction: AutofillDirection
+  }) => void
   isBlocked: () => boolean
   onDraw: () => void
   /** mouseup 结束框选时立即重绘，避免 RAF 合并导致填充柄延迟出现 */
@@ -33,6 +41,13 @@ export type DocumentDragOptions = {
 /** 框选拖拽 + 公式点选拖拽共用的 document 级 pointer 监听 */
 export class DocumentDragController {
   private readonly onDocumentMouseMove = (e: MouseEvent): void => {
+    if (this.options.autofillDrag?.isActive()) {
+      if (this.options.autofillDrag.updateFromEvent(e)) {
+        this.options.onDraw()
+      }
+      return
+    }
+
     if (this.options.isBlocked()) return
 
     const pt = this.options.selectionDrag.cellPointFromEvent(e)
@@ -52,6 +67,16 @@ export class DocumentDragController {
   constructor(private readonly options: DocumentDragOptions) {}
 
   endDragSelect(): void {
+    if (this.options.autofillDrag?.isActive()) {
+      const res = this.options.autofillDrag.end()
+      if (res) {
+        this.options.onCommitAutofill?.({
+          sourceRange: res.sourceRange,
+          targetRange: res.target.targetRange,
+          direction: res.target.direction,
+        })
+      }
+    }
     if (this.options.inlineEdit.isFormulaPickDragging()) {
       this.options.inlineEdit.endFormulaPick(
         this.options.onFormulaPick,

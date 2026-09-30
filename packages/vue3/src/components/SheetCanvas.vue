@@ -362,6 +362,7 @@ defineExpose({
   sheet,
   getSelection: () => sheet.value?.state.getSelection(),
   chain: () => sheet.value?.chain(),
+  commitEdit: () => inlineEdit?.commitEdit(),
   endEditingForLayoutChange,
   getViewportState: () => ({
     layout: layoutForHit(),

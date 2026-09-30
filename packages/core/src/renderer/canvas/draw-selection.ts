@@ -1,5 +1,6 @@
 import { drawNoteMarkersInView } from '../../interaction/note-hit'
 import { selectionBox } from '../layout-metrics'
+export { selectionBox }
 import { drawFilterMarkersInView } from './draw-filter'
 import {
   hasFreezePanes,
@@ -36,12 +37,12 @@ function drawSelectionRect(
   if (sw <= 0 || sh <= 0) return
 
   if (opts.fill) {
-    ctx.fillStyle = 'rgba(26,115,232,0.08)'
+    ctx.fillStyle = 'rgba(24, 144, 255, 0.04)'
     ctx.fillRect(sl + 1, st + 1, Math.max(0, sw - 2), Math.max(0, sh - 2))
   }
 
   const lw = opts.focusStroke ? 2 : 1
-  ctx.strokeStyle = '#1a73e8'
+  ctx.strokeStyle = '#1890ff'
   ctx.lineWidth = lw
   ctx.lineJoin = 'miter'
   // 2px 描边中心对齐单元格外缘，盖住网格线（与冻结前一致）
@@ -162,12 +163,16 @@ export function drawSelectionHandle(env: RenderEnv): void {
     ? mc.pixelRect(matchingMerge, layout, M)
     : selectionBox(layout, M, r0, c0, r1, c1)
 
-  const hx = handleRect.x + handleRect.w - 5
-  const hy = handleRect.y + handleRect.h - 5
-  if (hx + 5 <= RHW || hx >= vw || hy + 5 <= CHH || hy >= vh) return
+  const hx = handleRect.x + handleRect.w - 4
+  const hy = handleRect.y + handleRect.h - 4
+  if (hx + 6 <= RHW || hx >= vw || hy + 6 <= CHH || hy >= vh) return
 
-  ctx.fillStyle = '#1a73e8'
-  ctx.fillRect(hx, hy, 5, 5)
+  ctx.save()
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(hx - 1, hy - 1, 8, 8)
+  ctx.fillStyle = '#1677ff'
+  ctx.fillRect(hx, hy, 6, 6)
+  ctx.restore()
 }
 
 export function drawSelection(env: RenderEnv): void {
@@ -215,7 +220,7 @@ export function drawOverlays(env: RenderEnv): void {
     colEnd,
     freezePane,
   } = env
-  const { dataVerifications, editingCell, filterView, formulaRefRanges, clipboardRange } =
+  const { dataVerifications, editingCell, filterView, formulaRefRanges, clipboardRange, autofillRange } =
     options
 
   drawNoteMarkersInView(
@@ -249,7 +254,15 @@ export function drawOverlays(env: RenderEnv): void {
     CHH,
   )
 
-  const drawRangeOverlay = (rr0: number, rr1: number, cc0: number, cc1: number, color: string, dashed: boolean) => {
+  const drawRangeOverlay = (
+    rr0: number,
+    rr1: number,
+    cc0: number,
+    cc1: number,
+    color: string,
+    dashed: boolean,
+    fillBackground: boolean = true,
+  ) => {
     const segments = hasFreezePanes(layout)
       ? splitSelectionByFreezePanes(rr0, rr1, cc0, cc1, layout)
       : [
@@ -273,15 +286,22 @@ export function drawOverlays(env: RenderEnv): void {
       )
       if (rx + rw <= 0 || rx >= vw || ry + rh <= 0 || ry >= vh) continue
       ctx.save()
-      ctx.fillStyle = color
-      ctx.globalAlpha = 0.12
-      ctx.fillRect(rx + 1, ry + 1, rw - 1, rh - 1)
+      if (fillBackground) {
+        ctx.fillStyle = color
+        ctx.globalAlpha = 0.08
+        ctx.fillRect(rx + 1, ry + 1, rw - 1, rh - 1)
+      }
       ctx.globalAlpha = 1
       ctx.strokeStyle = color
-      ctx.lineWidth = dashed ? 1.5 : 1.5
-      if (dashed) ctx.setLineDash([4, 3])
-      ctx.strokeRect(rx + 0.5, ry + 0.5, rw - 1, rh - 1)
-      if (dashed) ctx.setLineDash([])
+      if (dashed) {
+        ctx.lineWidth = 1.5
+        ctx.setLineDash([4, 3])
+        ctx.strokeRect(rx + 0.5, ry + 0.5, Math.max(0, rw - 1), Math.max(0, rh - 1))
+        ctx.setLineDash([])
+      } else {
+        ctx.lineWidth = 1.5
+        ctx.strokeRect(rx + 0.5, ry + 0.5, rw - 1, rh - 1)
+      }
       ctx.restore()
     }
   }
@@ -295,6 +315,7 @@ export function drawOverlays(env: RenderEnv): void {
         ref.column[1],
         ref.color,
         true,
+        true,
       )
     }
   }
@@ -305,8 +326,21 @@ export function drawOverlays(env: RenderEnv): void {
       clipboardRange.row[1],
       clipboardRange.column[0],
       clipboardRange.column[1],
-      '#1a73e8',
+      '#1890ff',
       true,
+      true,
+    )
+  }
+
+  if (autofillRange) {
+    drawRangeOverlay(
+      autofillRange.row[0],
+      autofillRange.row[1],
+      autofillRange.column[0],
+      autofillRange.column[1],
+      '#1890ff',
+      true,
+      false,
     )
   }
 }
