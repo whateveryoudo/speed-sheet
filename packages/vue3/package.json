@@ -11,8 +11,13 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
-    }
+    },
+    "./style.css": "./dist/style.css"
   },
+  "sideEffects": [
+    "**/*.css",
+    "dist/*.css"
+  ],
   "files": [
     "dist"
   ],

@@ -5,9 +5,10 @@ import vueJsx from "@vitejs/plugin-vue-jsx";
 import UnoCSS from "@unocss/vite";
 import Components from "unplugin-vue-components/vite";
 import { AntDesignVueResolver } from "unplugin-vue-components/resolvers";
+import { injectLibCss } from "../../build/inject-lib-css";
 
 export default defineConfig({
-  plugins: [vue(), vueJsx(), UnoCSS(),
+  plugins: [vue(), vueJsx(), UnoCSS(), injectLibCss(),
     Components({
       resolvers: [
         AntDesignVueResolver({
@@ -24,6 +25,7 @@ export default defineConfig({
       name: "SpeedSheetVue3Antd",
       formats: ["es", "cjs"],
       fileName: (format) => (format === "es" ? "index.js" : "index.cjs"),
+      cssFileName: "style",
     },
     rollupOptions: {
       external: [
@@ -50,13 +52,7 @@ export default defineConfig({
     dedupe: ["vue"],
     alias: {
       "@sc": resolve(__dirname, "../../../speed-components/src"),
-      "@speed-sheet/core": resolve(__dirname, "../core/src/index.ts"),
-      "@speed-sheet/extension-formula": resolve(
-        __dirname,
-        "../extensions/extension-formula/src/index.ts",
-      ),
-      "@speed-sheet/shared": resolve(__dirname, "../shared/src/index.ts"),
-      "@speed-sheet/vue3": resolve(__dirname, "../vue3/src/index.ts"),
+      "@speed-sheet/vue3/style.css": resolve(__dirname, "../vue3/dist/style.css"),
     },
   },
 });

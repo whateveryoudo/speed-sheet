@@ -1,5 +1,8 @@
 // @speed-sheet/vue3-antd — Ant Design UI + speed-components-ui + SpeedSheet
 
+/** headless 层 canvas 布局样式（随主包 import 自动加载） */
+import '@speed-sheet/vue3/style.css'
+
 export { installSpeedSheetUi, setSpeedSheetGlobalConfig } from './install'
 export type { SpeedSheetUiInstallOptions, SpeedSheetGlobalConfig } from './install'
 

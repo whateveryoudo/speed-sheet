@@ -1,15 +1,17 @@
 import { defineConfig } from 'vite'
 import { resolve } from 'path'
 import vue from '@vitejs/plugin-vue'
+import { injectLibCss } from '../../build/inject-lib-css'
 
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [vue(), injectLibCss()],
   build: {
     lib: {
       entry: resolve(__dirname, 'src/headless.ts'),
       name: 'SpeedSheetVue3',
       formats: ['es', 'cjs'],
       fileName: (format) => (format === 'es' ? 'index.js' : 'index.cjs'),
+      cssFileName: 'style',
     },
     rollupOptions: {
       external: [
