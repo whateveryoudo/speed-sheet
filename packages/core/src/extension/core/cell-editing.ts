@@ -1,9 +1,14 @@
 import { Extension } from '../Extension'
 import type { CommandContext } from '../types'
 import { transactUser } from '../../yjs/transact'
-import type { CellAttributes, CellFormat } from '@speed-sheet/shared'
+import type { CellAttributes, CellFormat, CellStyle } from '@speed-sheet/shared'
 import { formatCellValue, adjustFormatDecimalPlaces } from '../../format/number-format'
-import { fill1DSequence, type CellRange, type AutofillDirection } from '../../autofill/autofill-logic'
+import {
+  fill1DSequence,
+  type CellRange,
+  type AutofillDirection,
+  type AutofillMode,
+} from '../../autofill/autofill-logic'
 
 export const CellEditingExtension = Extension.create({
   name: 'cellEditing',
@@ -161,9 +166,14 @@ export const CellEditingExtension = Extension.create({
         }
       },
 
-      autofill: (props: { sourceRange: CellRange; targetRange: CellRange; direction: AutofillDirection }) => {
+      autofill: (props: {
+        sourceRange: CellRange
+        targetRange: CellRange
+        direction: AutofillDirection
+        mode?: AutofillMode
+      }) => {
         return ({ state }: CommandContext) => {
-          const { sourceRange, targetRange, direction } = props
+          const { sourceRange, targetRange, direction, mode = 'sequence' } = props
           const sr0 = Math.min(sourceRange.r0, sourceRange.r1)
           const sr1 = Math.max(sourceRange.r0, sourceRange.r1)
           const sc0 = Math.min(sourceRange.c0, sourceRange.c1)
@@ -175,9 +185,51 @@ export const CellEditingExtension = Extension.create({
           const tc1 = Math.max(targetRange.c0, targetRange.c1)
 
           const doc = state.root.doc
+          const STYLE_KEYS: Array<keyof CellStyle> = [
+            'fc', 'bg', 'bl', 'ff', 'fs', 'it', 'cl', 'un', 'vt', 'ht', 'tr', 'tb'
+          ]
+
           const run = () => {
             const writeCell = (targetR: number, targetC: number, filledCell: CellAttributes) => {
               const targetExisting = state.getCellData(targetR, targetC)
+
+              if (mode === 'formatOnly') {
+                const newCell: CellAttributes = {
+                  ...(targetExisting ?? { v: null }),
+                  ct: filledCell.ct,
+                }
+                for (const k of STYLE_KEYS) {
+                  if (filledCell[k] !== undefined) {
+                    (newCell as any)[k] = filledCell[k]
+                  } else {
+                    delete (newCell as any)[k]
+                  }
+                }
+                if (newCell.ct && newCell.v != null) {
+                  newCell.m = formatCellValue(newCell.v, newCell.ct).m
+                }
+                state.setCell(targetR, targetC, newCell)
+                return
+              }
+
+              if (mode === 'noFormat') {
+                const finalFormat = targetExisting?.ct
+                let finalM = filledCell.m
+                if (finalFormat && filledCell.v != null) {
+                  finalM = formatCellValue(filledCell.v, finalFormat).m
+                } else if (filledCell.v != null) {
+                  finalM = String(filledCell.v)
+                }
+                const newCell: CellAttributes = {
+                  ...(targetExisting ?? {}),
+                  v: filledCell.v,
+                  f: filledCell.f,
+                  m: finalM,
+                }
+                state.setCell(targetR, targetC, newCell)
+                return
+              }
+
               const hasTargetFormat =
                 targetExisting?.ct &&
                 targetExisting.ct.fa &&
@@ -215,6 +267,7 @@ export const CellEditingExtension = Extension.create({
                 const filled = fill1DSequence(sourceCol, targetCount, {
                   direction: direction === 'down' ? 'forward' : 'backward',
                   axis: 'row',
+                  mode,
                 })
                 for (let i = 0; i < targetCount; i++) {
                   const targetR = direction === 'down' ? tr0 + i : tr1 - i
@@ -231,6 +284,7 @@ export const CellEditingExtension = Extension.create({
                 const filled = fill1DSequence(sourceRow, targetCount, {
                   direction: direction === 'right' ? 'forward' : 'backward',
                   axis: 'col',
+                  mode,
                 })
                 for (let i = 0; i < targetCount; i++) {
                   const targetC = direction === 'right' ? tc0 + i : tc1 - i

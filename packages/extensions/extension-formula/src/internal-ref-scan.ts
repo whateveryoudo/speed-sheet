@@ -2,7 +2,7 @@ import { AXIS_ID_PATTERN } from '@speed-sheet/shared'
 
 const ID = AXIS_ID_PATTERN
 const INTERNAL_REF_FULL_RE = new RegExp(
-  `#(?:@[^|#]+\\|)?${ID}:${ID}(?:~${ID}:${ID})?#`,
+  `#(?:@[^|#]+\\|)?\\$?${ID}:\\$?${ID}(?:~\\$?${ID}:\\$?${ID})?#`,
   'g',
 )
 

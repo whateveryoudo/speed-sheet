@@ -166,13 +166,19 @@ export {
   hitSelectionHandle,
 } from './interaction/selection-handle'
 export {
+  selectionBox,
+  resolveMetrics,
+} from './renderer/layout-metrics'
+export {
   calcAutofillTarget,
+  calcDblClickAutofillRange,
   shiftFormulaReferences,
   fill1DSequence,
 } from './autofill/autofill-logic'
 export type {
   CellRange,
   AutofillDirection,
+  AutofillMode,
   AutofillTarget,
 } from './autofill/autofill-logic'
 export type {
@@ -230,3 +236,5 @@ export {
   isRowId,
   isColId,
 } from '@speed-sheet/shared'
+
+export * from './find-replace'

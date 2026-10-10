@@ -50,6 +50,8 @@ export interface RenderOptions {
   conditionalFormatDataBars?: Map<string, CfDataBarRender>
   /** 图片异步加载完成后请求重绘 */
   onImageLoaded?: () => void
+  /** 查找匹配高亮单元格列表（对标语雀：橙黄色半透明背景与细边框） */
+  findMatches?: Array<{ r: number; c: number }>
 }
 
 export type CfCellRenderStyle = {

@@ -1,24 +1,39 @@
 import { ref, computed, onMounted, onUnmounted, watch, type Ref, type ComputedRef } from 'vue'
-import { MergeContext, type Sheet, type RenderOptions } from '@speed-sheet/core'
+import {
+  MergeContext,
+  type Sheet,
+  type RenderOptions,
+  type CellRange,
+  type AutofillDirection,
+} from '@speed-sheet/core'
+import type { CellAttributes } from '@speed-sheet/shared'
 import { SheetViewport, type SheetViewportEditorBridge } from '@speed-sheet/view'
 import type { ContextMenuState } from '../types/context-menu'
+import { useSheetInlineEdit } from './useSheetInlineEdit'
+import type { FormulaEditContext } from './useFormulaEdit'
+import type FormulaRichInput from '../components/FormulaRichInput.vue'
 
-/** Vue 胶水：一个 composable 绑定 SheetViewport，替代原先十几个薄封装 hook */
+/**
+ * Vue 胶水：统一视口与内联编辑控制器
+ * 封装 SheetViewport 与内联编辑状态机，消除外部的时序死结与闭包桥接
+ */
 export function useSheetCanvasView(options: {
   rootEl: Ref<HTMLElement | undefined>
   canvasEl: Ref<HTMLCanvasElement | undefined>
   viewportEl: Ref<HTMLElement | undefined>
   scrollEl: Ref<HTMLElement | undefined>
+  editorEl: Ref<InstanceType<typeof FormulaRichInput> | null>
   sheet: Ref<Sheet | null>
   revision: Ref<number>
   rowHeaderWidth: Ref<number | undefined>
   columnHeaderHeight: Ref<number | undefined>
   formulaRefRanges: Ref<RenderOptions['formulaRefRanges']>
   editable: ComputedRef<boolean>
-  isFormulaPickMode: ComputedRef<boolean>
-  /** 与 editor 分离，避免 watch 初始化时 editor 尚未就绪 */
-  isEditing: () => boolean
-  editor: SheetViewportEditorBridge
+  formulaEdit?: FormulaEditContext | null
+  commitBoundary?: ComputedRef<HTMLElement | null | undefined> | Ref<HTMLElement | null | undefined>
+  formulaPickModeProp?: Ref<boolean> | ComputedRef<boolean>
+  canEditCell?: (r: number, c: number) => boolean
+  onEditBlocked?: () => void
   onSelectRange: (
     r0: number,
     c0: number,
@@ -34,41 +49,18 @@ export function useSheetCanvasView(options: {
   onFormulaRangePick: (r0: number, c0: number, r1: number, c1: number) => void
   onScrollLayout: () => void
   onFreezeInvalid?: () => void
-  onEditorWidthSync?: () => void
+  onAutofillComplete?: (result: {
+    sourceRange: CellRange
+    targetRange: CellRange
+    direction: AutofillDirection
+    originalTargetCells?: Array<{ r: number; c: number; cell: CellAttributes | null }>
+  }) => void
+  onFindAndReplace?: () => void
 }) {
   const bump = ref(0)
-  const viewport = new SheetViewport({
-    getRoot: () => options.rootEl.value,
-    getCanvas: () => options.canvasEl.value,
-    getViewport: () => options.viewportEl.value,
-    getScroll: () => options.scrollEl.value,
-    getSheet: () => options.sheet.value,
-    getRevision: () => options.revision.value,
-    getRowHeaderWidth: () => options.rowHeaderWidth.value,
-    getColumnHeaderHeight: () => options.columnHeaderHeight.value,
-    getFormulaRefRanges: () => options.formulaRefRanges.value,
-    isEditable: () => options.editable.value,
-    isFormulaPickMode: () => options.isFormulaPickMode.value,
-    editor: options.editor,
-    getMergeContext: () => options.sheet.value?.createMergeContext() ?? MergeContext.empty(),
-    onSelectRange: options.onSelectRange,
-    onCellClick: options.onCellClick,
-    onCellDblClick: options.onCellDblClick,
-    onContextMenuOpen: options.onContextMenu,
-    onFormulaPick: options.onFormulaPick,
-    onFormulaRangePick: options.onFormulaRangePick,
-    onScrollLayout: () => {
-      options.onScrollLayout()
-      options.onEditorWidthSync?.()
-      viewport.closeCtxMenu()
-    },
-    onFreezeInvalid: options.onFreezeInvalid,
-  })
+  let viewport!: SheetViewport
 
-  viewport.subscribe(() => {
-    bump.value++
-  })
-
+  // 1. 响应式封装 layout 与 scroll
   const scrollX = computed({
     get: () => {
       void bump.value
@@ -125,6 +117,77 @@ export function useSheetCanvasView(options: {
   const cellEntries = computed(() => {
     void options.revision.value
     return viewport.getCellEntries()
+  })
+
+  // 2. 内聚创建 inlineEdit，内部直接消费上述响应式包装
+  const inlineEdit = useSheetInlineEdit({
+    sheet: options.sheet,
+    formulaEdit: options.formulaEdit ?? null,
+    editorEl: options.editorEl,
+    viewportEl: options.viewportEl,
+    rootEl: options.rootEl,
+    layout,
+    scrollX,
+    scrollY,
+    cellEntries,
+    cells,
+    commitBoundary: options.commitBoundary ?? ref(null),
+    formulaPickModeProp: options.formulaPickModeProp ?? ref(false),
+    onDraw: () => viewport.scheduleDraw(),
+    canEditCell: options.canEditCell,
+    onEditBlocked: options.onEditBlocked,
+  })
+
+  // 3. 构造 editorBridge：方法直接绑定，消除闭包延迟与 ?. 可选链
+  const editorBridge: SheetViewportEditorBridge = {
+    isEditingCell: inlineEdit.isEditingCell,
+    startFormulaPick: inlineEdit.startFormulaPick,
+    isFormulaPickDragging: inlineEdit.isFormulaPickDragging,
+    updateFormulaPick: inlineEdit.updateFormulaPick,
+    endFormulaPick: inlineEdit.endFormulaPick,
+    isEditing: () => inlineEdit.editing.value,
+    getEditR: () => inlineEdit.editR.value,
+    getEditC: () => inlineEdit.editC.value,
+    commitEdit: inlineEdit.commitEdit,
+    openEditor: inlineEdit.openEditor,
+    cellEditInitial: inlineEdit.cellEditInitial,
+  }
+
+  // 4. 创建 SheetViewport 实例
+  viewport = new SheetViewport({
+    getRoot: () => options.rootEl.value,
+    getCanvas: () => options.canvasEl.value,
+    getViewport: () => options.viewportEl.value,
+    getScroll: () => options.scrollEl.value,
+    getSheet: () => options.sheet.value,
+    getRevision: () => options.revision.value,
+    getRowHeaderWidth: () => options.rowHeaderWidth.value,
+    getColumnHeaderHeight: () => options.columnHeaderHeight.value,
+    getFormulaRefRanges: () => options.formulaRefRanges.value,
+    isEditable: () => options.editable.value,
+    isFormulaPickMode: () => inlineEdit.effectiveFormulaPick.value,
+    editor: editorBridge,
+    getMergeContext: () => options.sheet.value?.createMergeContext() ?? MergeContext.empty(),
+    onSelectRange: options.onSelectRange,
+    onCellClick: options.onCellClick,
+    onCellDblClick: options.onCellDblClick,
+    onContextMenuOpen: options.onContextMenu,
+    onFormulaPick: options.onFormulaPick,
+    onFormulaRangePick: options.onFormulaRangePick,
+    onAutofillComplete: options.onAutofillComplete,
+    onFindAndReplace: options.onFindAndReplace,
+    onScrollLayout: () => {
+      options.onScrollLayout()
+      if (inlineEdit.editing.value) {
+        inlineEdit.updateEditorWidth()
+      }
+      viewport.closeCtxMenu()
+    },
+    onFreezeInvalid: options.onFreezeInvalid,
+  })
+
+  viewport.subscribe(() => {
+    bump.value++
   })
 
   const resizeGuide = computed(() => {
@@ -185,7 +248,7 @@ export function useSheetCanvasView(options: {
       [
         options.revision.value,
         options.sheet.value,
-        options.isEditing(),
+        inlineEdit.editing.value,
         options.formulaRefRanges.value,
       ] as const,
     () => viewport.onDrawDataChange(),
@@ -241,5 +304,21 @@ export function useSheetCanvasView(options: {
     onPointerMouseDown: viewport.onPointerMouseDown,
     onDblClick: viewport.onDblClick,
     onContextMenu: viewport.onContextMenu,
+    scrollToCell: (r: number, c: number) => viewport.scrollToCell(r, c),
+    setFindMatches: (matches: Array<{ r: number; c: number }> | null) => viewport.setFindMatches(matches),
+
+    // 内联编辑器响应式状态与交互方法
+    editing: inlineEdit.editing,
+    editorValue: inlineEdit.editorValue,
+    editorStyle: inlineEdit.editorStyle,
+    editorFieldStyle: inlineEdit.editorFieldStyle,
+    endEditingForLayoutChange: inlineEdit.endEditingForLayoutChange,
+    syncEditorCaret: inlineEdit.syncEditorCaret,
+    onEditorKeydown: inlineEdit.onEditorKeydown,
+    onEditorInput: inlineEdit.onEditorInput,
+    onEditorBlur: inlineEdit.onEditorBlur,
+    cancelEdit: inlineEdit.cancelEdit,
+    commitEdit: inlineEdit.commitEdit,
+    effectiveFormulaPick: inlineEdit.effectiveFormulaPick,
   }
 }

@@ -1,11 +1,14 @@
 import {
   MergeContext,
+  calcDblClickAutofillRange,
   type GridLayout,
   type CellEntry,
   type Sheet,
   type RenderOptions,
+  type CellRange,
+  type AutofillDirection,
 } from '@speed-sheet/core'
-import type { Selection } from '@speed-sheet/shared'
+import type { CellAttributes, Selection } from '@speed-sheet/shared'
 import { Subscribable } from './utils/subscribe'
 import { SheetLayoutState } from './layout/sheet-layout'
 import { CanvasDrawController } from './draw/canvas-draw'
@@ -67,6 +70,13 @@ export type SheetViewportOptions = {
   onFormulaRangePick: (r0: number, c0: number, r1: number, c1: number) => void
   onScrollLayout: () => void
   onFreezeInvalid?: () => void
+  onAutofillComplete?: (result: {
+    sourceRange: CellRange
+    targetRange: CellRange
+    direction: AutofillDirection
+    originalTargetCells?: Array<{ r: number; c: number; cell: CellAttributes | null }>
+  }) => void
+  onFindAndReplace?: () => void
 }
 
 export class SheetViewport extends Subscribable {
@@ -78,6 +88,7 @@ export class SheetViewport extends Subscribable {
   colMoveGuide: MoveGuideState = { active: false, pos: 0 }
   colMoveHint: MoveHintState = { show: false, x: 0, y: 0, text: '' }
   errorTip: CellErrorTipState = { show: false, x: 0, y: 0, message: '' }
+  private findMatches: Array<{ r: number; c: number }> | null = null
 
   private readonly draw: CanvasDrawController
   readonly scroll: ScrollBarController
@@ -216,11 +227,24 @@ export class SheetViewport extends Subscribable {
       inlineEdit: options.editor,
       autofillDrag: this.autofillDrag,
       onCommitAutofill: (res) => {
-        options.getSheet()
+        const sheet = options.getSheet()
+        const originalTargetCells: Array<{ r: number; c: number; cell: CellAttributes | null }> = []
+        if (sheet) {
+          const tr0 = Math.min(res.targetRange.r0, res.targetRange.r1)
+          const tr1 = Math.max(res.targetRange.r0, res.targetRange.r1)
+          const tc0 = Math.min(res.targetRange.c0, res.targetRange.c1)
+          const tc1 = Math.max(res.targetRange.c0, res.targetRange.c1)
+          for (let r = tr0; r <= tr1; r++) {
+            for (let c = tc0; c <= tc1; c++) {
+              originalTargetCells.push({ r, c, cell: sheet.state.getCellData(r, c) })
+            }
+          }
+        }
+        sheet
           ?.chain()
           .autofill(res)
           .run()
-        const s = options.getSheet()?.state.getSelection()
+        const s = sheet?.state.getSelection()
         if (s) {
           options.onSelectRange?.(
             s.row[0],
@@ -231,6 +255,10 @@ export class SheetViewport extends Subscribable {
             s.anchor?.c ?? s.column[0],
           )
         }
+        options.onAutofillComplete?.({
+          ...res,
+          originalTargetCells,
+        })
         bump()
       },
       isBlocked: isDocumentDragBlocked,
@@ -297,6 +325,7 @@ export class SheetViewport extends Subscribable {
       getRowHeaderWidth: options.getRowHeaderWidth,
       getColumnHeaderHeight: options.getColumnHeaderHeight,
       getAutofillRange: () => this.autofillDrag.getPreviewRange(),
+      getFindMatches: () => this.findMatches ?? undefined,
       onScrollLayout: options.onScrollLayout,
       onFreezeInvalid: options.onFreezeInvalid,
     })
@@ -346,6 +375,60 @@ export class SheetViewport extends Subscribable {
       getSelection: () => this.getSelection(),
       startAutofillDrag: (sel) => this.autofillDrag.start(sel),
       autofillDragging: () => this.autofillDrag.isActive(),
+      onHandleDblClick: (sel) => {
+        const sheet = options.getSheet()
+        if (!sheet) return false
+        const r0 = Math.min(sel.row[0], sel.row[1])
+        const r1 = Math.max(sel.row[0], sel.row[1])
+        const c0 = Math.min(sel.column[0], sel.column[1])
+        const c1 = Math.max(sel.column[0], sel.column[1])
+        const sourceRange: CellRange = { r0, r1, c0, c1 }
+
+        const targetRange = calcDblClickAutofillRange(
+          sourceRange,
+          (r, c) => sheet.state.getCellData(r, c),
+          this.layoutState.totalRows,
+          this.layoutState.totalCols,
+        )
+        if (!targetRange) return false
+
+        const originalTargetCells: Array<{ r: number; c: number; cell: CellAttributes | null }> = []
+        for (let r = targetRange.r0; r <= targetRange.r1; r++) {
+          for (let c = targetRange.c0; c <= targetRange.c1; c++) {
+            originalTargetCells.push({ r, c, cell: sheet.state.getCellData(r, c) })
+          }
+        }
+
+        sheet
+          .chain()
+          .autofill({
+            sourceRange,
+            targetRange,
+            direction: 'down',
+          })
+          .run()
+
+        const s = sheet.state.getSelection()
+        if (s) {
+          options.onSelectRange?.(
+            s.row[0],
+            s.column[0],
+            s.row[1],
+            s.column[1],
+            s.anchor?.r ?? s.row[0],
+            s.anchor?.c ?? s.column[0],
+          )
+        }
+        options.onAutofillComplete?.({
+          sourceRange,
+          targetRange,
+          direction: 'down',
+          originalTargetCells,
+        })
+        bump()
+        scheduleDraw()
+        return true
+      },
     })
 
     this.keyboard = new KeyboardController({
@@ -366,7 +449,13 @@ export class SheetViewport extends Subscribable {
       applySelectRange,
       onCellClick: options.onCellClick,
       onDraw: () => scheduleDraw(),
+      onFindAndReplace: options.onFindAndReplace,
     })
+  }
+
+  setFindMatches(matches: Array<{ r: number; c: number }> | null): void {
+    this.findMatches = matches
+    this.draw.scheduleDraw()
   }
 
   getSelection(): Selection {
@@ -426,6 +515,42 @@ export class SheetViewport extends Subscribable {
   attach(): void {
     this.draw.attach()
     this.scroll.attach()
+  }
+
+  scrollToCell(r: number, c: number): void {
+    const scrollEl = this.options.getScroll()
+    if (!scrollEl) return
+    const metrics = this.layoutState.gridMetrics
+    const layout = this.layoutState.layout
+    const rhw = layout.rowHeaderWidth ?? 46
+    const chh = layout.columnHeaderHeight ?? 25
+    const cellLeft = metrics.colLeft(c)
+    const cellRight = metrics.colRight(c)
+    const cellTop = metrics.rowTop(r)
+    const cellBottom = metrics.rowBottom(r)
+
+    const viewW = Math.max(0, layout.viewportW - rhw)
+    const viewH = Math.max(0, layout.viewportH - chh)
+    let newScrollX = scrollEl.scrollLeft
+    let newScrollY = scrollEl.scrollTop
+
+    if (cellLeft < newScrollX) {
+      newScrollX = cellLeft
+    } else if (cellRight > newScrollX + viewW) {
+      newScrollX = Math.max(0, cellRight - viewW)
+    }
+
+    if (cellTop < newScrollY) {
+      newScrollY = cellTop
+    } else if (cellBottom > newScrollY + viewH) {
+      newScrollY = Math.max(0, cellBottom - viewH)
+    }
+
+    if (newScrollX !== scrollEl.scrollLeft || newScrollY !== scrollEl.scrollTop) {
+      scrollEl.scrollLeft = newScrollX
+      scrollEl.scrollTop = newScrollY
+      this.handleScroll()
+    }
   }
 
   detach(): void {

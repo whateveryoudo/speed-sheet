@@ -46,6 +46,7 @@ export type CanvasDrawOptions = {
   getRowHeaderWidth: () => number | undefined
   getColumnHeaderHeight: () => number | undefined
   getAutofillRange?: () => RenderOptions['autofillRange']
+  getFindMatches?: () => RenderOptions['findMatches']
   onScrollLayout: () => void
   onFreezeInvalid?: () => void
 }
@@ -160,6 +161,7 @@ export class CanvasDrawController {
           : undefined,
         clipboardRange: sheet?.getClipboardRange?.() ?? null,
         autofillRange: this.options.getAutofillRange?.(),
+        findMatches: this.options.getFindMatches?.(),
         formulaRefRanges: this.options.getFormulaRefRanges(),
         dataVerifications: dvMap,
         filterView: sheet?.getFilterView() ?? null,

@@ -78,4 +78,10 @@ export interface SpeedSheetProps {
   editable?: boolean
   /** 覆盖 App 级 upload（一般无需传，在 app.use(SpeedSheetUi) 配置） */
   upload?: import('@speed-sheet/vue3').SheetUploadConfig
+  /** 查找与替换配置（可禁用、控制快捷键、自定义浮层样式） */
+  searchReplace?: {
+    enabled?: boolean
+    shortcut?: boolean
+    style?: Record<string, string | number>
+  }
 }

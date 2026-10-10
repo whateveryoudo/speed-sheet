@@ -220,8 +220,15 @@ export function drawOverlays(env: RenderEnv): void {
     colEnd,
     freezePane,
   } = env
-  const { dataVerifications, editingCell, filterView, formulaRefRanges, clipboardRange, autofillRange } =
-    options
+  const {
+    dataVerifications,
+    editingCell,
+    filterView,
+    formulaRefRanges,
+    clipboardRange,
+    autofillRange,
+    findMatches,
+  } = options
 
   drawNoteMarkersInView(
     ctx,
@@ -262,6 +269,7 @@ export function drawOverlays(env: RenderEnv): void {
     color: string,
     dashed: boolean,
     fillBackground: boolean = true,
+    fillAlpha: number = 0.08,
   ) => {
     const segments = hasFreezePanes(layout)
       ? splitSelectionByFreezePanes(rr0, rr1, cc0, cc1, layout)
@@ -288,7 +296,7 @@ export function drawOverlays(env: RenderEnv): void {
       ctx.save()
       if (fillBackground) {
         ctx.fillStyle = color
-        ctx.globalAlpha = 0.08
+        ctx.globalAlpha = fillAlpha
         ctx.fillRect(rx + 1, ry + 1, rw - 1, rh - 1)
       }
       ctx.globalAlpha = 1
@@ -303,6 +311,13 @@ export function drawOverlays(env: RenderEnv): void {
         ctx.strokeRect(rx + 0.5, ry + 0.5, rw - 1, rh - 1)
       }
       ctx.restore()
+    }
+  }
+
+  if (findMatches?.length) {
+    for (const m of findMatches) {
+      if (m.r < rowStart || m.r > rowEnd || m.c < colStart || m.c > colEnd) continue
+      drawRangeOverlay(m.r, m.r, m.c, m.c, '#faad14', false, true, 0.38)
     }
   }
 

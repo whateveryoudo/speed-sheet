@@ -5,6 +5,7 @@ import vueJsx from "@vitejs/plugin-vue-jsx";
 import { resolve } from "path";
 import Components from "unplugin-vue-components/vite";
 import { AntDesignVueResolver } from "unplugin-vue-components/resolvers";
+import { createSimpleSvgSpritePlugin } from "../../build/simple-svg-sprite";
 
 export default defineConfig({
   plugins: [
@@ -18,6 +19,10 @@ export default defineConfig({
           resolveIcons: true, // 自动解析图标
         }),
       ],
+    }),
+    createSimpleSvgSpritePlugin({
+      iconDirs: [resolve(__dirname, "../../packages/vue3-antd/src/icons")],
+      symbolId: (name: string) => `icon-${name}`,
     }),
   ],
   // Dev: always use package source (avoid stale dist with old canvas layout)

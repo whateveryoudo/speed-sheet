@@ -11,6 +11,7 @@ import {
 } from '@speed-sheet/vue3'
 import baseConfig from './config'
 import { installSheetI18n, type SheetLocale } from './i18n'
+import { ensureSvgSprite } from './icons'
 
 export interface SpeedSheetUiInstallOptions extends SpeedSheetGlobalConfig {
   locale?: SheetLocale
@@ -22,6 +23,7 @@ export function installSpeedSheetUi(
   app: App,
   options?: SpeedSheetUiInstallOptions,
 ): void {
+  ensureSvgSprite()
   if (options) {
     const { locale, ...global } = options
     setSpeedSheetGlobalConfig(global)

@@ -24,6 +24,5 @@ const { editableCpt, findReplaceOpen } = useSheetToolbar()
 
 function openFindReplace() {
   findReplaceOpen.value = true
-  message.info(t('toolbar.findAndReplaceHint'))
 }
 </script>

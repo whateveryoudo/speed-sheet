@@ -165,7 +165,6 @@ function renderCheckIcon(checked: boolean) {
     ? h(CheckOutlined, {
         class: 'format-check-icon',
         style: {
-          color: 'var(--ant-color-primary, #1890ff)',
           fontSize: '12px',
           verticalAlign: 'middle',
         },
@@ -304,7 +303,7 @@ const handleMenuClick: MenuProps['onClick'] = ({ key }) => {
 
 :deep(.format-check-icon) {
   font-size: 12px;
-  color: var(--ant-color-primary, #1890ff);
+  color: rgba(0, 0, 0, 0.85);
   vertical-align: middle;
 }
 

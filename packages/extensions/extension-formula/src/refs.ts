@@ -15,6 +15,10 @@ export interface SheetRef {
   sheet?: string
   cell?: CellAddress
   range?: RangeAddress
+  rowLock?: boolean
+  colLock?: boolean
+  endRowLock?: boolean
+  endColLock?: boolean
 }
 
 /** 列字母 → 0-based 列号 */
@@ -37,8 +41,8 @@ export function colToLetter(c: number): string {
   return s
 }
 
-export function formatA1(r: number, c: number): string {
-  return `${colToLetter(c)}${r + 1}`
+export function formatA1(r: number, c: number, rowLock = false, colLock = false): string {
+  return `${colLock ? '$' : ''}${colToLetter(c)}${rowLock ? '$' : ''}${r + 1}`
 }
 
 /** 解析 A1 或 A1:B10 */
@@ -59,29 +63,35 @@ export function parseRefToken(token: string): SheetRef | null {
     local = trimmed.slice(bang + 1)
   }
 
-  const rangeMatch = /^([A-Za-z]+)(\d+):([A-Za-z]+)(\d+)$/.exec(local)
+  const rangeMatch = /^(\$?)([A-Za-z]+)(\$?)(\d+):(\$?)([A-Za-z]+)(\$?)(\d+)$/.exec(local)
   if (rangeMatch) {
-    const r0 = Number(rangeMatch[2]) - 1
-    const c0 = letterToCol(rangeMatch[1])
-    const r1 = Number(rangeMatch[4]) - 1
-    const c1 = letterToCol(rangeMatch[3])
+    const r0 = Number(rangeMatch[4]) - 1
+    const c0 = letterToCol(rangeMatch[2])
+    const r1 = Number(rangeMatch[8]) - 1
+    const c1 = letterToCol(rangeMatch[6])
     return {
       sheet,
       range: {
         row: [Math.min(r0, r1), Math.max(r0, r1)],
         column: [Math.min(c0, c1), Math.max(c0, c1)],
       },
+      colLock: !!rangeMatch[1],
+      rowLock: !!rangeMatch[3],
+      endColLock: !!rangeMatch[5],
+      endRowLock: !!rangeMatch[7],
     }
   }
 
-  const cellMatch = /^([A-Za-z]+)(\d+)$/.exec(local)
+  const cellMatch = /^(\$?)([A-Za-z]+)(\$?)(\d+)$/.exec(local)
   if (cellMatch) {
     return {
       sheet,
       cell: {
-        r: Number(cellMatch[2]) - 1,
-        c: letterToCol(cellMatch[1]),
+        r: Number(cellMatch[4]) - 1,
+        c: letterToCol(cellMatch[2]),
       },
+      colLock: !!cellMatch[1],
+      rowLock: !!cellMatch[3],
     }
   }
 
@@ -94,7 +104,7 @@ import { overlapsInternalRef } from './internal-ref-scan'
 export function extractRefTokens(formula: string): string[] {
   const tokens: string[] = []
   const re =
-    /(?:'[^']+'|[\w\u4e00-\u9fff\u3400-\u9fff]+!)?[A-Za-z]{1,4}\d+(?::[A-Za-z]{1,4}\d+)?/g
+    /(?:'[^']+'|[\w\u4e00-\u9fff\u3400-\u9fff]+!)?\$?[A-Za-z]{1,4}\$?\d+(?::\$?[A-Za-z]{1,4}\$?\d+)?/g
   let m: RegExpExecArray | null
   while ((m = re.exec(formula)) !== null) {
     const start = m.index

@@ -130,19 +130,19 @@
       />
       <slot v-if="ctxMenu.show && $slots['context-menu']" name="context-menu" v-bind="ctxMenuPayload"
         :close="closeCtxMenu" />
+      <slot name="autofill-options" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, toRef, inject, watch } from 'vue'
-import type { Sheet } from '@speed-sheet/core'
-import type { SheetViewportEditorBridge } from '@speed-sheet/view'
+import type { Sheet, CellRange, AutofillDirection } from '@speed-sheet/core'
+import type { CellAttributes } from '@speed-sheet/shared'
 import type { ContextMenuState } from '../types/context-menu'
 import { FORMULA_EDIT_KEY } from '../composables/useFormulaEdit'
 import { useSheetEditorOptional } from '../composables/useSheetEditorContext'
 import { useSheetCanvasView } from '../composables/useSheetCanvasView'
-import { useSheetInlineEdit, type UseSheetInlineEditReturn } from '../composables/useSheetInlineEdit'
 import FormulaRichInput from './FormulaRichInput.vue'
 import SheetExtensionViews from './SheetExtensionViews.vue'
 import SheetBubbleMenusHost from './SheetBubbleMenusHost.vue'
@@ -189,6 +189,15 @@ const emit = defineEmits<{
   'viewport-drop': [e: DragEvent]
   'freeze-invalid': []
   'edit-blocked': []
+  'autofill-complete': [
+    payload: {
+      sourceRange: CellRange
+      targetRange: CellRange
+      direction: AutofillDirection
+      originalTargetCells?: Array<{ r: number; c: number; cell: CellAttributes | null }>
+    },
+  ]
+  'find-and-replace': []
 }>()
 
 const rootEl = ref<HTMLElement>()
@@ -200,22 +209,6 @@ const editorEl = ref<InstanceType<typeof FormulaRichInput> | null>(null)
 const viewportTick = ref(0)
 function bumpViewportTick(): void {
   viewportTick.value++
-}
-
-/** inlineEdit 在 canvasView 之后创建；bridge 方法仅在用户交互时调用，需可选守卫 */
-let inlineEdit: UseSheetInlineEditReturn | undefined
-const editorBridge: SheetViewportEditorBridge = {
-  isEditingCell: (r, c) => inlineEdit?.isEditingCell(r, c) ?? false,
-  startFormulaPick: (r, c) => inlineEdit?.startFormulaPick(r, c),
-  isFormulaPickDragging: () => inlineEdit?.isFormulaPickDragging() ?? false,
-  updateFormulaPick: (pt) => inlineEdit?.updateFormulaPick(pt),
-  endFormulaPick: (onPick, onRange) => inlineEdit?.endFormulaPick(onPick, onRange),
-  isEditing: () => inlineEdit?.editing.value ?? false,
-  getEditR: () => inlineEdit?.editR.value ?? 0,
-  getEditC: () => inlineEdit?.editC.value ?? 0,
-  commitEdit: () => inlineEdit?.commitEdit(),
-  openEditor: (r, c, initial) => inlineEdit?.openEditor(r, c, initial),
-  cellEditInitial: (r, c) => inlineEdit?.cellEditInitial(r, c) ?? '',
 }
 
 const {
@@ -260,53 +253,10 @@ const {
   onPointerMouseDown,
   onDblClick,
   onContextMenu,
-} = useSheetCanvasView({
-  rootEl,
-  canvasEl,
-  viewportEl,
-  scrollEl,
-  sheet,
-  revision,
-  rowHeaderWidth: computed(() => props.rowHeaderWidth),
-  columnHeaderHeight: computed(() => props.columnHeaderHeight),
-  formulaRefRanges: computed(() => props.formulaRefRanges),
-  editable: editableCpt,
-  isFormulaPickMode: computed(() => inlineEdit?.effectiveFormulaPick.value ?? props.formulaPickMode),
-  isEditing: () => inlineEdit?.editing.value ?? false,
-  editor: editorBridge,
-  onSelectRange: (r0, c0, r1, c1, anchorR, anchorC) =>
-    emit('select-range', r0, c0, r1, c1, anchorR, anchorC),
-  onCellClick: (r, c) => emit('cell-click', r, c),
-  onCellDblClick: (r, c) => !!props.resolveCellDblClick?.(r, c),
-  onContextMenu: (payload) => emit('context-menu', payload),
-  onFormulaPick: (r, c) => emit('formula-pick', r, c),
-  onFormulaRangePick: (r0, c0, r1, c1) => emit('formula-range-pick', r0, c0, r1, c1),
-  onScrollLayout: bumpViewportTick,
-  onFreezeInvalid: () => emit('freeze-invalid'),
-  onEditorWidthSync: () => {
-    if (inlineEdit?.editing.value) inlineEdit.updateEditorWidth()
-  },
-})
+  scrollToCell,
+  setFindMatches,
 
-inlineEdit = useSheetInlineEdit({
-  sheet,
-  formulaEdit,
-  editorEl,
-  viewportEl,
-  rootEl,
-  layout,
-  scrollX,
-  scrollY,
-  cellEntries,
-  cells,
-  commitBoundary: computed(() => props.commitBoundary),
-  formulaPickModeProp: toRef(props, 'formulaPickMode'),
-  onDraw: scheduleDraw,
-  canEditCell: (r, c) => props.canEditCell?.(r, c) ?? true,
-  onEditBlocked: () => emit('edit-blocked'),
-})
-
-const {
+  // 内联编辑状态与方法直接由 useSheetCanvasView 导出
   editing,
   editorValue,
   editorStyle,
@@ -317,7 +267,36 @@ const {
   onEditorInput,
   onEditorBlur,
   cancelEdit,
-} = inlineEdit
+  commitEdit,
+} = useSheetCanvasView({
+  rootEl,
+  canvasEl,
+  viewportEl,
+  scrollEl,
+  editorEl,
+  sheet,
+  revision,
+  rowHeaderWidth: computed(() => props.rowHeaderWidth),
+  columnHeaderHeight: computed(() => props.columnHeaderHeight),
+  formulaRefRanges: computed(() => props.formulaRefRanges),
+  editable: editableCpt,
+  formulaEdit,
+  commitBoundary: computed(() => props.commitBoundary),
+  formulaPickModeProp: toRef(props, 'formulaPickMode'),
+  canEditCell: (r, c) => props.canEditCell?.(r, c) ?? true,
+  onEditBlocked: () => emit('edit-blocked'),
+  onSelectRange: (r0, c0, r1, c1, anchorR, anchorC) =>
+    emit('select-range', r0, c0, r1, c1, anchorR, anchorC),
+  onCellClick: (r, c) => emit('cell-click', r, c),
+  onCellDblClick: (r, c) => !!props.resolveCellDblClick?.(r, c),
+  onContextMenu: (payload) => emit('context-menu', payload),
+  onFormulaPick: (r, c) => emit('formula-pick', r, c),
+  onFormulaRangePick: (r0, c0, r1, c1) => emit('formula-range-pick', r0, c0, r1, c1),
+  onScrollLayout: bumpViewportTick,
+  onFreezeInvalid: () => emit('freeze-invalid'),
+  onAutofillComplete: (payload) => emit('autofill-complete', payload),
+  onFindAndReplace: () => emit('find-and-replace'),
+})
 
 provideSheetViewport({
   sheet,
@@ -362,7 +341,7 @@ defineExpose({
   sheet,
   getSelection: () => sheet.value?.state.getSelection(),
   chain: () => sheet.value?.chain(),
-  commitEdit: () => inlineEdit?.commitEdit(),
+  commitEdit,
   endEditingForLayoutChange,
   getViewportState: () => ({
     layout: layoutForHit(),
@@ -370,6 +349,8 @@ defineExpose({
     scrollY: scrollY.value,
     gridMetrics: gridMetrics.value,
   }),
+  scrollToCell: (r: number, c: number) => scrollToCell(r, c),
+  setFindMatches: (matches: Array<{ r: number; c: number }> | null) => setFindMatches(matches),
 })
 </script>
 

@@ -62,6 +62,7 @@ export type CanvasPointerOptions = {
   getSelection?: () => Selection | undefined
   startAutofillDrag?: (selection: Selection) => void
   autofillDragging?: () => boolean
+  onHandleDblClick?: (selection: Selection) => boolean | void
 }
 
 export class CanvasPointerController {
@@ -232,6 +233,28 @@ export class CanvasPointerController {
 
   onDblClick(e: MouseEvent): void {
     if (!this.options.isEditable()) return
+
+    // 检查是否双击在选区右下角填充柄上（非公式编辑状态）
+    if (!this.options.isFormulaPickMode()) {
+      const coords = this.canvasCoords(e)
+      const sel = this.options.getSelection?.()
+      if (
+        coords &&
+        sel &&
+        hitSelectionHandle(
+          coords.cx,
+          coords.cy,
+          this.options.getLayout(),
+          this.options.getGridMetrics(),
+          sel,
+          this.options.getMergeContext?.(),
+        )
+      ) {
+        this.options.endDragSelect()
+        if (this.options.onHandleDblClick?.(sel)) return
+      }
+    }
+
     const pt = this.options.selectionDrag.cellPointFromEvent(e)
     if (!pt) return
     this.options.endDragSelect()

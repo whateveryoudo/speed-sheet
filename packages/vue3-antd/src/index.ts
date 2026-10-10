@@ -60,6 +60,9 @@ export {
   runContextMenuAction,
 } from './menus'
 export type { ToolbarItemConfig, ContextMenuActionContext } from './menus'
+export { default as AutofillOptionsMenu } from './components/AutofillOptionsMenu.vue'
+export type { AutofillPayload } from './components/AutofillOptionsMenu.vue'
+export { ensureSvgSprite } from './icons'
 
 export type { WorkbookConfig } from '@speed-sheet/shared'
 export type {

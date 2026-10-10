@@ -35,7 +35,12 @@
         @viewport-drop="onViewportDrop"
         @freeze-invalid="onFreezeInvalid"
         @edit-blocked="onEditBlocked"
+        @autofill-complete="onAutofillComplete"
+        @find-and-replace="onFindAndReplaceShortcut"
       >
+      <template #autofill-options>
+        <AutofillOptionsMenu :last-autofill="lastAutofill" />
+      </template>
       <template #context-menu="{ r, c, clientX, clientY, target, close }">
         <CellContextMenu
           open
@@ -54,6 +59,15 @@
       </template>
       </SheetCanvas>
       <ConditionalFormatSidebar :range-pick="cfRangePick" />
+      <FindReplaceModal
+        v-model:open="findReplaceOpen"
+        :sheet="sheet"
+        :revision="revision"
+        :editable="ui.editable"
+        :search-replace-config="props.searchReplace"
+        @update:find-matches="onUpdateFindMatches"
+        @navigate="onNavigateMatch"
+      />
     </div>
     <SheetTabBar
       v-if="ui.showSheetTabs"
@@ -101,6 +115,8 @@ import { useCfRangePick } from './composables/useCfRangePick'
 import ProtectionManageModal from './components/ProtectionManageModal.vue'
 import ConditionalFormatSidebar from './components/ConditionalFormatSidebar.vue'
 import CfRangePickBanner from './components/CfRangePickBanner.vue'
+import AutofillOptionsMenu, { type AutofillPayload } from './components/AutofillOptionsMenu.vue'
+import FindReplaceModal from './components/FindReplaceModal.vue'
 import { SheetPreviewImage } from './helpers/sheetPreviewImage'
 import { mergeSpeedSheetExtensions } from './composables/sheetBuiltin'
 import { noteHasContent } from '@speed-sheet/shared'
@@ -247,10 +263,17 @@ const sheetOptions = computed(() => ({
     }
   },
   onLayoutChange: () => {
+    lastAutofill.value = null
     formulaEdit.cancel()
   },
   onCommandBlocked: onCommandBlocked,
 }))
+
+const lastAutofill = ref<AutofillPayload | null>(null)
+
+function onAutofillComplete(payload: AutofillPayload): void {
+  lastAutofill.value = payload
+}
 
 const { sheet, revision, switchSheet, addSheet } = useSheet(sheetOptions)
 const cfRangePick = useCfRangePick(sheet)
@@ -446,6 +469,19 @@ function onSelectRange(
   if (cfRangePick.active.value) {
     cfRangePick.handleSelectRange(r0, c0, r1, c1)
   }
+  if (lastAutofill.value) {
+    const fullR0 = Math.min(lastAutofill.value.sourceRange.r0, lastAutofill.value.targetRange.r0)
+    const fullR1 = Math.max(lastAutofill.value.sourceRange.r1, lastAutofill.value.targetRange.r1)
+    const fullC0 = Math.min(lastAutofill.value.sourceRange.c0, lastAutofill.value.targetRange.c0)
+    const fullC1 = Math.max(lastAutofill.value.sourceRange.c1, lastAutofill.value.targetRange.c1)
+    const selR0 = Math.min(r0, r1)
+    const selR1 = Math.max(r0, r1)
+    const selC0 = Math.min(c0, c1)
+    const selC1 = Math.max(c0, c1)
+    if (selR0 !== fullR0 || selR1 !== fullR1 || selC0 !== fullC0 || selC1 !== fullC1) {
+      lastAutofill.value = null
+    }
+  }
 }
 
 function onFreezeInvalid(): void {
@@ -464,6 +500,21 @@ function canEditCell(r: number, c: number): boolean {
 
 function onEditBlocked(): void {
   showProtectedEditModal()
+}
+
+function onFindAndReplaceShortcut(): void {
+  const cfg = props.searchReplace
+  if (cfg?.enabled === false) return
+  if (cfg?.shortcut === false) return
+  findReplaceOpen.value = true
+}
+
+function onUpdateFindMatches(matches: Array<{ r: number; c: number }> | null): void {
+  canvasRef.value?.setFindMatches(matches)
+}
+
+function onNavigateMatch(r: number, c: number): void {
+  canvasRef.value?.scrollToCell(r, c)
 }
 
 defineExpose({

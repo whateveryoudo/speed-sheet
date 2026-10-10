@@ -17,9 +17,17 @@ export { extractInternalRefTokens, hasInternalRefs } from './internal-ref-scan'
 
 const ID = AXIS_ID_PATTERN
 
-export function formatInternalCellRef(rowId: string, colId: string, sheetId?: string): string {
-  if (sheetId) return `#@${sheetId}|${rowId}:${colId}#`
-  return `#${rowId}:${colId}#`
+export function formatInternalCellRef(
+  rowId: string,
+  colId: string,
+  sheetId?: string,
+  rowLock = false,
+  colLock = false,
+): string {
+  const rP = rowLock ? '$' : ''
+  const cP = colLock ? '$' : ''
+  if (sheetId) return `#@${sheetId}|${rP}${rowId}:${cP}${colId}#`
+  return `#${rP}${rowId}:${cP}${colId}#`
 }
 
 export function formatInternalRangeRef(
@@ -28,33 +36,57 @@ export function formatInternalRangeRef(
   rowId1: string,
   colId1: string,
   sheetId?: string,
+  rowLock0 = false,
+  colLock0 = false,
+  rowLock1 = false,
+  colLock1 = false,
 ): string {
-  if (sheetId) return `#@${sheetId}|${rowId0}:${colId0}~${rowId1}:${colId1}#`
-  return `#${rowId0}:${colId0}~${rowId1}:${colId1}#`
+  const rP0 = rowLock0 ? '$' : ''
+  const cP0 = colLock0 ? '$' : ''
+  const rP1 = rowLock1 ? '$' : ''
+  const cP1 = colLock1 ? '$' : ''
+  if (sheetId) return `#@${sheetId}|${rP0}${rowId0}:${cP0}${colId0}~${rP1}${rowId1}:${cP1}${colId1}#`
+  return `#${rP0}${rowId0}:${cP0}${colId0}~${rP1}${rowId1}:${cP1}${colId1}#`
 }
 
 export interface InternalRef {
   sheetId?: string
   rowId: string
   colId: string
+  rowLock?: boolean
+  colLock?: boolean
   endRowId?: string
   endColId?: string
+  endRowLock?: boolean
+  endColLock?: boolean
 }
 
 export function parseInternalRefToken(token: string): InternalRef | null {
-  const range = new RegExp(`^#(?:@([^|#]+)\\|)?(${ID}):(${ID})~(${ID}):(${ID})#$`).exec(token)
+  const range = new RegExp(
+    `^#(?:@([^|#]+)\\|)?(\\$?)(${ID}):(\\$?)(${ID})~(\\$?)(${ID}):(\\$?)(${ID})#$`,
+  ).exec(token)
   if (range) {
     return {
       sheetId: range[1],
-      rowId: range[2]!,
-      colId: range[3]!,
-      endRowId: range[4]!,
-      endColId: range[5]!,
+      rowLock: !!range[2],
+      rowId: range[3]!,
+      colLock: !!range[4],
+      colId: range[5]!,
+      endRowLock: !!range[6],
+      endRowId: range[7]!,
+      endColLock: !!range[8],
+      endColId: range[9]!,
     }
   }
-  const cell = new RegExp(`^#(?:@([^|#]+)\\|)?(${ID}):(${ID})#$`).exec(token)
+  const cell = new RegExp(`^#(?:@([^|#]+)\\|)?(\\$?)(${ID}):(\\$?)(${ID})#$`).exec(token)
   if (cell) {
-    return { sheetId: cell[1], rowId: cell[2]!, colId: cell[3]! }
+    return {
+      sheetId: cell[1],
+      rowLock: !!cell[2],
+      rowId: cell[3]!,
+      colLock: !!cell[4],
+      colId: cell[5]!,
+    }
   }
   return null
 }
@@ -84,14 +116,24 @@ function a1RefToInternal(
     const b = resolveIdsForA1(ctx, sheetResolved, ref.range.row[1], ref.range.column[1])
     if (!a || !b) return null
     const cross = sheetResolved !== defaultSheetId ? sheetResolved : undefined
-    return formatInternalRangeRef(a.rowId, a.colId, b.rowId, b.colId, cross)
+    return formatInternalRangeRef(
+      a.rowId,
+      a.colId,
+      b.rowId,
+      b.colId,
+      cross,
+      ref.rowLock,
+      ref.colLock,
+      ref.endRowLock,
+      ref.endColLock,
+    )
   }
 
   if (ref.cell) {
     const ids = resolveIdsForA1(ctx, sheetResolved, ref.cell.r, ref.cell.c)
     if (!ids) return null
     const cross = sheetResolved !== defaultSheetId ? sheetResolved : undefined
-    return formatInternalCellRef(ids.rowId, ids.colId, cross)
+    return formatInternalCellRef(ids.rowId, ids.colId, cross, ref.rowLock, ref.colLock)
   }
 
   return null
@@ -118,15 +160,15 @@ export function displayFormulaToInternal(
 function internalRefToA1(ctx: FormulaContext, ref: InternalRef, defaultSheetId: string): string | null {
   const sheetId = ref.sheetId ?? defaultSheetId
 
-  const toA1 = (rowId: string, colId: string): string | null => {
+  const toA1 = (rowId: string, colId: string, rowLock = false, colLock = false): string | null => {
     const pos = ctx.idsToDisplay(sheetId, rowId, colId)
     if (!pos) return null
-    return formatA1(pos.r, pos.c)
+    return formatA1(pos.r, pos.c, rowLock, colLock)
   }
 
   if (ref.endRowId != null && ref.endColId != null) {
-    const a = toA1(ref.rowId, ref.colId)
-    const b = toA1(ref.endRowId, ref.endColId)
+    const a = toA1(ref.rowId, ref.colId, ref.rowLock, ref.colLock)
+    const b = toA1(ref.endRowId, ref.endColId, ref.endRowLock, ref.endColLock)
     if (!a || !b) return null
     const local = a === b ? a : `${a}:${b}`
     if (ref.sheetId && ref.sheetId !== defaultSheetId) {
@@ -136,7 +178,7 @@ function internalRefToA1(ctx: FormulaContext, ref: InternalRef, defaultSheetId: 
     return local
   }
 
-  const a = toA1(ref.rowId, ref.colId)
+  const a = toA1(ref.rowId, ref.colId, ref.rowLock, ref.colLock)
   if (!a) return null
   if (ref.sheetId && ref.sheetId !== defaultSheetId) {
     const name = ctx.getSheetName(ref.sheetId)

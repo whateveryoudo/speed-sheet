@@ -53,10 +53,9 @@ viewport.detach()
 
 不要逐个 import 已删除的 `useSheetCanvasDraw` 等 hook；统一用：
 
-- [`packages/vue3/src/composables/useSheetCanvasView.ts`](../vue3/src/composables/useSheetCanvasView.ts) — 唯一 viewport 胶水
-- [`useSheetInlineEdit`](../vue3/src/composables/useSheetInlineEdit.ts) — `FormulaRichInput` 与公式点选
+- [`packages/vue3/src/composables/useSheetCanvasView.ts`](../vue3/src/composables/useSheetCanvasView.ts) — 唯一 viewport 胶水，内置封装了视口状态与内联编辑（`useSheetInlineEdit`）生命周期，对外直接提供单向数据流。
 
-[`SheetCanvas.vue`](../vue3/src/components/SheetCanvas.vue) 只组装上述两者 + 模板。
+[`SheetCanvas.vue`](../vue3/src/components/SheetCanvas.vue) 只需单向调用上述 Hook + 绑定模板。架构详情参见 [`packages/VIEWPORT_ARCHITECTURE.md`](../VIEWPORT_ARCHITECTURE.md)。
 
 ## 目录
 

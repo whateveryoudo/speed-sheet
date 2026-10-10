@@ -9,6 +9,7 @@ export interface CellRange {
 }
 
 export type AutofillDirection = 'down' | 'up' | 'right' | 'left'
+export type AutofillMode = 'sequence' | 'copy' | 'formatOnly' | 'noFormat'
 
 export interface AutofillTarget {
   direction: AutofillDirection
@@ -45,20 +46,23 @@ export function colToLetter(c: number): string {
 export function shiftFormulaReferences(formula: string, deltaR: number, deltaC: number): string {
   if (!formula.startsWith('=')) return formula
 
-  // 匹配类似 A1, $A$1, A$1, $A1
-  return formula.replace(/(\$?)([A-Za-z]+)(\$?)([0-9]+)/g, (_match, colLock, colLetters, rowLock, rowNum) => {
-    let col = letterToCol(colLetters)
-    let row = parseInt(rowNum, 10) - 1
+  // 匹配类似 A1, $A$1, A$1, $A1（避免匹配函数名如 SUM 或内部 token #r_...:c_...#）
+  return formula.replace(
+    /(^|[^A-Za-z0-9_#])(\$?)([A-Za-z]{1,3})(\$?)([1-9][0-9]{0,6})(?![A-Za-z0-9_#])/g,
+    (_match, prefix, colLock, colLetters, rowLock, rowNum) => {
+      let col = letterToCol(colLetters)
+      let row = parseInt(rowNum, 10) - 1
 
-    if (!colLock) {
-      col = Math.max(0, col + deltaC)
-    }
-    if (!rowLock) {
-      row = Math.max(0, row + deltaR)
-    }
+      if (!colLock) {
+        col = Math.max(0, col + deltaC)
+      }
+      if (!rowLock) {
+        row = Math.max(0, row + deltaR)
+      }
 
-    return `${colLock}${colToLetter(col)}${rowLock}${row + 1}`
-  })
+      return `${prefix}${colLock}${colToLetter(col)}${rowLock}${row + 1}`
+    },
+  )
 }
 
 /**
@@ -121,15 +125,54 @@ export function calcAutofillTarget(
   return null
 }
 
-const CYCLIC_LISTS: string[][] = [
-  ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日'],
-  ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
-  ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-  ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-  ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'],
-  ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
-  ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-]
+/**
+ * 双击右下角手柄向下填充时，根据相邻列连续非空行数计算向下填充范围
+ */
+export function calcDblClickAutofillRange(
+  source: CellRange,
+  getCell: (r: number, c: number) => CellAttributes | null,
+  totalRows: number,
+  totalCols: number,
+): CellRange | null {
+  const sr0 = Math.min(source.r0, source.r1)
+  const sr1 = Math.max(source.r0, source.r1)
+  const sc0 = Math.min(source.c0, source.c1)
+  const sc1 = Math.max(source.c0, source.c1)
+
+  // 扫描某一列从 sr0 开始向下的连续非空数据
+  const scanCol = (c: number): number => {
+    if (c < 0 || c >= totalCols) return -1
+    let lastRow = -1
+    for (let r = sr0; r < totalRows; r++) {
+      const cell = getCell(r, c)
+      const hasContent = cell?.v != null && cell.v !== ''
+      if (hasContent) {
+        lastRow = r
+      } else {
+        break
+      }
+    }
+    return lastRow
+  }
+
+  // 1. 优先检查左侧相邻列
+  let targetMaxR = scanCol(sc0 - 1)
+  // 2. 若左侧无连续数据，检查右侧相邻列
+  if (targetMaxR <= sr1) {
+    targetMaxR = scanCol(sc1 + 1)
+  }
+
+  if (targetMaxR > sr1) {
+    return {
+      r0: sr1 + 1,
+      r1: targetMaxR,
+      c0: sc0,
+      c1: sc1,
+    }
+  }
+
+  return null
+}
 
 /**
  * 沿单一序列轴（单行或单列）生成填充数据
@@ -140,37 +183,25 @@ export function fill1DSequence(
   options: {
     direction: 'forward' | 'backward'
     axis: 'row' | 'col'
+    mode?: AutofillMode
   },
 ): Array<CellAttributes> {
   const result: Array<CellAttributes> = []
   if (source.length === 0 || targetLength <= 0) return result
 
   const isFwd = options.direction === 'forward'
+  const mode = options.mode ?? 'sequence'
 
-  // 0. 判断是否为周期性循环词汇（如 星期二 -> 星期三，一月 -> 二月，January -> February）
-  if (source.length === 1 && source[0]?.v != null) {
-    const rawStr = String(source[0].v).trim()
-    const matchedCycle = CYCLIC_LISTS.find((list) =>
-      list.some((item) => item.toLowerCase() === rawStr.toLowerCase()),
-    )
-    if (matchedCycle) {
-      const cycleLen = matchedCycle.length
-      const startIdx = matchedCycle.findIndex(
-        (item) => item.toLowerCase() === rawStr.toLowerCase(),
-      )
-      for (let i = 0; i < targetLength; i++) {
-        const stepIdx = i + 1
-        const nextIdx = isFwd
-          ? (startIdx + stepIdx) % cycleLen
-          : (startIdx - (stepIdx % cycleLen) + cycleLen) % cycleLen
-        const template = source[0] ?? { v: '' }
-        const targetCell: CellAttributes = { ...template }
-        targetCell.v = matchedCycle[nextIdx]
-        targetCell.m = String(targetCell.v)
-        result.push(targetCell)
-      }
-      return result
+  // 如果是以相同内容填充（copy），直接循环复制模板
+  if (mode === 'copy') {
+    for (let i = 0; i < targetLength; i++) {
+      const templateIdx = isFwd
+        ? i % source.length
+        : (source.length - 1 - (i % source.length) + source.length) % source.length
+      const template = source[templateIdx] ?? { v: '' }
+      result.push({ ...template })
     }
+    return result
   }
 
   // 1. 判断是否全为纯数字

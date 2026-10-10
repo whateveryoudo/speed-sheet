@@ -37,6 +37,7 @@ export type KeyboardOptions = {
   ) => void
   onCellClick: (r: number, c: number) => void
   onDraw: () => void
+  onFindAndReplace?: () => void
 }
 
 export class KeyboardController {
@@ -48,6 +49,12 @@ export class KeyboardController {
     const { r, c } = this.options.getActiveCell()
     const key = e.key
     const canEdit = this.options.isEditable()
+
+    if ((e.ctrlKey || e.metaKey) && (key === 'f' || key === 'F')) {
+      e.preventDefault()
+      this.options.onFindAndReplace?.()
+      return
+    }
 
     if ((e.ctrlKey || e.metaKey) && key === 'c') {
       e.preventDefault()

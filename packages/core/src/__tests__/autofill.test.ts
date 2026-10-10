@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import {
   calcAutofillTarget,
+  calcDblClickAutofillRange,
   shiftFormulaReferences,
   fill1DSequence,
 } from '../autofill/autofill-logic'
+import type { CellAttributes } from '@speed-sheet/shared'
 
 describe('autofill-logic', () => {
   it('calculates autofill target range and direction correctly', () => {
@@ -24,6 +26,37 @@ describe('autofill-logic', () => {
     // 选区内部返回 null
     const inside = calcAutofillTarget(source, 1, 1)
     expect(inside).toBeNull()
+  })
+
+  it('calculates double-click autofill range based on adjacent columns', () => {
+    const grid: Record<string, CellAttributes> = {
+      // 列 0 (A列) 有数据第 0 行到第 4 行
+      '0,0': { v: 'A1' },
+      '1,0': { v: 'A2' },
+      '2,0': { v: 'A3' },
+      '3,0': { v: 'A4' },
+      '4,0': { v: 'A5' },
+    }
+    const getCell = (r: number, c: number) => grid[`${r},${c}`] ?? null
+
+    // 选中 B1 (r: 0, c: 1)
+    const sourceB = { r0: 0, r1: 0, c0: 1, c1: 1 }
+    const targetB = calcDblClickAutofillRange(sourceB, getCell, 20, 10)
+    expect(targetB).toEqual({ r0: 1, r1: 4, c0: 1, c1: 1 })
+
+    // 若左侧为空，检查右侧相邻列
+    const gridRight: Record<string, CellAttributes> = {
+      '0,2': { v: 'C1' },
+      '1,2': { v: 'C2' },
+      '2,2': { v: 'C3' },
+    }
+    const getCellRight = (r: number, c: number) => gridRight[`${r},${c}`] ?? null
+    const targetRight = calcDblClickAutofillRange(sourceB, getCellRight, 20, 10)
+    expect(targetRight).toEqual({ r0: 1, r1: 2, c0: 1, c1: 1 })
+
+    // 若两侧均无连续数据，返回 null
+    const emptyGetCell = () => null
+    expect(calcDblClickAutofillRange(sourceB, emptyGetCell, 20, 10)).toBeNull()
   })
 
   it('shifts formula references correctly', () => {
@@ -50,15 +83,35 @@ describe('autofill-logic', () => {
     expect(step10.map((c) => c.v)).toEqual([30, 40])
   })
 
-  it('extrapolates cyclic day of week and month sequences', () => {
+  it('supports mode: copy without incrementing values', () => {
+    const copied = fill1DSequence([{ v: 10 }], 3, {
+      direction: 'forward',
+      axis: 'row',
+      mode: 'copy',
+    })
+    expect(copied.map((c) => c.v)).toEqual([10, 10, 10])
+
+    const multiCopied = fill1DSequence([{ v: 'A' }, { v: 'B' }], 4, {
+      direction: 'forward',
+      axis: 'row',
+      mode: 'copy',
+    })
+    expect(multiCopied.map((c) => c.v)).toEqual(['A', 'B', 'A', 'B'])
+  })
+
+  it('copies plain text without number suffixes (aligning with Yuque)', () => {
     const daySeq = fill1DSequence([{ v: '星期二' }], 3, { direction: 'forward', axis: 'row' })
-    expect(daySeq.map((c) => c.v)).toEqual(['星期三', '星期四', '星期五'])
+    expect(daySeq.map((c) => c.v)).toEqual(['星期二', '星期二', '星期二'])
+  })
 
-    const monthSeq = fill1DSequence([{ v: 'January' }], 2, { direction: 'forward', axis: 'row' })
-    expect(monthSeq.map((c) => c.v)).toEqual(['February', 'March'])
-
-    const cnMonthSeq = fill1DSequence([{ v: '一月' }], 2, { direction: 'forward', axis: 'row' })
-    expect(cnMonthSeq.map((c) => c.v)).toEqual(['二月', '三月'])
+  it('extrapolates number with week format (1 -> 2, 3, 4 -> 星期一, 星期二, 星期三)', () => {
+    const formattedWeek = fill1DSequence(
+      [{ v: 1, ct: { fa: '星期一', t: 'd' } }],
+      3,
+      { direction: 'forward', axis: 'row' },
+    )
+    expect(formattedWeek.map((c) => c.v)).toEqual([2, 3, 4])
+    expect(formattedWeek.map((c) => c.m)).toEqual(['星期一', '星期二', '星期三'])
   })
 
   it('extrapolates text with number suffixes', () => {
