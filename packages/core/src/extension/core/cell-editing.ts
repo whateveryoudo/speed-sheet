@@ -9,6 +9,7 @@ import {
   type AutofillDirection,
   type AutofillMode,
 } from '../../autofill/autofill-logic'
+import { sortRange, type SortOptions } from '../../sort/sort-logic'
 
 export const CellEditingExtension = Extension.create({
   name: 'cellEditing',
@@ -27,6 +28,9 @@ export const CellEditingExtension = Extension.create({
             m = formatted.m
           }
           state.setCell(props.r, props.c, { v, m })
+          if (cell?.tb === 2) {
+            state.autoFitRowHeight(props.r)
+          }
           return true
         }
       },
@@ -118,6 +122,28 @@ export const CellEditingExtension = Extension.create({
       setTextAlign: (props: { r: number; c: number; align: 0 | 1 | 2 }) => {
         return ({ state }: CommandContext) => {
           state.setCell(props.r, props.c, { ht: props.align } as any)
+          return true
+        }
+      },
+
+      setVerticalAlign: (props: { r: number; c: number; align: 0 | 1 | 2 }) => {
+        return ({ state }: CommandContext) => {
+          state.setCell(props.r, props.c, { vt: props.align } as any)
+          return true
+        }
+      },
+
+      setTextWrap: (props: { r: number; c: number; wrap: 0 | 1 | 2 }) => {
+        return ({ state }: CommandContext) => {
+          state.setCell(props.r, props.c, { tb: props.wrap } as any)
+          state.autoFitRowHeight(props.r)
+          return true
+        }
+      },
+
+      sortRange: (options: SortOptions) => {
+        return ({ state }: CommandContext) => {
+          sortRange(state, options)
           return true
         }
       },

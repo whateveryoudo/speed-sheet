@@ -153,6 +153,7 @@ export class CanvasDrawController {
       renderSheet(ctx, {
         layout: freezeInvalid ? { ...nextLayout, freeze: null } : nextLayout,
         cells: cellEntries,
+        borders: state?.getBorderList() ?? [],
         mergeCtx: sheet?.createMergeContext(),
         selection: this.options.getSelection(),
         isSelecting: this.options.isSelecting(),

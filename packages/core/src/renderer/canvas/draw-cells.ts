@@ -29,6 +29,20 @@ export function drawCells(env: RenderEnv): void {
   } = env
   const { cells, dataVerifications, editingCell, conditionalFormatStyles } = options
 
+  interface CellLayoutItem {
+    r: number
+    c: number
+    data: (typeof cells)[0]['data']
+    cx: number
+    cy: number
+    cellW: number
+    cellH: number
+    isAnchor: boolean
+  }
+
+  const items: CellLayoutItem[] = []
+
+  // Pass 1: 计算所有有效单元格坐标并先绘制背景（避免后续单元格背景遮挡前置单元格的溢出文字）
   for (const { r, c, data } of cells) {
     if (M.rowHeight(r) <= 0) continue
     if (!cellInFreezePane(r, c, freezePane, layout)) continue
@@ -55,6 +69,12 @@ export function drawCells(env: RenderEnv): void {
       ctx.fillRect(cx, cy, cellW, cellH)
     }
 
+    items.push({ r, c, data, cx, cy, cellW, cellH, isAnchor })
+  }
+
+  // Pass 2: 绘制所有单元格内容与文字
+  for (const { r, c, data, cx, cy, cellW, cellH, isAnchor } of items) {
+    const cfStyle = conditionalFormatStyles?.get(`${r}_${c}`)
     const cellFc = cfStyle?.fc ?? data.fc
     const cellBl = cfStyle?.bl ?? data.bl
     const cellIt = cfStyle?.it ?? data.it
@@ -121,22 +141,40 @@ export function drawCells(env: RenderEnv): void {
 
     const { overflow, truncate } = resolveCellTextDrawMode(data)
     let colSpan = 1
+    let totalOverflowW = cellW
     const useTruncate = truncate
 
     if (!isAnchor && overflow) {
       const textWidth = ctx.measureText(text).width
       const innerW = cellW - CELL_TEXT_PAD_X * 2
       if (textWidth > innerW) {
-        const edc = computeOverflowEndCol(cellMap, r, c, textWidth, cellW, totalCols)
+        const edc = computeOverflowEndCol(
+          cellMap,
+          r,
+          c,
+          textWidth,
+          cellW,
+          totalCols,
+          (col) => M.colWidth(col),
+        )
         colSpan = edc - c + 1
+        totalOverflowW = 0
+        for (let colIdx = c; colIdx <= edc; colIdx++) {
+          totalOverflowW += M.colWidth(colIdx)
+        }
       }
     }
 
     drawCellText(ctx, text, cx, cy, cellW, cellH, {
       colSpan,
+      totalWidth: totalOverflowW,
       truncate: useTruncate,
       strikethrough: !!data.cl,
       underline: !!data.un,
+      ht: data.ht,
+      vt: data.vt,
+      wrap: data.tb,
+      fontSize: data.fs ?? 11,
     })
 
     if (data.ef) {

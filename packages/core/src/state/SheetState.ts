@@ -1,6 +1,8 @@
 import * as Y from 'yjs'
 import { cellIdKey, parseCellIdKey } from '@speed-sheet/shared'
 import type {
+  BorderInfo,
+  BorderSegment,
   CellAttributes,
   DataVerificationRule,
   MergeRange,
@@ -154,6 +156,11 @@ export class SheetState {
     if (!this.root.has('freeze')) this.root.set('freeze', new Y.Map())
     if (!this.root.has('dataVerification')) this.root.set('dataVerification', new Y.Map())
     if (!this.root.has('images')) this.root.set('images', new Y.Map())
+    if (!this.root.has('borders')) this.root.set('borders', new Y.Map())
+  }
+
+  get borders(): Y.Map<unknown> {
+    return this.root.get('borders') as Y.Map<unknown>
   }
 
   get dataVerification(): Y.Map<unknown> {
@@ -288,6 +295,59 @@ export class SheetState {
     })
   }
 
+  /**
+   * 依据行内文字内容（特别是换行 tb=2 单元格）自动计算并更新行高：
+   * 当换行撑高时变高；当取消换行（切换为溢出或截断）且行内无其他换行大高度格时，自动恢复回去。
+   */
+  autoFitRowHeight(r: number, defaultRowHeight = 25): void {
+    const totalCols = this.getColCount()
+    let maxH = defaultRowHeight
+
+    for (let c = 0; c < totalCols; c++) {
+      const cell = this.getCellData(r, c)
+      if (!cell) continue
+      const text = cell.m ?? cell.v
+      if (text === null || text === undefined || text === '') continue
+
+      const fs = cell.fs ?? 11
+      const lineHeight = Math.round(fs * 1.35)
+
+      if (cell.tb === 2) {
+        // 换行模式：估算行数并撑高
+        const colW = Math.max(20, this.getColWidth(c) - 8)
+        const str = String(text)
+        const paras = str.split('\n')
+        let totalLines = 0
+        // 平均字符宽度近似计算（中文约 fs，英文约 fs * 0.6）
+        for (const para of paras) {
+          if (!para) {
+            totalLines += 1
+            continue
+          }
+          let charUnits = 0
+          for (let i = 0; i < para.length; i++) {
+            charUnits += para.charCodeAt(i) > 127 ? 1 : 0.6
+          }
+          const lineCapacity = Math.max(1, Math.floor(colW / fs))
+          totalLines += Math.max(1, Math.ceil(charUnits / lineCapacity))
+        }
+        const neededH = totalLines * lineHeight + 8 // 上下 padding
+        if (neededH > maxH) {
+          maxH = neededH
+        }
+      } else {
+        const neededH = lineHeight + 8
+        if (neededH > maxH) {
+          maxH = neededH
+        }
+      }
+    }
+
+    if (maxH !== this.getRowHeight(r, defaultRowHeight)) {
+      this.setRowHeight(r, maxH)
+    }
+  }
+
   setColWidths(cols: number[], width: number): void {
     const w = Math.max(MIN_COL_WIDTH, Math.round(width))
     this._transact(() => {
@@ -376,6 +436,7 @@ export class SheetState {
       this.shiftIndexMap(this.rowHeight, atRow, count)
       this.shiftIndexMap(this.rowHidden, atRow, count)
       this._shiftMergesForRowInsert(atRow, count)
+      this._shiftBordersForRowInsert(atRow, count)
     })
   }
 
@@ -459,6 +520,7 @@ export class SheetState {
       this.shiftIndexMap(this.rowHeight, atRow, -count, count)
       this.shiftIndexMap(this.rowHidden, atRow, -count, count)
       this._shiftMergesForRowDelete(atRow, count)
+      this._shiftBordersForRowDelete(atRow, count)
     })
   }
 
@@ -472,6 +534,7 @@ export class SheetState {
       this.shiftIndexMap(this.colWidth, atCol, count)
       this.shiftIndexMap(this.colHidden, atCol, count)
       this._shiftMergesForColInsert(atCol, count)
+      this._shiftBordersForColInsert(atCol, count)
     })
   }
 
@@ -487,6 +550,7 @@ export class SheetState {
       this.shiftIndexMap(this.colWidth, atCol, -count, count)
       this.shiftIndexMap(this.colHidden, atCol, -count, count)
       this._shiftMergesForColDelete(atCol, count)
+      this._shiftBordersForColDelete(atCol, count)
     })
   }
 
@@ -581,6 +645,247 @@ export class SheetState {
         this.merges.delete(`${m.r}_${m.c}`)
       }
     })
+  }
+
+  // ---- Borders ----
+
+  getBorder(r: number, c: number): BorderInfo | null {
+    const raw = this.borders.get(`${r}_${c}`)
+    if (!raw || typeof raw !== 'object') return null
+    return raw as BorderInfo
+  }
+
+  getBorderList(): BorderInfo[] {
+    const list: BorderInfo[] = []
+    this.borders.forEach((val) => {
+      if (val && typeof val === 'object') {
+        list.push(val as BorderInfo)
+      }
+    })
+    return list
+  }
+
+  setBorderCell(r: number, c: number, info: Partial<BorderInfo> | null): void {
+    const key = `${r}_${c}`
+    this._transact(() => {
+      if (!info) {
+        this.borders.delete(key)
+        return
+      }
+      const existing = (this.borders.get(key) as BorderInfo | undefined) || { row_index: r, col_index: c }
+      const updated: BorderInfo = {
+        row_index: r,
+        col_index: c,
+        ...(existing.l ? { l: existing.l } : {}),
+        ...(existing.r ? { r: existing.r } : {}),
+        ...(existing.t ? { t: existing.t } : {}),
+        ...(existing.b ? { b: existing.b } : {}),
+      }
+      if ('l' in info) {
+        if (info.l) updated.l = info.l
+        else delete updated.l
+      }
+      if ('r' in info) {
+        if (info.r) updated.r = info.r
+        else delete updated.r
+      }
+      if ('t' in info) {
+        if (info.t) updated.t = info.t
+        else delete updated.t
+      }
+      if ('b' in info) {
+        if (info.b) updated.b = info.b
+        else delete updated.b
+      }
+      if (!updated.l && !updated.r && !updated.t && !updated.b) {
+        this.borders.delete(key)
+      } else {
+        this.borders.set(key, updated)
+      }
+    })
+  }
+
+  applyBorderRange(opts: {
+    row: [number, number]
+    column: [number, number]
+    borderType:
+      | 'all'
+      | 'outside'
+      | 'thick-outside'
+      | 'inside'
+      | 'horizontal'
+      | 'vertical'
+      | 'left'
+      | 'right'
+      | 'top'
+      | 'bottom'
+      | 'none'
+    color?: string
+    style?: number
+  }): void {
+    const { row, column, borderType, color = '#000000' } = opts
+    const style = borderType === 'thick-outside' ? 8 : (opts.style ?? 1)
+    const seg: BorderSegment = { style, color }
+
+    const rMin = Math.min(row[0], row[1])
+    const rMax = Math.max(row[0], row[1])
+    const cMin = Math.min(column[0], column[1])
+    const cMax = Math.max(column[0], column[1])
+
+    this._transact(() => {
+      if (borderType === 'none') {
+        // Clear all borders within selection
+        for (let r = rMin; r <= rMax; r++) {
+          for (let c = cMin; c <= cMax; c++) {
+            this.borders.delete(`${r}_${c}`)
+          }
+        }
+        // Also clear adjacent outer borders facing this selection
+        for (let c = cMin; c <= cMax; c++) {
+          const above = this.getBorder(rMin - 1, c)
+          if (above?.b) {
+            const next = { ...above }
+            delete next.b
+            this.setBorderCell(rMin - 1, c, next)
+          }
+          const below = this.getBorder(rMax + 1, c)
+          if (below?.t) {
+            const next = { ...below }
+            delete next.t
+            this.setBorderCell(rMax + 1, c, next)
+          }
+        }
+        for (let r = rMin; r <= rMax; r++) {
+          const left = this.getBorder(r, cMin - 1)
+          if (left?.r) {
+            const next = { ...left }
+            delete next.r
+            this.setBorderCell(r, cMin - 1, next)
+          }
+          const right = this.getBorder(r, cMax + 1)
+          if (right?.l) {
+            const next = { ...right }
+            delete next.l
+            this.setBorderCell(r, cMax + 1, next)
+          }
+        }
+        return
+      }
+
+      // For all, outside, thick-outside, inside, horizontal, vertical, left, right, top, bottom:
+      for (let r = rMin; r <= rMax; r++) {
+        for (let c = cMin; c <= cMax; c++) {
+          const patch: Partial<BorderInfo> = {}
+          const isTop = r === rMin
+          const isBottom = r === rMax
+          const isLeft = c === cMin
+          const isRight = c === cMax
+
+          switch (borderType) {
+            case 'all':
+              patch.t = seg
+              patch.b = seg
+              patch.l = seg
+              patch.r = seg
+              break
+            case 'outside':
+            case 'thick-outside':
+              if (isTop) patch.t = seg
+              if (isBottom) patch.b = seg
+              if (isLeft) patch.l = seg
+              if (isRight) patch.r = seg
+              break
+            case 'inside':
+              if (!isTop) patch.t = seg
+              if (!isBottom) patch.b = seg
+              if (!isLeft) patch.l = seg
+              if (!isRight) patch.r = seg
+              break
+            case 'horizontal':
+              if (!isTop) patch.t = seg
+              if (!isBottom) patch.b = seg
+              break
+            case 'vertical':
+              if (!isLeft) patch.l = seg
+              if (!isRight) patch.r = seg
+              break
+            case 'left':
+              if (isLeft) patch.l = seg
+              break
+            case 'right':
+              if (isRight) patch.r = seg
+              break
+            case 'top':
+              if (isTop) patch.t = seg
+              break
+            case 'bottom':
+              if (isBottom) patch.b = seg
+              break
+          }
+
+          if (Object.keys(patch).length > 0) {
+            this.setBorderCell(r, c, patch)
+          }
+        }
+      }
+    })
+  }
+
+  private _shiftBordersForRowInsert(at: number, count: number): void {
+    this._remapBorders((r, c) => ({
+      r: r >= at ? r + count : r,
+      c,
+    }))
+  }
+
+  private _shiftBordersForRowDelete(at: number, count: number): void {
+    const end = at + count
+    this._remapBorders((r, c) => {
+      if (r >= at && r < end) return null
+      return {
+        r: r >= end ? r - count : r,
+        c,
+      }
+    })
+  }
+
+  private _shiftBordersForColInsert(at: number, count: number): void {
+    this._remapBorders((r, c) => ({
+      r,
+      c: c >= at ? c + count : c,
+    }))
+  }
+
+  private _shiftBordersForColDelete(at: number, count: number): void {
+    const end = at + count
+    this._remapBorders((r, c) => {
+      if (c >= at && c < end) return null
+      return {
+        r,
+        c: c >= end ? c - count : c,
+      }
+    })
+  }
+
+  private _remapBorders(
+    map: (r: number, c: number) => { r: number; c: number } | null,
+  ): void {
+    const entries: Array<[string, BorderInfo]> = []
+    this.borders.forEach((val, key) => {
+      if (val && typeof val === 'object' && 'row_index' in val) {
+        entries.push([key, val as BorderInfo])
+      }
+    })
+    this.borders.clear()
+    for (const [, b] of entries) {
+      const next = map(b.row_index, b.col_index)
+      if (!next) continue
+      this.borders.set(`${next.r}_${next.c}`, {
+        ...b,
+        row_index: next.r,
+        col_index: next.c,
+      })
+    }
   }
 
   getAllCells(): Array<{ r: number; c: number; data: CellAttributes }> {
@@ -830,7 +1135,7 @@ export class SheetState {
         colWidth: this.colWidth.toJSON() as SheetConfig['colWidth'],
         rowHidden: this.rowHidden.toJSON() as SheetConfig['rowHidden'],
         colHidden: this.colHidden.toJSON() as SheetConfig['colHidden'],
-        borders: [],
+        borders: this.getBorderList(),
         filters: [],
         freeze: this.freeze.toJSON() as SheetConfig['freeze'],
       },

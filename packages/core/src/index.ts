@@ -41,8 +41,10 @@ export {
   MergeExtension,
   CellInsertExtension,
   FreezeExtension,
+  BorderExtension,
   CORE_EXTENSIONS,
 } from './extension'
+export type { BorderType, SetBorderOptions } from './extension/core/border'
 export type {
   ExtensionConfig,
   CommandFn,
@@ -238,3 +240,4 @@ export {
 } from '@speed-sheet/shared'
 
 export * from './find-replace'
+export * from './sort'

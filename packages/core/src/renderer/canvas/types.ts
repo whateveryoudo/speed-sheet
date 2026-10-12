@@ -17,6 +17,8 @@ export interface CellEntry {
 export interface RenderOptions {
   layout: GridLayout
   cells: CellEntry[]
+  /** 单元格边框配置 */
+  borders?: import('@speed-sheet/shared').BorderInfo[]
   /** @deprecated 使用 mergeCtx */
   merges?: MergeRange[]
   /** 合并门面（优先于 merges） */
@@ -73,10 +75,20 @@ export type CellMap = Map<string, CellAttributes>
 export interface DrawCellTextOptions {
   /** 横向占用的列数（含当前列），默认 1 */
   colSpan?: number
+  /** 横向总像素宽度（跨列溢出时的真实累计像素宽度，提供时优先于 colW * colSpan） */
+  totalWidth?: number
   /** 超出 clip 宽时是否用省略号截断；默认 false（纯 clip） */
   truncate?: boolean
   /** 是否绘制删除线 */
   strikethrough?: boolean
   /** 是否绘制下划线 */
   underline?: boolean
+  /** 水平对齐：0=center, 1=left, 2=right */
+  ht?: 0 | 1 | 2
+  /** 垂直对齐：0=middle, 1=top, 2=bottom */
+  vt?: 0 | 1 | 2
+  /** 文本换行方式：0=截断/clip, 1=溢出/overflow, 2=换行/wrap */
+  wrap?: 0 | 1 | 2
+  /** 字体大小，用于多行换行时计算行高 */
+  fontSize?: number
 }

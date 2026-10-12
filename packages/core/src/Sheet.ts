@@ -247,6 +247,15 @@ export class Sheet {
           ySheet.set('colWidth', objectToYMap(sheetSnap.config.colWidth))
           ySheet.set('rowHidden', objectToYMap(sheetSnap.config.rowHidden))
           ySheet.set('colHidden', objectToYMap(sheetSnap.config.colHidden))
+          if (Array.isArray(sheetSnap.config.borders)) {
+            const bordersMap = new Y.Map()
+            for (const b of sheetSnap.config.borders) {
+              if (b && typeof b === 'object' && Number.isFinite(b.row_index) && Number.isFinite(b.col_index)) {
+                bordersMap.set(`${b.row_index}_${b.col_index}`, b)
+              }
+            }
+            ySheet.set('borders', bordersMap)
+          }
         }
         if (sheetSnap.dataVerification) {
           ySheet.set('dataVerification', objectToYMap(sheetSnap.dataVerification))

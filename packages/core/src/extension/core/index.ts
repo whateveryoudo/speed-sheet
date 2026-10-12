@@ -7,6 +7,7 @@ import { RowColExtension } from './row-col'
 import { MergeExtension } from './merge'
 import { CellInsertExtension } from './cell-insert'
 import { FreezeExtension } from './freeze'
+import { BorderExtension } from './border'
 
 export {
   KeyboardExtension,
@@ -18,6 +19,7 @@ export {
   MergeExtension,
   CellInsertExtension,
   FreezeExtension,
+  BorderExtension,
 }
 
 /** Built-in extensions always loaded by Sheet */
@@ -31,4 +33,5 @@ export const CORE_EXTENSIONS = [
   MergeExtension,
   CellInsertExtension,
   FreezeExtension,
+  BorderExtension,
 ]

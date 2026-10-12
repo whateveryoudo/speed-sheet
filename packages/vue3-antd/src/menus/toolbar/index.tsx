@@ -15,9 +15,14 @@ import DecimalPlaces from './decimalPlaces.vue'
 import FormulaMenu from './formula/FormulaMenu.vue'
 import TextColor from './textColor.vue'
 import BackgroundColor from './backgroundColor.vue'
+import Border from './border.vue'
+import Merge from './merge.vue'
 import Align from './align'
+import VerticalAlign from './verticalAlign.vue'
+import TextWrap from './textWrap.vue'
 import Link from './link/index.vue'
 import Filter from './filter.vue'
+import Sort from './sort.vue'
 import Protect from './protect.vue'
 import ConditionalFormat from './conditionalFormat.vue'
 import Freeze from './freeze.vue'
@@ -41,8 +46,13 @@ const componentMap = {
   underline: Underline,
   textColor: TextColor,
   backgroundColor: BackgroundColor,
+  border: Border,
+  merge: Merge,
   align: Align,
+  verticalAlign: VerticalAlign,
+  textWrap: TextWrap,
   filter: Filter,
+  sort: Sort,
   conditionalFormat: ConditionalFormat,
   protect: Protect,
   freeze: Freeze,

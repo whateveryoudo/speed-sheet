@@ -27,5 +27,6 @@ export {
   MergeExtension,
   CellInsertExtension,
   FreezeExtension,
+  BorderExtension,
   CORE_EXTENSIONS,
 } from './core'

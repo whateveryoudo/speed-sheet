@@ -37,11 +37,14 @@ export function cellFontString(data: CellAttributes): string {
 function resolveTextDrawMode(data: CellAttributes): {
   overflow: boolean
   truncate: boolean
+  wrap: boolean
 } {
   const tb = data.tb
-  if (tb === 0) return { overflow: false, truncate: true }
-  if (tb === 2) return { overflow: false, truncate: true }
-  return { overflow: true, truncate: false }
+  // tb: 0: 截断 (clip / truncate), 1: 溢出 (overflow), 2: 换行 (wrap)
+  // Excel / WPS 规范：未配置 tb 时默认即为 溢出 (overflow)
+  if (tb === 0) return { overflow: false, truncate: true, wrap: false }
+  if (tb === 2) return { overflow: false, truncate: false, wrap: true }
+  return { overflow: true, truncate: false, wrap: false }
 }
 
 /**
@@ -54,6 +57,7 @@ export function computeOverflowEndCol(
   textWidth: number,
   colW: number,
   totalCols: number,
+  colWidthFn?: (col: number) => number,
 ): number {
   const needed = textWidth + CELL_TEXT_PAD_X * 2
   let totalW = colW
@@ -63,7 +67,7 @@ export function computeOverflowEndCol(
     const next = edc + 1
     if (cellBlocksOverflow(cellMap, r, next)) break
     edc = next
-    totalW += colW
+    totalW += colWidthFn ? colWidthFn(next) : colW
   }
   return edc
 }
@@ -71,6 +75,7 @@ export function computeOverflowEndCol(
 export function resolveCellTextDrawMode(data: CellAttributes): {
   overflow: boolean
   truncate: boolean
+  wrap: boolean
 } {
   return resolveTextDrawMode(data)
 }
@@ -149,7 +154,38 @@ export function truncateTextToWidth(
   return end > 0 ? text.slice(0, end) + ellipsis : ellipsis
 }
 
-/** Luckysheet / Excel 风格：clip + fillText（可跨列溢出，非压缩） */
+function wrapTextToLines(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+): string[] {
+  if (!text || maxWidth <= 0) return []
+  const paragraphs = text.split('\n')
+  const lines: string[] = []
+
+  for (const para of paragraphs) {
+    if (!para) {
+      lines.push('')
+      continue
+    }
+    let curLine = ''
+    for (const char of para) {
+      const testLine = curLine + char
+      if (ctx.measureText(testLine).width > maxWidth && curLine.length > 0) {
+        lines.push(curLine)
+        curLine = char
+      } else {
+        curLine = testLine
+      }
+    }
+    if (curLine.length > 0) {
+      lines.push(curLine)
+    }
+  }
+  return lines
+}
+
+/** Luckysheet / Excel 风格：clip + fillText（支持溢出、截断、换行与对齐） */
 export function drawCellText(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -163,44 +199,116 @@ export function drawCellText(
   if (!content) return
 
   const colSpan = Math.max(1, options?.colSpan ?? 1)
+  const totalW = options?.totalWidth != null ? Math.max(colW, options.totalWidth) : colW * colSpan
   const truncate = options?.truncate ?? false
+  const isWrap = options?.wrap === 2
+  const ht = options?.ht ?? 1 // 0: center, 1: left, 2: right
+  const vt = options?.vt ?? 0 // 0: middle, 1: top, 2: bottom
+  const fs = options?.fontSize ?? 11
+  const lineHeight = Math.round(fs * 1.3)
 
   const clipX = cx + CELL_TEXT_PAD_X
   const clipY = cy + CELL_TEXT_PAD_Y
-  const clipW = Math.max(0, colW * colSpan - CELL_TEXT_PAD_X * 2)
+  const clipW = Math.max(0, totalW - CELL_TEXT_PAD_X * 2)
   const clipH = Math.max(0, rowH - CELL_TEXT_PAD_Y * 2)
   if (clipW <= 0 || clipH <= 0) return
-
-  const display =
-    truncate && ctx.measureText(content).width > clipW
-      ? truncateTextToWidth(ctx, content, clipW)
-      : content
 
   ctx.save()
   ctx.beginPath()
   ctx.rect(clipX, clipY, clipW, clipH)
   ctx.clip()
-  ctx.fillText(display, clipX, cy + rowH / 2)
 
-  const textW = Math.min(clipW, ctx.measureText(display).width)
-  if (options?.strikethrough && textW > 0) {
-    ctx.strokeStyle = ctx.fillStyle
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    const lineY = Math.round(cy + rowH / 2)
-    ctx.moveTo(clipX, lineY)
-    ctx.lineTo(clipX + textW, lineY)
-    ctx.stroke()
-  }
+  if (isWrap) {
+    const lines = wrapTextToLines(ctx, content, clipW)
+    const totalLinesH = lines.length * lineHeight
 
-  if (options?.underline && textW > 0) {
-    ctx.strokeStyle = ctx.fillStyle
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    const lineY = Math.round(cy + rowH / 2 + 7)
-    ctx.moveTo(clipX, lineY)
-    ctx.lineTo(clipX + textW, lineY)
-    ctx.stroke()
+    let startY: number
+    if (vt === 1) {
+      // top
+      startY = clipY + lineHeight / 2
+    } else if (vt === 2) {
+      // bottom
+      startY = clipY + clipH - totalLinesH + lineHeight / 2
+    } else {
+      // middle
+      startY = clipY + (clipH - totalLinesH) / 2 + lineHeight / 2
+    }
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+      const curY = startY + i * lineHeight
+      const lineW = ctx.measureText(line).width
+
+      let drawX = clipX
+      if (ht === 0) {
+        drawX = clipX + Math.max(0, (clipW - lineW) / 2)
+      } else if (ht === 2) {
+        drawX = clipX + Math.max(0, clipW - lineW)
+      }
+
+      ctx.fillText(line, drawX, curY)
+
+      if (options?.strikethrough && lineW > 0) {
+        ctx.strokeStyle = ctx.fillStyle
+        ctx.lineWidth = 1
+        ctx.beginPath()
+        const lineY = Math.round(curY)
+        ctx.moveTo(drawX, lineY)
+        ctx.lineTo(drawX + lineW, lineY)
+        ctx.stroke()
+      }
+
+      if (options?.underline && lineW > 0) {
+        ctx.strokeStyle = ctx.fillStyle
+        ctx.lineWidth = 1
+        ctx.beginPath()
+        const lineY = Math.round(curY + 7)
+        ctx.moveTo(drawX, lineY)
+        ctx.lineTo(drawX + lineW, lineY)
+        ctx.stroke()
+      }
+    }
+  } else {
+    // Single line (clip or overflow)
+    // 截断与溢出均直接绘制原文字（由外层的 clipRect 物理裁剪），不添加 "..." 省略号
+    const display = content
+    const textW = ctx.measureText(display).width
+
+    let drawX = clipX
+    if (ht === 0) {
+      drawX = clipX + Math.max(0, (clipW - textW) / 2)
+    } else if (ht === 2) {
+      drawX = clipX + Math.max(0, clipW - textW)
+    }
+
+    let drawY = cy + rowH / 2
+    if (vt === 1) {
+      drawY = clipY + lineHeight / 2
+    } else if (vt === 2) {
+      drawY = clipY + clipH - lineHeight / 2
+    }
+
+    ctx.fillText(display, drawX, drawY)
+
+    if (options?.strikethrough && textW > 0) {
+      ctx.strokeStyle = ctx.fillStyle
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      const lineY = Math.round(drawY)
+      ctx.moveTo(drawX, lineY)
+      ctx.lineTo(drawX + textW, lineY)
+      ctx.stroke()
+    }
+
+    if (options?.underline && textW > 0) {
+      ctx.strokeStyle = ctx.fillStyle
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      const lineY = Math.round(drawY + 7)
+      ctx.moveTo(drawX, lineY)
+      ctx.lineTo(drawX + textW, lineY)
+      ctx.stroke()
+    }
   }
 
   ctx.restore()

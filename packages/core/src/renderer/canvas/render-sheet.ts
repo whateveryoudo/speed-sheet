@@ -1,4 +1,5 @@
 import { drawCells } from './draw-cells'
+import { drawBorders } from './draw-borders'
 import { drawSheetImages } from './draw-images'
 import { drawFreezeSplitLines } from './draw-freeze'
 import {
@@ -37,6 +38,7 @@ export function renderSheet(
       drawGrid(paneEnv)
       drawCells(paneEnv)
       drawConditionalFormatDataBars(paneEnv)
+      drawBorders(paneEnv)
       drawSheetImages(paneEnv)
       drawProtectionOverlay(paneEnv, options.protections)
       ctx.save()
@@ -56,6 +58,7 @@ export function renderSheet(
     drawGrid(env)
     drawCells(env)
     drawConditionalFormatDataBars(env)
+    drawBorders(env)
     drawSheetImages(env)
     drawProtectionOverlay(env, options.protections)
     ctx.save()
