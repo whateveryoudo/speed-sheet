@@ -155,8 +155,50 @@ function drawRowHeaderPass(
   ctx.restore()
 }
 
+function drawColHeaderContent(
+  ctx: CanvasRenderingContext2D,
+  c: number,
+  left: number,
+  cw: number,
+  CHH: number,
+  options?: RenderOptions,
+  totalRows?: number,
+): void {
+  let hasColDropdown = false
+  if (options?.dataVerifications) {
+    const checkRows = Math.min(totalRows ?? 20, 20)
+    for (let r = 0; r < checkRows; r++) {
+      if (options.dataVerifications.get(`${r}_${c}`)?.type === 'dropdown') {
+        hasColDropdown = true
+        break
+      }
+    }
+  }
+
+  const cx = left + cw / 2
+  const letter = colToLetter(c)
+
+  ctx.fillStyle = '#555'
+  ctx.fillText(letter, cx, CHH / 2)
+
+  // 当配置了下拉且宽度足够时，在列头单元格最右侧绘制下拉小箭头（类似单元格下拉箭头与筛选漏斗）
+  if (hasColDropdown && cw >= 32) {
+    const padRight = 8
+    const arrowCenterX = left + cw - padRight - 3
+    const midY = CHH / 2
+
+    ctx.fillStyle = '#8c8c8c'
+    ctx.beginPath()
+    ctx.moveTo(arrowCenterX - 4, midY - 2)
+    ctx.lineTo(arrowCenterX + 4, midY - 2)
+    ctx.lineTo(arrowCenterX, midY + 3)
+    ctx.closePath()
+    ctx.fill()
+  }
+}
+
 export function drawColumnHeaders(env: RenderEnv): void {
-  const { ctx, M, layout, vw, CHH, colStart, colEnd, totalCols, sx, RHW } = env
+  const { ctx, M, layout, vw, CHH, colStart, colEnd, totalCols, totalRows, sx, RHW, options } = env
   const xSplit = layout.freeze?.xSplit ?? 0
   const frozenW = xSplit > 0 ? frozenColPixelWidth(M, xSplit) : 0
 
@@ -190,7 +232,8 @@ export function drawColumnHeaders(env: RenderEnv): void {
       const cw = M.colWidth(c)
       const cx = left + cw / 2
       if (cx + cw / 2 < clipLeft || cx - cw / 2 > clipLeft + clipW) continue
-      ctx.fillText(colToLetter(c), cx, CHH / 2)
+
+      drawColHeaderContent(ctx, c, left, cw, CHH, options, totalRows)
     }
     ctx.strokeStyle = '#c0c0c0'
     ctx.lineWidth = 0.5
@@ -355,8 +398,7 @@ export function drawHeaderHighlight(env: RenderEnv): void {
           ? cx >= RHW - M.colWidth(c) && cx <= frozenBandRight + M.colWidth(c)
           : cx >= frozenBandRight - M.colWidth(c) && cx < vw + M.colWidth(c))
       if (colBandOk && cx > RHW - M.colWidth(c) && cx < vw + M.colWidth(c)) {
-        ctx.fillStyle = '#555'
-        ctx.fillText(colToLetter(c), cx, CHH / 2)
+        drawColHeaderContent(ctx, c, left, M.colWidth(c), CHH, options, totalRows)
       }
     }
     for (let r = seg.r0; r <= seg.r1; r++) {

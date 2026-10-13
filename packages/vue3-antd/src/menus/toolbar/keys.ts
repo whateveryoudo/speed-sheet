@@ -32,6 +32,8 @@ export const defaultSheetToolbarKeys: ToolbarItemConfig[] = [
   'protect',
   'freeze',
   'link',
+  'dropdown',
+  'chart',
   'formula',
   '|',
   'findAndReplace',

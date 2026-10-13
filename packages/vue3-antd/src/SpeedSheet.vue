@@ -80,6 +80,7 @@
       :exclude-menu-keys="props.excludeSheetTabMenuKeys"
     />
     <ProtectionManageModal />
+    <ChartConfigDrawer />
   </div>
 </template>
 
@@ -117,6 +118,8 @@ import ConditionalFormatSidebar from './components/ConditionalFormatSidebar.vue'
 import CfRangePickBanner from './components/CfRangePickBanner.vue'
 import AutofillOptionsMenu, { type AutofillPayload } from './components/AutofillOptionsMenu.vue'
 import FindReplaceModal from './components/FindReplaceModal.vue'
+import ChartConfigDrawer from './bubbleMenus/chartConfigMenu/ChartConfigDrawer.vue'
+import { provideChartConfigDrawer } from './composables/useChartConfigDrawer'
 import { SheetPreviewImage } from './helpers/sheetPreviewImage'
 import { mergeSpeedSheetExtensions } from './composables/sheetBuiltin'
 import { noteHasContent } from '@speed-sheet/shared'
@@ -153,6 +156,7 @@ const { openPanel: openNoteConfig, closePanel: closeNoteConfig } = provideNoteCo
 const { openPanel: openFilterConfig, closePanel: closeFilterConfig } = provideFilterConfigPanel()
 const protectionManage = provideProtectionManage()
 provideConditionalFormatPanel()
+provideChartConfigDrawer()
 
 const { t } = useI18n()
 

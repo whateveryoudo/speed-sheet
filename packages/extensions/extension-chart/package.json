@@ -1,0 +1,37 @@
+{
+  "name": "@speed-sheet/extension-chart",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Floating chart extension and option builder for speed-sheet",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@speed-sheet/core": "workspace:^",
+    "@speed-sheet/shared": "workspace:^",
+    "echarts": "^6.1.0",
+    "lodash-es": "^4.17.21"
+  },
+  "devDependencies": {
+    "@types/lodash-es": "^4.17.12",
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

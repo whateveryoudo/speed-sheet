@@ -182,6 +182,7 @@ export class SheetViewport extends Subscribable {
         this.rowMoveHint = h
         bump()
       },
+      onSelectRange: options.onSelectRange,
     })
 
     this.colMove = new ColMoveController({
@@ -199,6 +200,7 @@ export class SheetViewport extends Subscribable {
         this.colMoveHint = h
         bump()
       },
+      onSelectRange: options.onSelectRange,
     })
 
     this.autofillDrag = new AutofillDragController({

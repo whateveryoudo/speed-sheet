@@ -63,18 +63,19 @@ watch(
     if (!s || !open.value) return null
     const sel = s.state.getSelection()
     return {
-      r0: sel.row[0],
-      r1: sel.row[1],
-      c0: sel.column[0],
-      c1: sel.column[1],
+      r0: Math.min(sel.row[0], sel.row[1]),
+      r1: Math.max(sel.row[0], sel.row[1]),
+      c0: Math.min(sel.column[0], sel.column[1]),
+      c1: Math.max(sel.column[0], sel.column[1]),
       ar: panelAnchor.r,
       ac: panelAnchor.c,
     }
   },
   (sel) => {
     if (!sel || !open.value) return
-    const single = sel.r0 === sel.r1 && sel.c0 === sel.c1
-    if (!single || sel.r0 !== sel.ar || sel.c0 !== sel.ac) closePanel()
+    // 只要当前锚点落在选区范围内，面板保持打开；脱离选区则关闭
+    const inside = sel.ar >= sel.r0 && sel.ar <= sel.r1 && sel.ac >= sel.c0 && sel.ac <= sel.c1
+    if (!inside) closePanel()
   },
 )
 </script>

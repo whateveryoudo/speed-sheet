@@ -8,6 +8,7 @@ import type {
   MergeRange,
   SheetConfig,
   SheetImageItem,
+  SheetChartItem,
   Selection,
   SheetSnapshot,
 } from '@speed-sheet/shared'
@@ -156,6 +157,7 @@ export class SheetState {
     if (!this.root.has('freeze')) this.root.set('freeze', new Y.Map())
     if (!this.root.has('dataVerification')) this.root.set('dataVerification', new Y.Map())
     if (!this.root.has('images')) this.root.set('images', new Y.Map())
+    if (!this.root.has('charts')) this.root.set('charts', new Y.Map())
     if (!this.root.has('borders')) this.root.set('borders', new Y.Map())
   }
 
@@ -230,6 +232,38 @@ export class SheetState {
   deleteImage(id: string): void {
     this._transact(() => {
       this.images.delete(id)
+    })
+  }
+
+  // ---- Chart accessors ----
+
+  get charts(): Y.Map<unknown> {
+    return this.root.get('charts') as Y.Map<unknown>
+  }
+
+  getChart(id: string): SheetChartItem | null {
+    const raw = this.charts.get(id)
+    if (!raw || typeof raw !== 'object') return null
+    return raw as SheetChartItem
+  }
+
+  getAllCharts(): SheetChartItem[] {
+    const out: SheetChartItem[] = []
+    this.charts.forEach((val) => {
+      if (val && typeof val === 'object') out.push(val as SheetChartItem)
+    })
+    return out
+  }
+
+  setChart(item: SheetChartItem): void {
+    this._transact(() => {
+      this.charts.set(item.id, item)
+    })
+  }
+
+  deleteChart(id: string): void {
+    this._transact(() => {
+      this.charts.delete(id)
     })
   }
 
@@ -1141,6 +1175,7 @@ export class SheetState {
       },
       dataVerification: this.dataVerification.toJSON() as Record<string, DataVerificationRule>,
       images: this.images.toJSON() as Record<string, SheetImageItem>,
+      charts: this.charts.toJSON() as Record<string, SheetChartItem>,
       ...(sheetFilter != null ? { sheetFilter } : {}),
       ...(sheetFilterPrivate != null && typeof sheetFilterPrivate === 'object' && !Array.isArray(sheetFilterPrivate)
         ? { sheetFilterPrivate: sheetFilterPrivate as Record<string, unknown> }

@@ -73,7 +73,25 @@ function focusFirstInput(): void {
 function loadRule(): void {
   const s = props.sheet
   if (!s) return
-  const rule = s.state.getDataVerification(props.r, props.c)
+  let rule = s.state.getDataVerification(props.r, props.c)
+  if (rule?.type !== 'dropdown' && props.applySelection) {
+    const sel = s.state.getSelection()
+    const r0 = Math.min(sel.row[0], sel.row[1])
+    const r1 = Math.max(sel.row[0], sel.row[1])
+    const c0 = Math.min(sel.column[0], sel.column[1])
+    const c1 = Math.max(sel.column[0], sel.column[1])
+    for (let r = r0; r <= r1; r++) {
+      for (let c = c0; c <= c1; c++) {
+        const found = s.state.getDataVerification(r, c)
+        if (found?.type === 'dropdown') {
+          rule = found
+          break
+        }
+      }
+      if (rule?.type === 'dropdown') break
+    }
+  }
+
   if (rule?.type === 'dropdown') {
     hasExisting.value = true
     multiSelect.value = !!rule.multiSelect
@@ -131,18 +149,18 @@ function onConfirm(): void {
     return
   }
   const value = multiSelect.value ? [] : ''
+  const chain = s.chain()
   eachTarget((r, c) => {
-    s.chain()
-      .insertDropdown({
-        r,
-        c,
-        options: cleaned,
-        multiSelect: multiSelect.value,
-        useColor: useColor.value,
-        value,
-      })
-      .run()
+    chain.insertDropdown({
+      r,
+      c,
+      options: cleaned,
+      multiSelect: multiSelect.value,
+      useColor: useColor.value,
+      value,
+    })
   })
+  chain.run()
   emit('done')
 }
 
@@ -150,11 +168,11 @@ function onConfirm(): void {
 function onRemove(): void {
   const s = props.sheet
   if (!s) return
-  if (hasExisting.value) {
-    eachTarget((r, c) => {
-      s.chain().removeDropdown({ r, c }).run()
-    })
-  }
+  const chain = s.chain()
+  eachTarget((r, c) => {
+    chain.removeDropdown({ r, c })
+  })
+  chain.run()
   emit('done')
 }
 </script>

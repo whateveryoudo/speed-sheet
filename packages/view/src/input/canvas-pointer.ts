@@ -120,6 +120,26 @@ export class CanvasPointerController {
       this.options.startColMoveDrag(target.index, e)
       return true
     }
+    if (target.type === 'row-header') {
+      e.preventDefault()
+      this.focusRoot()
+      if (this.options.isEditing()) this.options.commitEdit()
+      const totalCols = this.options.getGridMetrics().totalCols
+      const r = target.index
+      this.options.applySelectRange(r, 0, r, Math.max(0, totalCols - 1), r, 0)
+      this.options.scheduleDraw()
+      return true
+    }
+    if (target.type === 'col-header') {
+      e.preventDefault()
+      this.focusRoot()
+      if (this.options.isEditing()) this.options.commitEdit()
+      const totalRows = this.options.getGridMetrics().totalRows
+      const c = target.index
+      this.options.applySelectRange(0, c, Math.max(0, totalRows - 1), c, 0, c)
+      this.options.scheduleDraw()
+      return true
+    }
     return false
   }
 

@@ -127,6 +127,54 @@ export interface SheetImageItem {
   offsetTop?: number
 }
 
+/** 浮动图表类型 */
+export type SheetChartType =
+  | 'bar'
+  | 'bar-stacked'
+  | 'bar-horizontal'
+  | 'line'
+  | 'line-smooth'
+  | 'area-stacked'
+  | 'pie'
+  | 'doughnut'
+
+/** 图表极简通用配置 */
+export interface SheetChartConfig {
+  chartType: SheetChartType
+  title?: string
+  showTitle?: boolean
+  showLegend?: boolean
+  legendPosition?: 'top' | 'bottom' | 'left' | 'right'
+  showDataLabels?: boolean
+  showGridLines?: boolean
+  yAxisMin?: number
+  yAxisMax?: number
+  colorPalette?: string[]
+  /** 逃生通道：自定义 ECharts 原生 option，深合并覆盖 */
+  customOption?: Record<string, any>
+}
+
+/** 浮动图表（锚定单元格位置，包含数据源范围与图表配置） */
+export interface SheetChartItem {
+  id: string
+  row: number
+  col: number
+  width: number
+  height: number
+  offsetLeft?: number
+  offsetTop?: number
+  /** 数据源选区范围 */
+  range: {
+    row: [number, number]
+    column: [number, number]
+    /** 首行是否为标题/系列名（默认 true） */
+    hasHeaderRow?: boolean
+    /** 首列是否为分类标签（默认 true） */
+    hasHeaderCol?: boolean
+  }
+  config: SheetChartConfig
+}
+
 // ----- Sheet config -----
 export interface MergeRange {
   r: number     // start row
@@ -188,6 +236,8 @@ export interface SheetSnapshot {
   dataVerification?: Record<string, DataVerificationRule>
   /** 浮动图片 */
   images?: Record<string, SheetImageItem>
+  /** 浮动图表 */
+  charts?: Record<string, SheetChartItem>
   /** 共享筛选（与 Y.Doc sheetFilter 一致） */
   sheetFilter?: unknown
   /** 私有筛选分桶（与 Y.Doc sheetFilterPrivate 一致） */

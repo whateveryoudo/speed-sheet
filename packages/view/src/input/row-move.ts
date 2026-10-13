@@ -18,12 +18,15 @@ export type RowMoveOptions = {
   onDraw: () => void
   onGuideChange: (guide: MoveGuideState) => void
   onHintChange: (hint: MoveHintState) => void
+  onSelectRange?: (r0: number, c0: number, r1: number, c1: number, anchorR: number, anchorC: number) => void
 }
 
 export class RowMoveController {
   private readonly session = new RowMoveSession()
   private guide: MoveGuideState = { active: false, pos: 0 }
   private hint: MoveHintState = { show: false, x: 0, y: 0, text: '' }
+  private startPointer: { x: number; y: number } | null = null
+  private startRow = 0
   private readonly onDocumentMove = (e: MouseEvent): void => this.updateFromEvent(e)
   private readonly onDocumentUp = (e: MouseEvent): void => this.end(e)
 
@@ -70,6 +73,9 @@ export class RowMoveController {
     this.setGuide({ ...this.guide, active: false })
     this.setHint({ ...this.hint, show: false })
 
+    const startPt = this.startPointer
+    this.startPointer = null
+
     const s = this.options.getSheet()
     if (!canvas || !s) {
       this.session.cancel()
@@ -79,6 +85,27 @@ export class RowMoveController {
 
     const rect = canvas.getBoundingClientRect()
     const ptr = pointerFromMouseEvent(e, rect, this.options.getLayout())
+
+    // 检查是否仅为点击（移动距离 < 3px），若是则全选该行
+    const dist = startPt ? Math.hypot(e.clientX - startPt.x, e.clientY - startPt.y) : 0
+    if (dist < 3) {
+      this.session.cancel()
+      canvas.style.cursor = ''
+      const metrics = this.options.getMetrics()
+      const totalCols = metrics.totalCols
+      const row = this.startRow
+      s.chain()
+        .selectRange({
+          row: [row, row],
+          column: [0, totalCols - 1],
+          anchor: { r: row, c: 0 },
+        })
+        .run()
+      this.options.onSelectRange?.(row, 0, row, totalCols - 1, row, 0)
+      this.options.onDraw()
+      return
+    }
+
     const commit = this.session.commit(
       ptr,
       this.options.getLayout(),
@@ -100,6 +127,8 @@ export class RowMoveController {
   }
 
   start(startRow: number, e: MouseEvent): void {
+    this.startPointer = { x: e.clientX, y: e.clientY }
+    this.startRow = startRow
     const sel = this.options.getSheet()?.state.getSelection() ?? null
     this.session.start(startRow, sel)
     this.updateFromEvent(e)
@@ -111,6 +140,7 @@ export class RowMoveController {
     document.removeEventListener('mousemove', this.onDocumentMove)
     document.removeEventListener('mouseup', this.onDocumentUp)
     this.session.cancel()
+    this.startPointer = null
     this.setGuide({ ...this.guide, active: false })
     this.setHint({ ...this.hint, show: false })
   }

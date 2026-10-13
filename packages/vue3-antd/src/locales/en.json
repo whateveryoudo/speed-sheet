@@ -112,6 +112,7 @@
     "sortKeepOption": "Continue with the current selection {range}",
     "insertLink": "Insert link",
     "insertLinkHint": "Cell links are not available yet.",
+    "dropdown": "Dropdown list",
     "formula": "Functions",
     "protect": "Protect"
   },

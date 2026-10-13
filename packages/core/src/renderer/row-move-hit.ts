@@ -24,6 +24,24 @@ export function hitRowHeader(
   return null
 }
 
+const ROW_MOVE_HANDLE_PX = 6
+
+/**
+ * Row index when pointer is near the right edge of the row-number header (for drag move).
+ */
+export function hitRowMoveHandle(
+  canvasX: number,
+  canvasY: number,
+  layout: GridLayout,
+  metrics: GridMetrics,
+  handlePx = ROW_MOVE_HANDLE_PX,
+): number | null {
+  const { rowHeaderWidth: RHW } = layout
+  // 必须在靠近行头右侧的 handlePx 范围内才触发拖拽移动
+  if (canvasX < RHW - handlePx || canvasX > RHW) return null
+  return hitRowHeader(canvasX, canvasY, layout, metrics)
+}
+
 /**
  * Insert dragged rows before this display index (0..totalRows).
  * `contentY` is in sheet content coordinates (scroll included).

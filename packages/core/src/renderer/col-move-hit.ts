@@ -24,6 +24,24 @@ export function hitColHeader(
   return null
 }
 
+const COL_MOVE_HANDLE_PX = 6
+
+/**
+ * Col index when pointer is near the bottom edge of the column header (for drag move).
+ */
+export function hitColMoveHandle(
+  canvasX: number,
+  canvasY: number,
+  layout: GridLayout,
+  metrics: GridMetrics,
+  handlePx = COL_MOVE_HANDLE_PX,
+): number | null {
+  const { columnHeaderHeight: CHH } = layout
+  // 必须在靠近列头底部的 handlePx 范围内才触发拖拽移动
+  if (canvasY < CHH - handlePx || canvasY > CHH) return null
+  return hitColHeader(canvasX, canvasY, layout, metrics)
+}
+
 export function colMoveInsertIndex(
   contentX: number,
   metrics: GridMetrics,

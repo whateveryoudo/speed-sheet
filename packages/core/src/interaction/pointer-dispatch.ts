@@ -3,8 +3,8 @@ import type { GridMetrics } from '../renderer/grid-metrics'
 import type { Selection } from '@speed-sheet/shared'
 import type { MergeContext } from '../merge'
 import { hitColResizeHandle, hitRowResizeHandle } from '../renderer/resize-hit'
-import { hitColHeader } from '../renderer/col-move-hit'
-import { hitRowHeader } from '../renderer/row-move-hit'
+import { hitColHeader, hitColMoveHandle } from '../renderer/col-move-hit'
+import { hitRowHeader, hitRowMoveHandle } from '../renderer/row-move-hit'
 import { hitSelectionHandle } from './selection-handle'
 
 export type CanvasPointerTarget =
@@ -12,6 +12,8 @@ export type CanvasPointerTarget =
   | { type: 'col-resize'; index: number }
   | { type: 'row-move'; index: number }
   | { type: 'col-move'; index: number }
+  | { type: 'row-header'; index: number }
+  | { type: 'col-header'; index: number }
   | { type: 'none' }
 
 export type PointerCursor =
@@ -21,8 +23,9 @@ export type PointerCursor =
   | 'grabbing'
   | 'cell'
   | 'crosshair'
+  | 'default'
 
-/** Mousedown hit priority on the canvas: resize edge → row header drag. */
+/** Mousedown hit priority on the canvas: resize edge → move handle (near edge) → header selection. */
 export function resolveCanvasPointerTarget(
   canvasX: number,
   canvasY: number,
@@ -35,11 +38,17 @@ export function resolveCanvasPointerTarget(
   const colHit = hitColResizeHandle(canvasX, canvasY, layout, metrics)
   if (colHit != null) return { type: 'col-resize', index: colHit }
 
+  const rowMoveHit = hitRowMoveHandle(canvasX, canvasY, layout, metrics)
+  if (rowMoveHit != null) return { type: 'row-move', index: rowMoveHit }
+
+  const colMoveHit = hitColMoveHandle(canvasX, canvasY, layout, metrics)
+  if (colMoveHit != null) return { type: 'col-move', index: colMoveHit }
+
   const rowHeaderHit = hitRowHeader(canvasX, canvasY, layout, metrics)
-  if (rowHeaderHit != null) return { type: 'row-move', index: rowHeaderHit }
+  if (rowHeaderHit != null) return { type: 'row-header', index: rowHeaderHit }
 
   const colHeaderHit = hitColHeader(canvasX, canvasY, layout, metrics)
-  if (colHeaderHit != null) return { type: 'col-move', index: colHeaderHit }
+  if (colHeaderHit != null) return { type: 'col-header', index: colHeaderHit }
 
   return { type: 'none' }
 }
@@ -86,6 +95,9 @@ export function resolvePointerCursor(
     case 'row-move':
     case 'col-move':
       return 'grab'
+    case 'row-header':
+    case 'col-header':
+      return 'default'
     default:
       return 'cell'
   }

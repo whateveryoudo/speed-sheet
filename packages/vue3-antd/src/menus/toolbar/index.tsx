@@ -21,6 +21,8 @@ import Align from './align'
 import VerticalAlign from './verticalAlign.vue'
 import TextWrap from './textWrap.vue'
 import Link from './link/index.vue'
+import Dropdown from './dropdown.vue'
+import Chart from './chart.vue'
 import Filter from './filter.vue'
 import Sort from './sort.vue'
 import Protect from './protect.vue'
@@ -57,6 +59,8 @@ const componentMap = {
   protect: Protect,
   freeze: Freeze,
   link: Link,
+  dropdown: Dropdown,
+  chart: Chart,
   findAndReplace: FindAndReplace,
 }
 

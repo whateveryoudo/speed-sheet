@@ -118,12 +118,14 @@ export type { MergeHitRange, MergeDisplayBounds, MergeLookup } from './merge'
 export { hitRowResizeHandle, hitColResizeHandle } from './renderer/resize-hit'
 export {
   hitRowHeader,
+  hitRowMoveHandle,
   rowMoveInsertIndex,
   rowMoveGuideCanvasY,
   mapRowIndexAfterMove,
 } from './renderer/row-move-hit'
 export {
   hitColHeader,
+  hitColMoveHandle,
   colMoveInsertIndex,
   colMoveGuideCanvasX,
   mapColIndexAfterMove,

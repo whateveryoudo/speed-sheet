@@ -11,6 +11,8 @@ import {
   SheetConditionalFormat,
   CF_EXTENSION_NAME,
 } from '../extensions/conditional-format'
+import { SheetChart } from '../extensions/chart'
+import { CHART_EXTENSION_NAME } from '@speed-sheet/extension-chart'
 
 export function hasSheetImageExtension(extensions: unknown[] | undefined): boolean {
   return (extensions ?? []).some((e) => extensionName(e) === IMAGE_EXTENSION_NAME)
@@ -40,6 +42,10 @@ export function hasSheetConditionalFormatExtension(extensions: unknown[] | undef
   return (extensions ?? []).some((e) => extensionName(e) === CF_EXTENSION_NAME)
 }
 
+export function hasSheetChartExtension(extensions: unknown[] | undefined): boolean {
+  return (extensions ?? []).some((e) => extensionName(e) === CHART_EXTENSION_NAME)
+}
+
 /**
  * 合并 SpeedSheet 内置扩展与用户扩展（按 name 去重）。
  * 公式扩展由 useSheet → mergeBuiltinExtensions 单独合并。
@@ -54,6 +60,7 @@ export function mergeSpeedSheetExtensions(
   if (!hasSheetDropdownExtension(user)) builtins.push(SheetDropdown as Extension)
   if (!hasSheetLinkExtension(user)) builtins.push(SheetLink as Extension)
   if (!hasSheetNoteExtension(user)) builtins.push(SheetNote as Extension)
+  if (!hasSheetChartExtension(user)) builtins.push(SheetChart as Extension)
   if (!hasSheetFilterExtension(user)) {
     builtins.push(
       SheetFilter.extend({

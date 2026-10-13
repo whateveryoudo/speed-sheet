@@ -112,6 +112,7 @@
     "sortKeepOption": "保持当前选定区域 {range}",
     "link": "插入链接",
     "insertLinkHint": "单元格链接待实现",
+    "dropdown": "下拉列表",
     "formula": "公式",
     "protect": "保护"
   },
