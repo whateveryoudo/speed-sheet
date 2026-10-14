@@ -52,7 +52,13 @@ export default defineConfig({
     dedupe: ["vue"],
     alias: {
       "@sc": resolve(__dirname, "../../../speed-components/src"),
+      "speed-components-ui/dist/style.css": resolve(__dirname, "../../../speed-components/dist/style.css"),
+      "speed-components-ui/components": resolve(__dirname, "../../../speed-components/src/components"),
+      "speed-components-ui/hooks": resolve(__dirname, "../../../speed-components/src/hooks"),
+      "speed-components-ui": resolve(__dirname, "../../../speed-components/src"),
       "@speed-sheet/vue3/style.css": resolve(__dirname, "../vue3/dist/style.css"),
     },
+
   },
 });
+

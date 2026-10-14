@@ -24,6 +24,8 @@ export interface RenderOptions {
   /** 合并门面（优先于 merges） */
   mergeCtx?: MergeContext
   selection: Selection
+  /** 是否隐藏选区（用于图表选区拾取等场景，不画活动单元格粗框、选区框与填充柄） */
+  hideSelection?: boolean
   /** 正在拖拽框选（范围细框；锚点仍为粗框） */
   isSelecting?: boolean
   /** 正在内联编辑的单元格（不再在 canvas 上描活动格边框，避免与 input 双边框） */

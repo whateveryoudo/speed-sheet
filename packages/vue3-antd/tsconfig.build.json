@@ -11,6 +11,7 @@
     "paths": {
       "vue": ["node_modules/vue/dist/vue.d.ts"]
     },
+
     "plugins": [
       {
         "name": "@vue/typescript-plugin",

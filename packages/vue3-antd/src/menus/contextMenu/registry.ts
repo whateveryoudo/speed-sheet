@@ -30,7 +30,19 @@ export function runContextMenuAction(
       close()
       break
     case 'paste':
-      sheet.chain().paste().run()
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.readText) {
+        navigator.clipboard.readText().then((text) => {
+          if (text) {
+            sheet.chain().pasteText({ text }).run()
+          } else {
+            sheet.chain().paste().run()
+          }
+        }).catch(() => {
+          sheet.chain().paste().run()
+        })
+      } else {
+        sheet.chain().paste().run()
+      }
       close()
       break
     case 'insertRowAbove':

@@ -75,14 +75,26 @@ export function buildEChartsOption(
       },
     ]
   } else if (isHorizontalBar) {
-    // 水平条形图
+    const showAxis = config.showAxis ?? true
+    const axisLine = { show: showAxis }
+    const axisTick = { show: showAxis }
+    const axisLabel = { show: showAxis }
+
     yAxis = {
       type: 'category',
+      name: config.yAxisTitle || undefined,
+      axisLine,
+      axisTick,
+      axisLabel,
       data: dataset.categories,
       splitLine: { show: false },
     }
     xAxis = {
       type: 'value',
+      name: config.xAxisTitle || undefined,
+      axisLine,
+      axisTick,
+      axisLabel,
       min: config.yAxisMin ?? undefined,
       max: config.yAxisMax ?? undefined,
       splitLine: { show: config.showGridLines ?? true },
@@ -95,17 +107,31 @@ export function buildEChartsOption(
     }))
   } else {
     // 柱状图 / 折线图 / 堆叠 / 面积图
+    const showAxis = config.showAxis ?? true
+    const axisLine = { show: showAxis }
+    const axisTick = { show: showAxis }
+    const axisLabel = { show: showAxis }
+
     xAxis = {
       type: 'category',
+      name: config.xAxisTitle || undefined,
+      axisLine,
+      axisTick,
+      axisLabel,
       data: dataset.categories,
       splitLine: { show: false },
     }
     yAxis = {
       type: 'value',
+      name: config.yAxisTitle || undefined,
+      axisLine,
+      axisTick,
+      axisLabel,
       min: config.yAxisMin ?? undefined,
       max: config.yAxisMax ?? undefined,
       splitLine: { show: config.showGridLines ?? true },
     }
+
 
     const isStacked = chartType === 'bar-stacked' || chartType === 'area-stacked'
     const isLine = chartType === 'line' || chartType === 'line-smooth' || chartType === 'area-stacked'

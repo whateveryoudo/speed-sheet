@@ -32,9 +32,18 @@ export function useSheetCanvasView(options: {
   formulaEdit?: FormulaEditContext | null
   commitBoundary?: ComputedRef<HTMLElement | null | undefined> | Ref<HTMLElement | null | undefined>
   formulaPickModeProp?: Ref<boolean> | ComputedRef<boolean>
+  hideSelection?: Ref<boolean | undefined> | ComputedRef<boolean | undefined>
   canEditCell?: (r: number, c: number) => boolean
   onEditBlocked?: () => void
   onSelectRange: (
+    r0: number,
+    c0: number,
+    r1: number,
+    c1: number,
+    anchorR: number,
+    anchorC: number,
+  ) => void
+  onSelectingRange?: (
     r0: number,
     c0: number,
     r1: number,
@@ -166,9 +175,11 @@ export function useSheetCanvasView(options: {
     getFormulaRefRanges: () => options.formulaRefRanges.value,
     isEditable: () => options.editable.value,
     isFormulaPickMode: () => inlineEdit.effectiveFormulaPick.value,
+    getHideSelection: () => !!options.hideSelection?.value,
     editor: editorBridge,
     getMergeContext: () => options.sheet.value?.createMergeContext() ?? MergeContext.empty(),
     onSelectRange: options.onSelectRange,
+    onSelectingRange: options.onSelectingRange,
     onCellClick: options.onCellClick,
     onCellDblClick: options.onCellDblClick,
     onContextMenuOpen: options.onContextMenu,

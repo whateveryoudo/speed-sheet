@@ -147,6 +147,7 @@ function drawSegmentSelection(
 /** 填充柄画在 clip 外（避免冻结窗格裁切右下角） */
 export function drawSelectionHandle(env: RenderEnv): void {
   const { ctx, mc, M, layout, options, vw, vh, RHW, CHH } = env
+  if (options.hideSelection) return
   const { selection, editingCell } = options
 
   const r0 = Math.min(selection.row[0], selection.row[1])
@@ -177,6 +178,7 @@ export function drawSelectionHandle(env: RenderEnv): void {
 
 export function drawSelection(env: RenderEnv): void {
   const { layout, options, freezePane } = env
+  if (options.hideSelection) return
   const { selection, isSelecting = false, editingCell } = options
 
   const r0 = selection.row[0]

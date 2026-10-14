@@ -159,6 +159,7 @@ const props = withDefaults(defineProps<{
     color: string
   }>
   formulaPickMode?: boolean
+  hideSelection?: boolean
   commitBoundary?: HTMLElement | null
   editable?: boolean
   resolveCellDblClick?: (r: number, c: number) => boolean | void
@@ -167,6 +168,7 @@ const props = withDefaults(defineProps<{
   revision: 0,
   formulaRefRanges: () => [],
   formulaPickMode: false,
+  hideSelection: false,
   commitBoundary: null,
   editable: true,
 })
@@ -184,6 +186,7 @@ const emit = defineEmits<{
   'formula-pick': [r: number, c: number]
   'formula-range-pick': [r0: number, c0: number, r1: number, c1: number]
   'select-range': [r0: number, c0: number, r1: number, c1: number, anchorR: number, anchorC: number]
+  'selecting-range': [r0: number, c0: number, r1: number, c1: number, anchorR: number, anchorC: number]
   'context-menu': [payload: ContextMenuState & { close: () => void }]
   'viewport-mousedown': [e: MouseEvent]
   'viewport-drop': [e: DragEvent]
@@ -283,10 +286,13 @@ const {
   formulaEdit,
   commitBoundary: computed(() => props.commitBoundary),
   formulaPickModeProp: toRef(props, 'formulaPickMode'),
+  hideSelection: toRef(props, 'hideSelection'),
   canEditCell: (r, c) => props.canEditCell?.(r, c) ?? true,
   onEditBlocked: () => emit('edit-blocked'),
   onSelectRange: (r0, c0, r1, c1, anchorR, anchorC) =>
     emit('select-range', r0, c0, r1, c1, anchorR, anchorC),
+  onSelectingRange: (r0, c0, r1, c1, anchorR, anchorC) =>
+    emit('selecting-range', r0, c0, r1, c1, anchorR, anchorC),
   onCellClick: (r, c) => emit('cell-click', r, c),
   onCellDblClick: (r, c) => !!props.resolveCellDblClick?.(r, c),
   onContextMenu: (payload) => emit('context-menu', payload),

@@ -57,7 +57,7 @@ export interface SheetOptions {
   data?: LuckysheetFile
 
   /** External Y.Doc for collaborative editing */
-  ydoc?: Y.Doc
+  ydoc?: Y.Doc | any
 
   /** Called after any state mutation */
   onUpdate?: (sheet: Sheet) => void
@@ -262,6 +262,9 @@ export class Sheet {
         }
         if (sheetSnap.images) {
           ySheet.set('images', objectToYMap(sheetSnap.images))
+        }
+        if (sheetSnap.charts) {
+          ySheet.set('charts', objectToYMap(sheetSnap.charts))
         }
         if (sheetSnap.sheetFilter != null) {
           ySheet.set('sheetFilter', sheetSnap.sheetFilter)

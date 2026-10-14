@@ -53,9 +53,18 @@ export type SheetViewportOptions = {
   getFormulaRefRanges: () => RenderOptions['formulaRefRanges']
   isEditable: () => boolean
   isFormulaPickMode: () => boolean
+  getHideSelection?: () => boolean
   editor: SheetViewportEditorBridge
   getMergeContext?: () => MergeContext
   onSelectRange: (
+    r0: number,
+    c0: number,
+    r1: number,
+    c1: number,
+    anchorR: number,
+    anchorC: number,
+  ) => void
+  onSelectingRange?: (
     r0: number,
     c0: number,
     r1: number,
@@ -267,6 +276,7 @@ export class SheetViewport extends Subscribable {
       onDraw: () => scheduleDraw(),
       flushDraw: () => flushDraw(),
       onCommitDragSelection: commitSelectRange,
+      onSelectingRange: options.onSelectingRange,
       onFormulaPick: options.onFormulaPick,
       onFormulaRangePick: options.onFormulaRangePick,
     })
@@ -326,6 +336,7 @@ export class SheetViewport extends Subscribable {
       getRevision: options.getRevision,
       getRowHeaderWidth: options.getRowHeaderWidth,
       getColumnHeaderHeight: options.getColumnHeaderHeight,
+      getHideSelection: options.getHideSelection,
       getAutofillRange: () => this.autofillDrag.getPreviewRange(),
       getFindMatches: () => this.findMatches ?? undefined,
       onScrollLayout: options.onScrollLayout,
@@ -369,6 +380,7 @@ export class SheetViewport extends Subscribable {
       openEditor: options.editor.openEditor,
       cellEditInitial: options.editor.cellEditInitial,
       onCellClick: options.onCellClick,
+      onSelectingRange: options.onSelectingRange,
       onCellDblClick: options.onCellDblClick,
       scheduleDraw: () => scheduleDraw(),
       hideErrorTip: () => this.errorTipCtrl.hide(),

@@ -14,8 +14,10 @@
       "vue": ["node_modules/vue/dist/vue.d.ts"],
       "@speed-sheet/core": ["../core/src/index.ts"],
       "@speed-sheet/shared": ["../shared/src/index.ts"],
-      "@speed-sheet/vue3": ["../vue3/src/index.ts"],
+      "@speed-sheet/vue3": ["../vue3/src/index.ts"]
     }
+
+
   },
   "include": ["src/**/*.ts", "src/**/*.vue", "src/env.d.ts", "src/menus/contextMenu/buildItems.tsx"],
   "vueCompilerOptions": {

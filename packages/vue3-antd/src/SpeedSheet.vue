@@ -25,6 +25,7 @@
         :column-header-height="ui.columnHeaderHeight"
         :formula-ref-ranges="canvasRefRanges"
         :formula-pick-mode="formulaPickMode"
+        :hide-selection="shouldHideSelection"
         :commit-boundary="rootEl"
         :resolve-cell-dbl-click="resolveCellDblClick"
         :can-edit-cell="canEditCell"
@@ -32,6 +33,7 @@
         @formula-pick="onFormulaPick"
         @formula-range-pick="onFormulaRangePick"
         @select-range="onSelectRange"
+        @selecting-range="onSelectingRange"
         @viewport-drop="onViewportDrop"
         @freeze-invalid="onFreezeInvalid"
         @edit-blocked="onEditBlocked"
@@ -156,7 +158,15 @@ const { openPanel: openNoteConfig, closePanel: closeNoteConfig } = provideNoteCo
 const { openPanel: openFilterConfig, closePanel: closeFilterConfig } = provideFilterConfigPanel()
 const protectionManage = provideProtectionManage()
 provideConditionalFormatPanel()
-provideChartConfigDrawer()
+const chartDrawerCtx = provideChartConfigDrawer()
+
+const shouldHideSelection = computed(() => {
+  return (
+    chartDrawerCtx.isPickingRange.value ||
+    Boolean(chartDrawerCtx.activeChartId.value) ||
+    chartDrawerCtx.visible.value
+  )
+})
 
 const { t } = useI18n()
 
@@ -462,6 +472,26 @@ function onFormulaRangePick(r0: number, c0: number, r1: number, c1: number): voi
   handleFormulaRangeSelect(r0, c0, r1, c1)
 }
 
+function onSelectingRange(
+  r0: number,
+  c0: number,
+  r1: number,
+  c1: number,
+  _anchorR: number,
+  _anchorC: number,
+): void {
+  if (chartDrawerCtx.isPickingRange.value) {
+    chartDrawerCtx.updatePickingRange({
+      row: [Math.min(r0, r1), Math.max(r0, r1)],
+      column: [Math.min(c0, c1), Math.max(c0, c1)],
+    })
+    return
+  }
+  if (cfRangePick.active.value) {
+    cfRangePick.handleSelectRange(r0, c0, r1, c1)
+  }
+}
+
 function onSelectRange(
   r0: number,
   c0: number,
@@ -470,6 +500,13 @@ function onSelectRange(
   _anchorR: number,
   _anchorC: number,
 ): void {
+  if (chartDrawerCtx.isPickingRange.value) {
+    chartDrawerCtx.updatePickingRange({
+      row: [Math.min(r0, r1), Math.max(r0, r1)],
+      column: [Math.min(c0, c1), Math.max(c0, c1)],
+    })
+    return
+  }
   if (cfRangePick.active.value) {
     cfRangePick.handleSelectRange(r0, c0, r1, c1)
   }

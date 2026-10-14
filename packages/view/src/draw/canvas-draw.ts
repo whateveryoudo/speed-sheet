@@ -47,6 +47,7 @@ export type CanvasDrawOptions = {
   getColumnHeaderHeight: () => number | undefined
   getAutofillRange?: () => RenderOptions['autofillRange']
   getFindMatches?: () => RenderOptions['findMatches']
+  getHideSelection?: () => boolean
   onScrollLayout: () => void
   onFreezeInvalid?: () => void
 }
@@ -156,6 +157,7 @@ export class CanvasDrawController {
         borders: state?.getBorderList() ?? [],
         mergeCtx: sheet?.createMergeContext(),
         selection: this.options.getSelection(),
+        hideSelection: this.options.getHideSelection?.() ?? false,
         isSelecting: this.options.isSelecting(),
         editingCell: this.options.isEditing()
           ? { r: this.options.getEditR(), c: this.options.getEditC() }

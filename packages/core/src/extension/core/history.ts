@@ -16,6 +16,7 @@ export const HistoryExtension = Extension.create<SheetHistoryStorage>({
   onInit(this: Extension<SheetHistoryStorage>, sheet: Sheet) {
     const um = createSheetUndoManager(sheet.ydoc)
     this.storage.undoManager = um
+    if (!um) return
 
     const bump = () => sheet.notifyUpdate()
     um.on('stack-item-added', bump)

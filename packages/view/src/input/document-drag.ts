@@ -34,6 +34,14 @@ export type DocumentDragOptions = {
   flushDraw?: () => void
   /** 框选松手时将预览选区写入 Sheet */
   onCommitDragSelection?: (selection: Selection) => void
+  onSelectingRange?: (
+    r0: number,
+    c0: number,
+    r1: number,
+    c1: number,
+    anchorR: number,
+    anchorC: number,
+  ) => void
   onFormulaPick: (r: number, c: number) => void
   onFormulaRangePick: (r0: number, c0: number, r1: number, c1: number) => void
 }
@@ -59,7 +67,20 @@ export class DocumentDragController {
     }
 
     if (!this.options.selectionDrag.isActive()) return
-    if (this.options.selectionDrag.updateFromEvent(e)) this.options.onDraw()
+    if (this.options.selectionDrag.updateFromEvent(e)) {
+      this.options.onDraw()
+      const preview = this.options.selectionDrag.getPreviewSelection()
+      if (preview) {
+        this.options.onSelectingRange?.(
+          preview.row[0],
+          preview.column[0],
+          preview.row[1],
+          preview.column[1],
+          preview.anchor?.r ?? preview.row[0],
+          preview.anchor?.c ?? preview.column[0],
+        )
+      }
+    }
   }
 
   private readonly onDocumentMouseUp = (): void => this.endDragSelect()

@@ -43,6 +43,10 @@ export {
   FreezeExtension,
   BorderExtension,
   CORE_EXTENSIONS,
+  rangeToTsv,
+  rangeToHtml,
+  parseTsv,
+  writeSystemClipboard,
 } from './extension'
 export type { BorderType, SetBorderOptions } from './extension/core/border'
 export type {

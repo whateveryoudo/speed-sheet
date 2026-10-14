@@ -21,6 +21,12 @@ export {
   FreezeExtension,
   BorderExtension,
 }
+export {
+  rangeToTsv,
+  rangeToHtml,
+  parseTsv,
+  writeSystemClipboard,
+} from './clipboard'
 
 /** Built-in extensions always loaded by Sheet */
 export const CORE_EXTENSIONS = [

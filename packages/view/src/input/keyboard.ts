@@ -86,7 +86,27 @@ export class KeyboardController {
     }
     if ((e.ctrlKey || e.metaKey) && key === 'v') {
       e.preventDefault()
-      this.options.getSheet()?.chain().paste().run()
+      const s = this.options.getSheet()
+      if (!s) return
+
+      // 优先从系统剪贴板异步读取外部或最新复制的数据
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.readText) {
+        navigator.clipboard.readText().then((text) => {
+          if (text) {
+            s.chain().pasteText({ text }).run()
+            this.options.onDraw()
+          } else {
+            s.chain().paste().run()
+            this.options.onDraw()
+          }
+        }).catch(() => {
+          s.chain().paste().run()
+          this.options.onDraw()
+        })
+      } else {
+        s.chain().paste().run()
+        this.options.onDraw()
+      }
       return
     }
     if ((e.ctrlKey || e.metaKey) && key === 'z' && !e.shiftKey) {

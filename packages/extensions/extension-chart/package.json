@@ -23,7 +23,6 @@
   "dependencies": {
     "@speed-sheet/core": "workspace:^",
     "@speed-sheet/shared": "workspace:^",
-    "echarts": "^6.1.0",
     "lodash-es": "^4.17.21"
   },
   "devDependencies": {

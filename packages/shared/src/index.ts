@@ -147,12 +147,16 @@ export interface SheetChartConfig {
   legendPosition?: 'top' | 'bottom' | 'left' | 'right'
   showDataLabels?: boolean
   showGridLines?: boolean
+  showAxis?: boolean
+  xAxisTitle?: string
+  yAxisTitle?: string
   yAxisMin?: number
   yAxisMax?: number
   colorPalette?: string[]
   /** 逃生通道：自定义 ECharts 原生 option，深合并覆盖 */
   customOption?: Record<string, any>
 }
+
 
 /** 浮动图表（锚定单元格位置，包含数据源范围与图表配置） */
 export interface SheetChartItem {
@@ -171,6 +175,8 @@ export interface SheetChartItem {
     hasHeaderRow?: boolean
     /** 首列是否为分类标签（默认 true） */
     hasHeaderCol?: boolean
+    /** 切换行列（转置行列维度，默认 false） */
+    switchRowCol?: boolean
   }
   config: SheetChartConfig
 }

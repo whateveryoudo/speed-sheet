@@ -64,5 +64,25 @@ export function extractChartDataset(
     seriesData.push({ name: seriesName, data })
   }
 
+  if (range.switchRowCol) {
+    // 切换行列：将原系列名称集合作为新的分类 categories，原分类集合作为新的系列 seriesData
+    const newCategories = seriesData.map((s) => s.name)
+    const newSeriesData: ExtractedChartDataset['seriesData'] = []
+
+    for (let i = 0; i < categories.length; i++) {
+      const seriesName = categories[i] ?? `系列 ${i + 1}`
+      const data: (number | null)[] = []
+      for (let j = 0; j < seriesData.length; j++) {
+        data.push(seriesData[j]?.data[i] ?? null)
+      }
+      newSeriesData.push({ name: seriesName, data })
+    }
+
+    return {
+      categories: newCategories,
+      seriesData: newSeriesData,
+    }
+  }
+
   return { categories, seriesData }
 }

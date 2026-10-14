@@ -29,4 +29,8 @@ export {
   FreezeExtension,
   BorderExtension,
   CORE_EXTENSIONS,
+  rangeToTsv,
+  rangeToHtml,
+  parseTsv,
+  writeSystemClipboard,
 } from './core'

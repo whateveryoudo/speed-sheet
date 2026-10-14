@@ -54,6 +54,14 @@ export type CanvasPointerOptions = {
   openEditor: (r: number, c: number, initial?: string) => void
   cellEditInitial: (r: number, c: number) => string
   onCellClick: (r: number, c: number) => void
+  onSelectingRange?: (
+    r0: number,
+    c0: number,
+    r1: number,
+    c1: number,
+    anchorR: number,
+    anchorC: number,
+  ) => void
   onCellDblClick?: (r: number, c: number) => boolean | void
   scheduleDraw: () => void
   hideErrorTip: () => void
@@ -246,6 +254,7 @@ export class CanvasPointerController {
     if (this.options.isEditing()) this.options.commitEdit()
 
     this.options.selectionDrag.start(anchor.r, anchor.c)
+    this.options.onSelectingRange?.(anchor.r, anchor.c, anchor.r, anchor.c, anchor.r, anchor.c)
     this.options.onCellClick(anchor.r, anchor.c)
     this.options.scheduleDraw()
     this.options.attachPointerListeners()

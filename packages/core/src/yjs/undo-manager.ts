@@ -5,8 +5,11 @@ import { YOriginUser } from './origins'
 /** Align with Tiptap `newGroupDelay` — merge rapid cell edits into one undo step. */
 export const DEFAULT_UNDO_CAPTURE_MS = 500
 
-export function createSheetUndoManager(ydoc: Y.Doc): Y.UndoManager {
-  const sheetsMap = ydoc.getMap('sheets')
+export function createSheetUndoManager(ydoc: Y.Doc | any): Y.UndoManager | null {
+  if (typeof window === 'undefined') {
+    return null
+  }
+  const sheetsMap = (ydoc as Y.Doc).getMap('sheets')
   return new Y.UndoManager([sheetsMap], {
     trackedOrigins: new Set([YOriginUser]),
     captureTimeout: DEFAULT_UNDO_CAPTURE_MS,

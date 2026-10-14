@@ -28,11 +28,12 @@ import { transactSystem } from '../yjs/transact'
  */
 export function importFromLuckysheet(
   oldFile: LuckysheetFile,
-  ydoc: Y.Doc,
+  ydoc: Y.Doc | any,
 ): void {
-  const ySheets = ydoc.getMap('sheets')
+  const doc = ydoc as Y.Doc
+  const ySheets = doc.getMap('sheets')
 
-  transactSystem(ydoc, () => {
+  transactSystem(doc, () => {
     for (let i = 0; i < oldFile.length; i++) {
       const oldSheet = oldFile[i]
       const sheetId = oldSheet.index?.toString() ?? i.toString()
@@ -78,8 +79,9 @@ export function importFromLuckysheet(
 /**
  * Export Y.Doc back to old Luckysheet format for compatibility.
  */
-export function exportToLuckysheet(ydoc: Y.Doc): LuckysheetFile {
-  const ySheets = ydoc.getMap('sheets')
+export function exportToLuckysheet(ydoc: Y.Doc | any): LuckysheetFile {
+  const doc = ydoc as Y.Doc
+  const ySheets = doc.getMap('sheets')
   const result: LuckysheetFile = []
 
   ySheets.forEach((value, sheetId) => {
