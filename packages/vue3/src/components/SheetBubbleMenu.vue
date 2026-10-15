@@ -31,9 +31,11 @@ const props = withDefaults(
       | 'left'
       | 'left-start'
     offset?: number
+    zIndex?: number | string
   }>(),
   {
     placement: 'bottom',
+    zIndex: 100,
   },
 )
 
@@ -64,6 +66,7 @@ const { visible, menuEl, syncVisible } = useSheetBubbleFloating({
   boundary: resolveBoundaryRef(),
   placement: props.placement,
   offset: props.offset,
+  zIndex: props.zIndex,
 })
 
 watch(
@@ -80,5 +83,6 @@ defineExpose({ menuEl, syncVisible })
 <style scoped>
 .sheet-bubble-menu-host {
   pointer-events: auto;
+  z-index: 100;
 }
 </style>

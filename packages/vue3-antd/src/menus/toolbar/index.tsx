@@ -31,6 +31,7 @@ import Freeze from './freeze.vue'
 import FindAndReplace from './findAndReplace.vue'
 import { defaultSheetToolbarKeys } from './keys'
 import type { ToolbarItemConfig } from './types'
+import { useSheetToolbar } from '../../composables/useSheetToolbar'
 
 const componentMap = {
   insert: InsertMenu,
@@ -77,6 +78,25 @@ export default defineComponent({
     },
   },
   setup(props) {
+    const { sheet } = useSheetToolbar()
+
+    // 1. 动态收集扩展通过 addToolbarItem 注册的工具栏组件
+    const extensionToolbarMap = computed(() => {
+      const map: Record<string, any> = {}
+      const exts = sheet.value?.extensions || []
+      for (const ext of exts) {
+        const item = (ext as any).getToolbarItem?.()
+        if (!item) continue
+        if (typeof item === 'object' && item !== null && 'component' in item) {
+          const key = item.key || ext.name
+          map[key] = item.component
+        } else {
+          map[ext.name] = item
+        }
+      }
+      return map
+    })
+
     const realToolbarKeys = computed(() => {
       if (props.toolbarKeys && props.excludeKeys) {
         console.warn('同时传入了 toolbarKeys 和 excludeKeys，将只生效 toolbarKeys')
@@ -88,6 +108,18 @@ export default defineComponent({
         const k = typeof key === 'string' ? key : key.key
         return k === '|' || !props.excludeKeys!.includes(k)
       })
+    })
+
+    // 2. 收集内联在 toolbarKeys 传入的自定义组件映射 { key: 'xxx', component: MyComp }
+    const inlineCustomMap = computed(() => {
+      const map: Record<string, any> = {}
+      const keys = realToolbarKeys.value
+      for (const item of keys) {
+        if (typeof item === 'object' && item !== null && 'component' in item && item.component) {
+          map[item.key] = item.component
+        }
+      }
+      return map
     })
 
     const processedToolbarKeys = computed(() => {
@@ -120,7 +152,10 @@ export default defineComponent({
       <header class="flex items-center w-full px-0.5">
         <Space size={8}>
           {processedToolbarKeys.value.map(({ key, showDivider }) => {
-            const Component = componentMap[key as keyof typeof componentMap]
+            const Component =
+              inlineCustomMap.value[key] ||
+              extensionToolbarMap.value[key] ||
+              componentMap[key as keyof typeof componentMap]
             return (
               <>
                 {Component ? <Component /> : null}

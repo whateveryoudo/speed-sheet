@@ -8,6 +8,7 @@
     :boundary="resolveBoundary"
     :placement="placement"
     :offset="offset"
+    :z-index="zIndex"
   >
     <div :class="['sheet-bubble-menu-wrapper', bubbleClassName || '']">
       <slot />
@@ -39,9 +40,11 @@ const props = withDefaults(
       | 'left'
       | 'left-start'
     offset?: number
+    zIndex?: number | string
   }>(),
   {
     placement: 'bottom',
+    zIndex: 100,
   },
 )
 
@@ -57,6 +60,8 @@ const resolveBoundary = () => {
 
 <style scoped lang="less">
 .sheet-bubble-menu-wrapper {
+  position: relative;
+  z-index: 100;
   padding: 4px 6px;
   background: var(--ant-color-bg-elevated);
   border-radius: var(--ant-border-radius);

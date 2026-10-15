@@ -15,8 +15,9 @@ import type { DataVerificationRule } from '@speed-sheet/shared'
 
 const MAX_CANVAS_PX = 4096
 
-export function readCanvasDisplaySize(canvas: HTMLCanvasElement): { w: number; h: number } {
-  const rect = canvas.getBoundingClientRect()
+export function readCanvasDisplaySize(canvas: HTMLCanvasElement, viewport?: HTMLElement): { w: number; h: number } {
+  const target = viewport ?? canvas
+  const rect = target.getBoundingClientRect()
   return {
     w: Math.max(0, Math.round(rect.width)),
     h: Math.max(0, Math.round(rect.height)),
@@ -54,7 +55,6 @@ export type CanvasDrawOptions = {
 
 export class CanvasDrawController {
   private rafId = 0
-  private resizeRafId = 0
   private drawDirty = false
   private isDrawing = false
   private resizeObs: ResizeObserver | null = null
@@ -91,11 +91,12 @@ export class CanvasDrawController {
     if (this.isDrawing) return
     const canvas = this.options.getCanvas()
     const scroll = this.options.getScrollEl()
+    const viewport = this.options.getViewportEl()
     if (!canvas || !scroll) return
 
     this.isDrawing = true
     try {
-      const { w, h } = readCanvasDisplaySize(canvas)
+      const { w, h } = readCanvasDisplaySize(canvas, viewport)
       if (w <= 0 || h <= 0) return
 
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
@@ -105,6 +106,10 @@ export class CanvasDrawController {
         canvas.width = bw
         canvas.height = bh
       }
+
+      // 显式锁定 CSS 显示尺寸，杜绝浏览器在视口改变时按百分比拉伸原有位图
+      canvas.style.width = `${w}px`
+      canvas.style.height = `${h}px`
 
       const ctx = canvas.getContext('2d')!
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
@@ -209,39 +214,41 @@ export class CanvasDrawController {
     this.scheduleDraw()
   }
 
+  private onWindowResize = (): void => {
+    this.flushDraw()
+  }
+
   attach(): void {
     document.addEventListener('visibilitychange', this.onVisibilityChange)
+    window.addEventListener('resize', this.onWindowResize)
     this.resizeObs = new ResizeObserver((entries) => {
       const entry = entries[entries.length - 1]
       if (!entry) return
-      cancelAnimationFrame(this.resizeRafId)
-      this.resizeRafId = requestAnimationFrame(() => {
-        const w = Math.round(entry.contentRect.width)
-        const h = Math.round(entry.contentRect.height)
-        if (w <= 0 || h <= 0) return
-        if (w === this.lastViewportW && h === this.lastViewportH) return
-        this.lastViewportW = w
-        this.lastViewportH = h
-        this.scheduleDraw()
-      })
+      const w = Math.round(entry.contentRect.width)
+      const h = Math.round(entry.contentRect.height)
+      if (w <= 0 || h <= 0) return
+      if (w === this.lastViewportW && h === this.lastViewportH) return
+      this.lastViewportW = w
+      this.lastViewportH = h
+      this.flushDraw()
     })
     const vp = this.options.getViewportEl()
     const canvas = this.options.getCanvas()
     if (vp) {
       this.resizeObs.observe(vp)
       if (canvas) {
-        const { w, h } = readCanvasDisplaySize(canvas)
+        const { w, h } = readCanvasDisplaySize(canvas, vp)
         this.lastViewportW = w
         this.lastViewportH = h
       }
     }
-    this.scheduleDraw()
+    this.flushDraw()
   }
 
   detach(): void {
     document.removeEventListener('visibilitychange', this.onVisibilityChange)
+    window.removeEventListener('resize', this.onWindowResize)
     this.resizeObs?.disconnect()
     cancelAnimationFrame(this.rafId)
-    cancelAnimationFrame(this.resizeRafId)
   }
 }

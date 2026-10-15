@@ -22,7 +22,7 @@ import { useSheetToolbar } from '../../composables/useSheetToolbar'
 
 const { sheet, editableCpt, activeCell, forEachSelectedCell } = useSheetToolbar()
 
-const currentFontSize = computed(() => activeCell.value?.fs ?? 11)
+const currentFontSize = computed(() => activeCell.value?.fs ?? 12)
 
 const fontSizeOptions = [
   8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 36,

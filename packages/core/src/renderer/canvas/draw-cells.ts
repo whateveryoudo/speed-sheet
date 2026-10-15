@@ -1,4 +1,4 @@
-import { CELL_TEXT_PAD_X } from './constants'
+import { CELL_TEXT_PAD_X, DEFAULT_CELL_FONT_SIZE } from './constants'
 import {
   cellDisplayText,
   computeOverflowEndCol,
@@ -78,7 +78,7 @@ export function drawCells(env: RenderEnv): void {
     const cellFc = cfStyle?.fc ?? data.fc
     const cellBl = cfStyle?.bl ?? data.bl
     const cellIt = cfStyle?.it ?? data.it
-    let font = `${data.fs ?? 11}px -apple-system, BlinkMacSystemFont, sans-serif`
+    let font = `${data.fs ?? DEFAULT_CELL_FONT_SIZE}px -apple-system, BlinkMacSystemFont, sans-serif`
     if (cellBl) font = `bold ${font}`
     if (cellIt) font = `italic ${font}`
     ctx.font = font
@@ -174,7 +174,7 @@ export function drawCells(env: RenderEnv): void {
       ht: data.ht,
       vt: data.vt,
       wrap: data.tb,
-      fontSize: data.fs ?? 11,
+      fontSize: data.fs ?? DEFAULT_CELL_FONT_SIZE,
     })
 
     if (data.ef) {

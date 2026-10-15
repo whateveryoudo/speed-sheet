@@ -402,9 +402,8 @@ defineExpose({
 
 .sheet-canvas {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  top: 0;
+  left: 0;
   display: block;
   cursor: cell;
   z-index: 1;
@@ -543,7 +542,7 @@ defineExpose({
   z-index: 10;
   border: 2px solid #1a73e8;
   margin: 0;
-  font-size: 11px;
+  font-size: 12px;
   line-height: calc(1em + 2px);
   font-family: ui-monospace, SFMono-Regular, Menlo, -apple-system, sans-serif;
   background: #fff;

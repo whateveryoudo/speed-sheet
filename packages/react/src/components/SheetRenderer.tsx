@@ -131,7 +131,7 @@ export function SheetRenderer({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', minHeight: 0, fontSize: 11 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', minHeight: 0, fontSize: 12 }}>
       <div style={{ height: 28, display: 'flex', alignItems: 'center', borderBottom: '1px solid #d0d0d0', padding: '0 6px', gap: 6, flexShrink: 0 }}>
         <span style={{ fontFamily: 'monospace', fontWeight: 600, padding: '2px 10px', border: '1px solid #e0e0e0', borderRadius: 3, minWidth: 52, textAlign: 'center' }}>{cellRef}</span>
         <span style={{ fontStyle: 'italic', fontWeight: 700, color: '#999' }}>fx</span>

@@ -41,7 +41,11 @@
           <!-- 图表元素（原子 Setter） -->
           <div class="drawer-section">
             <div class="section-title">图表元素</div>
-            <ElementsGridSetter :config="chart.config" @change="updateConfig" />
+            <ElementsGridSetter
+              :config="chart.config"
+              @change="updateConfig"
+              @jump-style="handleJumpStyle"
+            />
           </div>
 
           <!-- 图表颜色（原子 Setter） -->
@@ -84,6 +88,30 @@
               </a-input>
             </div>
 
+            <!-- 选区颜色图例说明（对标 Google Sheets / 飞书，指引表格中的彩色边框） -->
+            <div class="range-legend-bar">
+              <span
+                class="legend-item"
+                :class="{ 'is-disabled': chart.range.hasHeaderCol === false }"
+                title="分类标签（首列）在表格中对应的橙色边框"
+              >
+                <span class="legend-dot dot-cat" />
+                <span class="legend-text">分类</span>
+              </span>
+              <span
+                class="legend-item"
+                :class="{ 'is-disabled': chart.range.hasHeaderRow === false }"
+                title="系列名（首行）在表格中对应的绿色边框"
+              >
+                <span class="legend-dot dot-series" />
+                <span class="legend-text">系列名</span>
+              </span>
+              <span class="legend-item" title="数值数据在表格中对应的蓝色边框">
+                <span class="legend-dot dot-data" />
+                <span class="legend-text">数据</span>
+              </span>
+            </div>
+
             <!-- 切换行列快捷按钮与表头标签选项 -->
             <div class="mt-2.5 flex items-center justify-between">
               <a-button
@@ -123,9 +151,9 @@
         <!-- Tab 2: 元素样式（Schema 声明式驱动，0 模板 v-if 污染） -->
         <a-tab-pane key="style" tab="元素样式">
           <a-collapse
+            v-model:activeKey="activeCollapseKeys"
             :bordered="false"
             class="style-collapse"
-            :default-active-key="['title', 'axis', 'legend']"
           >
             <a-collapse-panel
               v-for="section in visibleStyleSections"
@@ -199,6 +227,14 @@ const {
 const { sheet, revision } = useSheetToolbar()
 
 const activeTab = ref<'general' | 'style'>('general')
+const activeCollapseKeys = ref<string[]>(['title', 'axis', 'legend'])
+
+function handleJumpStyle(sectionKey: string) {
+  activeTab.value = 'style'
+  if (!activeCollapseKeys.value.includes(sectionKey)) {
+    activeCollapseKeys.value.push(sectionKey)
+  }
+}
 
 const chart = computed<SheetChartItem | null>(() => {
   void revision.value
@@ -468,6 +504,59 @@ function removeChart() {
 .switch-btn {
   font-size: 12px;
   border-radius: 4px;
+}
+
+.range-legend-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+  padding: 4px 8px;
+  background: var(--ant-color-fill-quaternary, #f8f9fa);
+  border-radius: 4px;
+  border: 1px solid var(--ant-color-border-secondary, #f0f0f0);
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--ant-color-text-secondary, #595959);
+  transition: opacity 0.2s;
+  user-select: none;
+}
+
+.legend-item.is-disabled {
+  opacity: 0.35;
+  text-decoration: line-through;
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.legend-dot.dot-cat {
+  background-color: var(--speed-chart-category-border, #fa8c16);
+  box-shadow: 0 0 0 1px rgba(250, 140, 22, 0.2);
+}
+
+.legend-dot.dot-series {
+  background-color: var(--speed-chart-series-border, #52c41a);
+  box-shadow: 0 0 0 1px rgba(82, 196, 26, 0.2);
+}
+
+.legend-dot.dot-data {
+  background-color: var(--speed-chart-data-border, #1677ff);
+  box-shadow: 0 0 0 1px rgba(22, 119, 255, 0.2);
+}
+
+.legend-text {
+  line-height: 1;
 }
 
 .drawer-sub-section {

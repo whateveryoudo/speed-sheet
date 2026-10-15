@@ -34,6 +34,8 @@ export interface ExtensionConfig<S = any> {
   addNodeView?: (this: Extension<S>, ctx: ExtensionCommandContext) => unknown
   /** Floating bubble menu UI (Vue/React). Resolved at init; opaque to core. */
   addBubbleMenu?: (this: Extension<S>, ctx: ExtensionCommandContext) => unknown
+  /** Toolbar item UI (Vue/React component). Resolved at init; opaque to core. */
+  addToolbarItem?: (this: Extension<S>, ctx: ExtensionCommandContext) => unknown
   /** Click on sheet viewport background (e.g. clear floating image selection). */
   onViewportMouseDown?: (this: Extension<S>, e: MouseEvent) => void
 
@@ -52,6 +54,8 @@ export class Extension<S = any> {
   public nodeView: unknown = null
   /** Resolved bubble menu component from addBubbleMenu (framework-specific). */
   public bubbleMenu: unknown = null
+  /** Resolved toolbar item component from addToolbarItem (framework-specific). */
+  public toolbarItem: unknown = null
 
   private config: ExtensionConfig<S>
   private parentExtension: Extension | null = null
@@ -81,6 +85,16 @@ export class Extension<S = any> {
     return child
   }
 
+  configure(options: Record<string, any>): Extension<S> {
+    const existingOptions = this.config.addOptions ? this.config.addOptions() : {}
+    return this.extend({
+      addOptions: () => ({
+        ...existingOptions,
+        ...options,
+      }),
+    })
+  }
+
   init(sheet: Sheet): void {
     if (this.config.addOptions) {
       this.options = this.config.addOptions()
@@ -97,6 +111,9 @@ export class Extension<S = any> {
     if (this.config.addBubbleMenu) {
       this.bubbleMenu = this.config.addBubbleMenu.call(this, { sheet })
     }
+    if (this.config.addToolbarItem) {
+      this.toolbarItem = this.config.addToolbarItem.call(this, { sheet })
+    }
   }
 
   getNodeView(): unknown {
@@ -105,6 +122,10 @@ export class Extension<S = any> {
 
   getBubbleMenu(): unknown {
     return this.bubbleMenu
+  }
+
+  getToolbarItem(): unknown {
+    return this.toolbarItem
   }
 
   handleViewportMouseDown(e: MouseEvent): void {

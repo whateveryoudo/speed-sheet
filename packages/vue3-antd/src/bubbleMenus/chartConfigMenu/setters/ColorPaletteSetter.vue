@@ -63,7 +63,7 @@ function onSelectPalette(id: string) {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 2px 0;
+  padding: 1px 0;
 }
 
 .palette-name {

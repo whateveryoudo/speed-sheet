@@ -10,6 +10,9 @@ export { sheetI18n, normalizeSheetLocale, setSheetLocale } from './i18n'
 export type { SheetLocale, SheetT } from './i18n'
 export { useSheetLocale } from './composables/useSheetLocale'
 export { useSpeedSheetProvider } from './composables/useSpeedSheetProvider'
+export { useSheetToolbar } from './composables/useSheetToolbar'
+export { SHEET_TOOLBAR_KEY } from './composables/useSheetToolbarContext'
+export type { SheetToolbarContext } from './composables/useSheetToolbarContext'
 export { useSpeedSheet } from './composables/useSpeedSheet'
 export type { SpeedSheetContext } from './composables/useSpeedSheet'
 export type { SpeedSheetProviderOptions } from './composables/useSpeedSheetProvider'
@@ -19,6 +22,12 @@ export type { ShortcutKey } from './helpers/registKeyMap'
 
 export { default as SpeedSheet } from './SpeedSheet.vue'
 export { SheetImage, useSheetImageInsert } from './extensions/image'
+export { SheetChart } from './extensions/chart'
+export {
+  Extension,
+  VueSheetOverlayRenderer,
+  VueSheetBubbleRenderer,
+} from '@speed-sheet/vue3'
 export { BubbleContainer } from './bubbleMenus'
 export {
   mergeSpeedSheetExtensions,

@@ -1,6 +1,6 @@
 import type { CellAttributes } from '@speed-sheet/shared'
 import type { GridLayout } from '../grid-layout'
-import { CELL_EDITOR_OUTSET, CELL_TEXT_PAD_X, CELL_TEXT_PAD_Y } from './constants'
+import { CELL_EDITOR_OUTSET, CELL_TEXT_PAD_X, CELL_TEXT_PAD_Y, DEFAULT_CELL_FONT_SIZE } from './constants'
 import type { CellEntry, CellMap, DrawCellTextOptions } from './types'
 
 export function cellMapKey(r: number, c: number): string {
@@ -28,7 +28,7 @@ export function buildCellMap(cells: CellEntry[]): CellMap {
 }
 
 export function cellFontString(data: CellAttributes): string {
-  let font = `${data.fs ?? 11}px -apple-system, BlinkMacSystemFont, sans-serif`
+  let font = `${data.fs ?? DEFAULT_CELL_FONT_SIZE}px -apple-system, BlinkMacSystemFont, sans-serif`
   if (data.bl) font = `bold ${font}`
   if (data.it) font = `italic ${font}`
   return font
@@ -124,7 +124,7 @@ export function computeEditorWidth(
 
   measureCtx.font = data
     ? cellFontString(data)
-    : '11px -apple-system, BlinkMacSystemFont, sans-serif'
+    : `${DEFAULT_CELL_FONT_SIZE}px -apple-system, BlinkMacSystemFont, sans-serif`
   const textW = measureCtx.measureText(text).width + CELL_TEXT_PAD_X * 2 + o * 2
   const maxW = Math.max(minW, layout.viewportW - editorLeft - 4)
   return Math.min(maxW, Math.max(minW, spanW, textW))
@@ -204,7 +204,7 @@ export function drawCellText(
   const isWrap = options?.wrap === 2
   const ht = options?.ht ?? 1 // 0: center, 1: left, 2: right
   const vt = options?.vt ?? 0 // 0: middle, 1: top, 2: bottom
-  const fs = options?.fontSize ?? 11
+  const fs = options?.fontSize ?? DEFAULT_CELL_FONT_SIZE
   const lineHeight = Math.round(fs * 1.3)
 
   const clipX = cx + CELL_TEXT_PAD_X

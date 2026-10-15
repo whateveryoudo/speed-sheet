@@ -2,42 +2,22 @@
   <s-keymap-tip :title="disableMenu ? null : t('toolbar.border')">
     <div class="flex items-center">
       <!-- Quick Border Button (Apply All Border with current color and style) -->
-      <a-button
-        type="text"
-        class="shadow-btn-wrapper middle -mt-1px"
-        :disabled="disableMenu"
-        @click="applyBorder('all')"
-      >
-        <span class="relative flex flex-col text-16px items-center justify-center">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-            <path d="M3 3h18v18H3V3zm2 2v6h6V5H5zm8 0v6h6V5h-6zm-8 8v6h6v-6H5zm8 0v6h6v-6h-6z" />
-          </svg>
-          <span
-            class="absolute bottom-[-1px] h-2px w-110% left-[-5%]"
-            :style="{ backgroundColor: (disableMenu ? 'rgba(0,0,0,0.25)' : curColor || '#000000') as string }"
-          />
-        </span>
+      <a-button type="text" class="shadow-btn-wrapper middle -mt-1px" :disabled="disableMenu"
+        @click="applyBorder('all')">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+          <path d="M3 3h18v18H3V3zm2 2v6h6V5H5zm8 0v6h6V5h-6zm-8 8v6h6v-6H5zm8 0v6h6v-6h-6z" />
+        </svg>
       </a-button>
 
       <!-- Dropdown Popover for Border Types, Color, Style -->
-      <a-popover
-        v-if="!disableMenu"
-        v-model:open="popoverOpen"
-        trigger="click"
-        placement="bottomLeft"
-        overlay-class-name="sheet-border-popover-wrapper"
-      >
+      <a-popover v-if="!disableMenu" v-model:open="popoverOpen" trigger="click" placement="bottomLeft"
+        overlay-class-name="sheet-border-popover-wrapper">
         <template #content>
           <div class="sheet-border-panel">
             <!-- 10 Border Types Grid -->
             <div class="border-types-grid">
-              <div
-                v-for="item in borderTypes"
-                :key="item.type"
-                class="border-type-btn"
-                :title="t(`toolbar.${item.labelKey}`)"
-                @click="onSelectBorderType(item.type)"
-              >
+              <div v-for="item in borderTypes" :key="item.type" class="border-type-btn"
+                :title="t(`toolbar.${item.labelKey}`)" @click="onSelectBorderType(item.type)">
                 <component :is="item.icon" />
               </div>
             </div>
@@ -45,17 +25,9 @@
             <div class="border-divider" />
 
             <!-- Line Color Option -->
-            <a-popover
-              trigger="click"
-              placement="rightTop"
-              overlay-class-name="color-board-popover-wrapper"
-            >
+            <a-popover trigger="click" placement="rightTop" overlay-class-name="color-board-popover-wrapper">
               <template #content>
-                <ColorBoard
-                  :cur-color="curColor"
-                  show-default
-                  @pick="onPickColor"
-                />
+                <ColorBoard :cur-color="curColor" show-default @pick="onPickColor" />
               </template>
               <div class="border-setting-row">
                 <span class="row-label">{{ t('toolbar.borderColor') }}</span>
@@ -67,20 +39,11 @@
             </a-popover>
 
             <!-- Line Style Option -->
-            <a-popover
-              trigger="click"
-              placement="rightTop"
-              overlay-class-name="border-style-popover-wrapper"
-            >
+            <a-popover trigger="click" placement="rightTop" overlay-class-name="border-style-popover-wrapper">
               <template #content>
                 <div class="border-styles-list">
-                  <div
-                    v-for="s in styleOptions"
-                    :key="s.style"
-                    class="border-style-item"
-                    :class="{ 'is-selected': curStyle === s.style }"
-                    @click="onPickStyle(s.style)"
-                  >
+                  <div v-for="s in styleOptions" :key="s.style" class="border-style-item"
+                    :class="{ 'is-selected': curStyle === s.style }" @click="onPickStyle(s.style)">
                     <span class="style-line" :class="s.lineClass" />
                     <check-outlined v-if="curStyle === s.style" class="check-icon" />
                   </div>
@@ -97,22 +60,13 @@
           </div>
         </template>
 
-        <a-button
-          type="text"
-          class="shadow-btn-wrapper small dropdown-trigger"
-          :disabled="disableMenu"
-          @mousedown.prevent
-        >
+        <a-button type="text" class="shadow-btn-wrapper small dropdown-trigger" :disabled="disableMenu"
+          @mousedown.prevent>
           <caret-down-outlined />
         </a-button>
       </a-popover>
 
-      <a-button
-        v-else
-        type="text"
-        class="shadow-btn-wrapper small dropdown-trigger"
-        disabled
-      >
+      <a-button v-else type="text" class="shadow-btn-wrapper small dropdown-trigger" disabled>
         <caret-down-outlined />
       </a-button>
     </div>
@@ -123,6 +77,14 @@
 import { ref, computed, h } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
+  BorderBottomOutlined,
+  BorderHorizontalOutlined,
+  BorderInnerOutlined,
+  BorderLeftOutlined,
+  BorderOuterOutlined,
+  BorderRightOutlined,
+  BorderTopOutlined,
+  BorderVerticleOutlined,
   CaretDownOutlined,
   RightOutlined,
   CheckOutlined,
@@ -153,70 +115,88 @@ const styleOptions = [
   { style: 4, lineClass: 'line-dashed', labelKey: 'borderDashed' },
 ]
 
-function renderSvgIcon(path: string) {
+function renderAntdSvg(path: string) {
   return () =>
     h(
-      'svg',
-      {
-        viewBox: '0 0 24 24',
-        width: 18,
-        height: 18,
-        fill: 'currentColor',
-      },
-      [h('path', { d: path })],
+      'span',
+      { class: 'anticon' },
+      [
+        h(
+          'svg',
+          {
+            viewBox: '64 64 896 896',
+            width: '1em',
+            height: '1em',
+            fill: 'currentColor',
+            focusable: 'false',
+            'aria-hidden': 'true',
+          },
+          [h('path', { d: path })],
+        ),
+      ],
     )
 }
+
+// 与 Ant Design Border 系列同规格田字格全边框（外实线框 + 内十字实线）
+const AllBorderIcon = renderAntdSvg(
+  'M880 112H144c-17.7 0-32 14.3-32 32v736c0 17.7 14.3 32 32 32h736c17.7 0 32-14.3 32-32V144c0-17.7-14.3-32-32-32zm-40 728H184V184h656v656zM872 476H548V144h-72v332H152c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h324v332h72V548h324c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8z',
+)
+
+// 与 Ant Design Border 点阵同规格的纯点阵无边框
+const NoneBorderIcon = renderAntdSvg(
+  'M650 216h56c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm56 592h-56c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h56c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm-332 0h-56c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h56c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm-56-592h56c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-166 0h56c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm56 592h-56c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h56c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm-56-426h56c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm56 260h-56c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h56c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM484 366h56c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8M302 548h56c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm364 0h56c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-182 0h56c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm0 182h56c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8z',
+)
 
 const borderTypes = [
   {
     type: 'all' as BorderType,
     labelKey: 'borderAll',
-    icon: renderSvgIcon('M3 3h18v18H3V3zm2 2v6h6V5H5zm8 0v6h6V5h-6zm-8 8v6h6v-6H5zm8 0v6h6v-6h-6z'),
+    icon: AllBorderIcon,
   },
   {
     type: 'inside' as BorderType,
     labelKey: 'borderInside',
-    icon: renderSvgIcon('M11 3h2v8h8v2h-8v8h-2v-8H3v-2h8V3z'),
+    icon: BorderInnerOutlined,
   },
   {
     type: 'horizontal' as BorderType,
     labelKey: 'borderHorizontal',
-    icon: renderSvgIcon('M3 11h18v2H3v-2z'),
+    icon: BorderHorizontalOutlined,
   },
   {
     type: 'vertical' as BorderType,
     labelKey: 'borderVertical',
-    icon: renderSvgIcon('M11 3h2v18h-2V3z'),
+    icon: BorderVerticleOutlined,
   },
   {
     type: 'outside' as BorderType,
     labelKey: 'borderOutside',
-    icon: renderSvgIcon('M3 3h18v18H3V3zm2 2v14h14V5H5z'),
+    icon: BorderOuterOutlined,
   },
   {
     type: 'left' as BorderType,
     labelKey: 'borderLeft',
-    icon: renderSvgIcon('M3 3h2v18H3V3z'),
+    icon: BorderLeftOutlined,
   },
   {
     type: 'top' as BorderType,
     labelKey: 'borderTop',
-    icon: renderSvgIcon('M3 3h18v2H3V3z'),
+    icon: BorderTopOutlined,
   },
   {
     type: 'right' as BorderType,
     labelKey: 'borderRight',
-    icon: renderSvgIcon('M19 3h2v18h-2V3z'),
+    icon: BorderRightOutlined,
   },
   {
     type: 'bottom' as BorderType,
     labelKey: 'borderBottom',
-    icon: renderSvgIcon('M3 19h18v2H3v-2z'),
+    icon: BorderBottomOutlined,
   },
   {
     type: 'none' as BorderType,
     labelKey: 'borderNone',
-    icon: renderSvgIcon('M4 4h2v2H4V4zm4 0h2v2H8V4zm4 0h2v2h-2V4zm4 0h2v2h-2V4zm4 0h2v2h-2V4zM4 20h2v2H4v-2zm4 0h2v2H8v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2zM4 8h2v2H4V8zm0 4h2v2H4v-2zm0 4h2v2H4v-2zm16-8h2v2h-2V8zm0 4h2v2h-2v-2zm0 4h2v2h-2v-2z'),
+    icon: NoneBorderIcon,
   },
 ]
 

@@ -49,6 +49,8 @@ export function useSheetBubbleFloating(options: {
     | 'left-start'
   /** floating-ui offset，默认 8；贴单元格时可设 2 */
   offset?: number
+  /** 自定义 z-index，默认 100（确保高于单元格图表与选区高亮） */
+  zIndex?: number | string
 }) {
   const visible = ref(false)
   const menuEl = ref<HTMLElement | null>(null)
@@ -56,6 +58,7 @@ export function useSheetBubbleFloating(options: {
 
   const placement = options.placement ?? 'bottom'
   const offsetPx = options.offset ?? 8
+  const zIndexVal = String(options.zIndex ?? 100)
 
   async function updatePosition(): Promise<void> {
     const el = menuEl.value
@@ -73,7 +76,7 @@ export function useSheetBubbleFloating(options: {
       position: 'absolute',
       left: `${x}px`,
       top: `${y}px`,
-      zIndex: '6',
+      zIndex: zIndexVal,
     })
   }
 

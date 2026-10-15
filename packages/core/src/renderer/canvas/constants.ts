@@ -10,3 +10,6 @@ export const DROPDOWN_ARROW_W = 14
 export const CELL_SELECTION_INSET = 1
 /** 内联 editor 相对单元格的外扩（盖住网格线 / 选区描边，避免 canvas 侧特殊处理） */
 export const CELL_EDITOR_OUTSET = 2
+
+/** 表格默认字号（点阵/像素），默认 12 号 */
+export const DEFAULT_CELL_FONT_SIZE = 12
