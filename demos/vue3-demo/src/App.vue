@@ -59,7 +59,7 @@ import type { WorkbookSnapshot } from '@speed-sheet/shared'
 import { WatermarkExtension } from './plugins/watermark'
 
 const speedSheetRef = ref<InstanceType<typeof SpeedSheet> | null>(null)
-const toolbarMode = ref<'custom' | 'exclude' | 'default'>('custom')
+const toolbarMode = ref<'custom' | 'exclude' | 'default'>('default')
 
 // 1. 插件注册注入：通过 .configure() 传入个性化配置
 const extensions = [
@@ -75,6 +75,7 @@ const customToolbarKeys = [
   'undo', 'redo', '|',
   'bold', 'italic', 'textColor', 'backgroundColor', '|',
   'fontSize', 'border', 'align', '|',
+  'formula', '|',
   'watermark', '|', // <-- 扩展自带的工具栏按钮直接声明使用！
   'chart',
 ]

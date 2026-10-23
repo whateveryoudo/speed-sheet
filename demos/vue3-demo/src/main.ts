@@ -4,7 +4,5 @@ import SpeedSheetUi from '@speed-sheet/vue3-antd'
 import 'uno.css'
 
 const app = createApp(App)
-app.use(SpeedSheetUi, {
-  iconfontUrl: [],
-})
+app.use(SpeedSheetUi)
 app.mount('#app')

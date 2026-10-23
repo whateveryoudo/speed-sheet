@@ -33,17 +33,9 @@ export function installSpeedSheetUi(
   }
   provideSpeedSheetGlobalConfig((key, value) => app.provide(key, value))
 
-  if (isSpeedComponentsInstalled(app)) {
-    ensureSpeedComponents(app)
-    return
-  }
-
   const fromHost = options?.iconfontUrl
-  const urls = fromHost
-    ? Array.isArray(fromHost)
-      ? fromHost
-      : [fromHost]
-    : [baseConfig.iconfontUrl]
+  const hostUrls = Array.isArray(fromHost) ? fromHost : fromHost ? [fromHost] : []
+  const urls = Array.from(new Set([baseConfig.iconfontUrl, ...hostUrls]))
   ensureSpeedComponents(app, { iconfontUrl: urls })
 }
 
