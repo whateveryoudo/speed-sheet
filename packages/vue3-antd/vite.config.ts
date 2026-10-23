@@ -1,11 +1,26 @@
 import { defineConfig } from "vite";
 import { resolve } from "path";
+import fs from "fs";
 import vue from "@vitejs/plugin-vue";
 import vueJsx from "@vitejs/plugin-vue-jsx";
 import UnoCSS from "@unocss/vite";
 import Components from "unplugin-vue-components/vite";
 import { AntDesignVueResolver } from "unplugin-vue-components/resolvers";
 import { injectLibCss } from "../../build/inject-lib-css";
+
+const localScSrc = resolve(__dirname, "../../../speed-components/src");
+const localScCss = resolve(__dirname, "../../../speed-components/dist/style.css");
+const useLocalSc = fs.existsSync(localScSrc) && fs.existsSync(localScCss) && !process.env.CI;
+
+const scAliases = useLocalSc
+  ? {
+      "@sc": localScSrc,
+      "speed-components-ui/dist/style.css": localScCss,
+      "speed-components-ui/components": resolve(__dirname, "../../../speed-components/src/components"),
+      "speed-components-ui/hooks": resolve(__dirname, "../../../speed-components/src/hooks"),
+      "speed-components-ui": localScSrc,
+    }
+  : {};
 
 export default defineConfig({
   plugins: [vue(), vueJsx(), UnoCSS(), injectLibCss(),
@@ -51,11 +66,7 @@ export default defineConfig({
   resolve: {
     dedupe: ["vue"],
     alias: {
-      "@sc": resolve(__dirname, "../../../speed-components/src"),
-      "speed-components-ui/dist/style.css": resolve(__dirname, "../../../speed-components/dist/style.css"),
-      "speed-components-ui/components": resolve(__dirname, "../../../speed-components/src/components"),
-      "speed-components-ui/hooks": resolve(__dirname, "../../../speed-components/src/hooks"),
-      "speed-components-ui": resolve(__dirname, "../../../speed-components/src"),
+      ...scAliases,
       "@speed-sheet/vue3/style.css": resolve(__dirname, "../vue3/dist/style.css"),
     },
 
