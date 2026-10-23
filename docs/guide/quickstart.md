@@ -6,13 +6,15 @@
 
 ## 1. 安装依赖
 
-```bash
-# 安装开箱即用 UI 组件包
-pnpm add @speed-sheet/vue3-antd
+常规使用只需安装组件包与基础依赖：
 
-# 安装核心依赖（若宿主尚未安装）
-pnpm add @speed-sheet/core @speed-sheet/shared vue ant-design-vue
+```bash
+pnpm add @speed-sheet/vue3-antd vue ant-design-vue
 ```
+
+> [!TIP] 是否需要单独安装 `@speed-sheet/core` 或 `@speed-sheet/shared`？
+> **不需要。** `@speed-sheet/vue3-antd` 的依赖已内置包含核心引擎与共享类型，包管理器（pnpm / npm / yarn）会自动安装它们。
+> 只有当你的业务工程需要显式使用底层纯 TypeScript 声明或工具函数时，才建议按需引入。
 
 ---
 

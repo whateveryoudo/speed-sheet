@@ -47,7 +47,6 @@ declare module 'vue' {
     NumberRangeSetter: typeof import('./components/setters/NumberRangeSetter.vue')['default']
     ProtectionManageModal: typeof import('./components/ProtectionManageModal.vue')['default']
     ResizeHandles: typeof import('./components/ResizeHandles.vue')['default']
-    SearchOutlined: typeof import('@ant-design/icons-vue')['SearchOutlined']
     SelectSetter: typeof import('./components/setters/SelectSetter.vue')['default']
     SheetFormulaBar: typeof import('./components/SheetFormulaBar.vue')['default']
     SheetTabBar: typeof import('./components/SheetTabBar.vue')['default']

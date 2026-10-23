@@ -9,7 +9,6 @@ export default defineConfig({
   themeConfig: {
     nav: [
       { text: '指南', link: '/guide/' },
-      { text: 'Luckysheet 迁移', link: '/guide/migration' },
       { text: '配置与 API', link: '/config/props' },
       { text: '协同指南', link: '/collaboration/' },
       { text: '扩展插件', link: '/extensions/' },
@@ -22,7 +21,6 @@ export default defineConfig({
           items: [
             { text: '基本介绍', link: '/guide/' },
             { text: '快速开始', link: '/guide/quickstart' },
-            { text: 'Luckysheet 迁移指南', link: '/guide/migration' },
           ],
         },
       ],
@@ -31,6 +29,8 @@ export default defineConfig({
           text: '核心配置与 API',
           items: [
             { text: '组件 Props 全景', link: '/config/props' },
+            { text: '组件 Ref 与 API 实例', link: '/config/api-ref' },
+            { text: '单元格数据结构', link: '/config/cell-data' },
             { text: '工具栏定制 (Toolbar)', link: '/config/toolbar' },
             { text: '插入菜单定制 (Insert)', link: '/config/insert' },
             { text: '右键菜单定制 (Context)', link: '/config/context-menu' },
