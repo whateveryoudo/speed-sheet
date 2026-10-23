@@ -11,8 +11,12 @@
     "clean": "turbo run clean",
     "clean:node_modules": "find . -name node_modules -type d -prune -exec rm -rf {} +",
     "typecheck": "turbo run typecheck",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
     "demo": "pnpm --filter @speed-sheet/demo dev --host 0.0.0.0",
     "build:demo": "pnpm build && pnpm --filter @speed-sheet/demo build",
+    "build:deploy": "pnpm build && pnpm docs:build && pnpm --filter @speed-sheet/demo build && node scripts/prepare-deploy.js",
     "changeset:check": "bash ./changed-packages-since-release.sh",
     "changeset": "bash ./changed-packages-since-release.sh && changeset",
     "version-packages": "changeset version",
@@ -28,7 +32,9 @@
     "typescript": "^5.6.0",
     "vitest": "^2.1.0",
     "vue": "^3.5.0",
-    "yjs": "^13.6.0"
+    "yjs": "^13.6.0",
+    "vitepress": "^1.6.4",
+    "fs-extra": "^11.3.0"
   },
   "engines": {
     "node": ">=18"
