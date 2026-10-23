@@ -1,23 +1,23 @@
 # Speed Sheet
 
-> **现代版高性能在线电子表格引擎**：深度兼容 Luckysheet 数据结构 + Yjs 原生多人协同 + TipTap 风格可插拔扩展体系。提供 Vue3 / React 无头适配层，以及基于 Ant Design Vue 的开箱即用 UI 组件库。
+> **现代版轻量在线电子表格引擎**：摒弃传统全量二维矩阵包袱，基于平铺稀疏结构 + Yjs CRDT + 自研 Canvas 视口调度。上层提供 Luckysheet 格式透明中转适配，搭配基于 Ant Design Vue 的开箱即用 UI 组件。
 
 <p align="center">
-  <a href="https://whateveryoudo.github.io/speed-sheet/" target="_blank">
+  <a href="https://whateveryoudo.github.io/speed-sheet/demo/" target="_blank">
     <img src="https://img.shields.io/badge/Live_Demo-在线体验试玩-blue?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Live Demo" />
   </a>
-  <a href="http://speeddoc.cn/" target="_blank">
-    <img src="https://img.shields.io/badge/SpeedDoc-知识库协同实战-green?style=for-the-badge" alt="SpeedDoc" />
+  <a href="https://whateveryoudo.github.io/speed-sheet/docs/" target="_blank">
+    <img src="https://img.shields.io/badge/Docs-官方完整文档-purple?style=for-the-badge" alt="Docs" />
   </a>
 </p>
 
 ---
 
-## 🌟 核心杀手锏
+## 🌟 核心设计理念
 
-### 1. 零迁移成本：原生兼容 Luckysheet 数据结构
-国内绝大多数老项目都采用过 Luckysheet，但受制于其老旧的架构和历史遗留包袱。  
-**Speed Sheet 支持直接接收 Luckysheet 原始数据格式**，无需清洗或重构已有业务数据，即装即平替！
+### 1. 摒弃全量二维数组，拥抱平铺现代架构
+传统开源表格重度依赖庞大的二维密集矩阵（如 `data[r][c]`）以及历史遗留的全局单例状态，容易引起内存碎片与状态失控。  
+**Speed Sheet 底层彻底采用平铺化结构**，天然契合分布式 CRDT 协同事务与高频操作；**同时在上层提供透明的数据中转层**，业务方无需重构已有数据模型，直接传入老格式即可平滑运行！
 
 ### 2. 统一组件入口：协同与非协同仅一参之差
 无需按业务场景安装繁琐的多包组合，UI 侧统一使用单一入口组件 `<SpeedSheet />`：
@@ -31,13 +31,13 @@
 
 ### 安装
 
-```bash
-# 安装开箱即用 UI 包
-pnpm add @speed-sheet/vue3-antd
+宿主工程只需安装组件包与基础依赖即可：
 
-# 安装核心依赖
-pnpm add @speed-sheet/core @speed-sheet/shared vue ant-design-vue
+```bash
+pnpm add @speed-sheet/vue3-antd vue ant-design-vue
 ```
+
+> `@speed-sheet/core` 和 `@speed-sheet/shared` 已由组件包内置依赖，宿主无需单独安装。
 
 ---
 
