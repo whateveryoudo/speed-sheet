@@ -1,21 +1,120 @@
 # Speed Sheet
 
-> **备注**：此项目大部分代码由 **Vibe Coding**（AI 辅助编程）完成，仍在快速迭代中。
+> **现代版高性能在线电子表格引擎**：深度兼容 Luckysheet 数据结构 + Yjs 原生多人协同 + TipTap 风格可插拔扩展体系。提供 Vue3 / React 无头适配层，以及基于 Ant Design Vue 的开箱即用 UI 组件库。
 
-Headless 在线表格引擎：Luckysheet 兼容数据模型 + Yjs 协同 + TipTap 风格扩展体系。提供 Vue3 / React 无头适配层，以及基于 Ant Design Vue 的开箱即用 UI 包。
+<p align="center">
+  <a href="https://whateveryoudo.github.io/speed-sheet/" target="_blank">
+    <img src="https://img.shields.io/badge/Live_Demo-在线体验试玩-blue?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Live Demo" />
+  </a>
+  <a href="http://speeddoc.cn/" target="_blank">
+    <img src="https://img.shields.io/badge/SpeedDoc-知识库协同实战-green?style=for-the-badge" alt="SpeedDoc" />
+  </a>
+</p>
 
-## 特性
+---
 
-- 🧩 **Headless Core** — 表格逻辑、命令、Canvas 渲染与 UI 完全解耦
-- 🔗 **Yjs 原生协同** — 所有写入走 `Y.transact`，天然支持多人实时编辑
-- 🧱 **TipTap 风格 Extension** — 命令链、快捷键、插件化扩展
-- 📦 **Luckysheet 互操作** — 支持旧格式导入与 `WorkbookSnapshot` v2 快照
-- 🎨 **Ant Design Vue 皮肤** — `SpeedSheet` 开箱即用（工具栏 / 公式栏 / 页签栏）
-- 🔍 **完整 TypeScript** — 类型贯穿 shared → core → 框架层
+## 🌟 核心杀手锏
 
-## 架构
+### 1. 零迁移成本：原生兼容 Luckysheet 数据结构
+国内绝大多数老项目都采用过 Luckysheet，但受制于其老旧的架构和历史遗留包袱。  
+**Speed Sheet 支持直接接收 Luckysheet 原始数据格式**，无需清洗或重构已有业务数据，即装即平替！
 
-现代版 Luckysheet：**Headless Core + Yjs 协同 + 框架适配层**。
+### 2. 统一组件入口：协同与非协同仅一参之差
+无需按业务场景安装繁琐的多包组合，UI 侧统一使用单一入口组件 `<SpeedSheet />`：
+- **单机 / 本地模式**：传入数据快照即可快速运行；
+- **多人协同模式**：只需额外传入协同状态 `:ydoc="ydoc"`，内部自动走 `Y.transact` 进行 CRDT 状态合并与光标感知；
+- **只读查看态**：设置 `:editable="false"` 即可作为纯静态表格秒开预览。
+
+---
+
+## 🚀 快速上手 (Quick Start)
+
+### 安装
+
+```bash
+# 安装开箱即用 UI 包
+pnpm add @speed-sheet/vue3-antd
+
+# 安装核心依赖
+pnpm add @speed-sheet/core @speed-sheet/shared vue ant-design-vue
+```
+
+---
+
+### 场景一：直接接入 Luckysheet 数据（老项目平替）
+
+直接传入已有的 Luckysheet 格式数据（二维数组或 `celldata`），支持双向变更监听：
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { SpeedSheet } from '@speed-sheet/vue3-antd'
+import type { LuckysheetFile } from '@speed-sheet/shared'
+
+// 现有的 Luckysheet 格式数据
+const myLuckysheetData = ref<LuckysheetFile>({
+  name: '年度业绩表',
+  data: [
+    ['部门', '负责人', 'Q1销售额', 'Q2销售额'],
+    ['研发部', '张三', 120000, 150000],
+    ['运营部', '李四', 80000, 95000],
+  ],
+})
+
+const onSave = (data: LuckysheetFile) => {
+  console.log('表格更新数据(Luckysheet格式):', data)
+}
+</script>
+
+<template>
+  <div style="height: 100vh;">
+    <SpeedSheet
+      :luckysheet-data="myLuckysheetData"
+      :show-toolbar="true"
+      :show-formula-bar="true"
+      @luckysheet-change="onSave"
+    />
+  </div>
+</template>
+```
+
+---
+
+### 场景二：原生模式（协同 vs 本地单机仅一参之差）
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { SpeedSheet } from '@speed-sheet/vue3-antd'
+import type { WorkbookSnapshot } from '@speed-sheet/shared'
+
+const isCollaborative = ref(false) // 是否开启协同
+const sheetSnapshot = ref<WorkbookSnapshot>(/* 初始表格快照 */)
+
+// 协同外部注入的 Y.Doc（连接 Hocuspocus / y-websocket）
+const myYdoc = ref(/* 外部 Y.Doc 实例 */)
+</script>
+
+<template>
+  <div style="height: 100vh;">
+    <!-- 
+      - 本地单机模式：仅传 :sheet-data
+      - 多人协同模式：额外多传一个 :ydoc="myYdoc" 即可
+      - 纯查看态：设置 :editable="false"
+    -->
+    <SpeedSheet
+      :sheet-data="sheetSnapshot"
+      :ydoc="isCollaborative ? myYdoc : undefined"
+      :editable="true"
+      @change="(snapshot) => console.log('最新快照:', snapshot)"
+    />
+  </div>
+</template>
+```
+
+---
+
+## 🧩 架构设计与分层
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -177,8 +276,8 @@ pnpm demo   # http://localhost:4000
 
 ## 相关项目
 
-- **[Speed Knowledge Client](https://github.com/whateveryoudo/speed-knowledge-client)** — 知识库管理平台，已集成 Speed Sheet 作为表格文档编辑器
-- **[Speed Tiptap Editor](https://github.com/whateveryoudo/speed-tiptap-editor)** — 同生态富文本编辑器
+- **[Speed Editor](https://github.com/whateveryoudo/speed-editor)** — 同生态开箱即用富文本编辑器
+- **[Speed Knowledge Client](https://github.com/whateveryoudo/speed-knowledge-client)** — 语雀类现代协作知识库平台，已深度集成 Speed Sheet 作为表格编辑器（在线体验：[speeddoc.cn](http://speeddoc.cn/)）
 - **[Speed Knowledge Server](https://github.com/whateveryoudo/speed-knowledge-server)** — 后端服务（NestJS 协同 + FastAPI 主 API）
 
 ## 文档
