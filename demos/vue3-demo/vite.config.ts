@@ -7,7 +7,8 @@ import Components from "unplugin-vue-components/vite";
 import { AntDesignVueResolver } from "unplugin-vue-components/resolvers";
 import { createSimpleSvgSpritePlugin } from "../../build/simple-svg-sprite";
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  base: mode === "production" ? "/speed-sheet/" : "/",
   plugins: [
     vue(),
     vueJsx(),
@@ -62,4 +63,4 @@ export default defineConfig({
   server: {
     port: 4000,
   },
-});
+}));
