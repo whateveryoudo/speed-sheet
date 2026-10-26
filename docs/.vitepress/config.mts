@@ -4,8 +4,19 @@ const base = process.env.NODE_ENV === 'production' ? '/speed-sheet/docs/' : '/'
 
 export default defineConfig({
   title: 'Speed Sheet',
-  description: '现代版高性能在线电子表格引擎 · Luckysheet 深度兼容 · Yjs 多人协同',
+  description: '现代版轻量协同电子表格引擎 · 兼容 Luckysheet 数据结构 · Yjs 原生多人协同 · 自研 Canvas 视口调度',
   base,
+  sitemap: {
+    hostname: 'https://whateveryoudo.github.io/speed-sheet/docs/',
+  },
+  head: [
+    ['meta', { name: 'keywords', content: 'speed-sheet, 在线表格, 电子表格, luckysheet, spreadsheet, canvas, yjs, crdt, vue3, 在线excel, 协同表格, web excel' }],
+    ['meta', { name: 'author', content: 'Speed Platform' }],
+    ['meta', { property: 'og:title', content: 'Speed Sheet - 现代版轻量协同电子表格引擎' }],
+    ['meta', { property: 'og:description', content: '基于 Yjs CRDT + 自研 Canvas 视口调度，兼容常见 Luckysheet 数据结构的高性能轻量协同表格。' }],
+    ['meta', { property: 'og:type', content: 'website' }],
+    ['meta', { property: 'og:url', content: 'https://whateveryoudo.github.io/speed-sheet/docs/' }],
+  ],
   themeConfig: {
     nav: [
       { text: '指南', link: '/guide/' },
