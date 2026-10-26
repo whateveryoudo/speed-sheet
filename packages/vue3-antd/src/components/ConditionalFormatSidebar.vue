@@ -2,7 +2,6 @@
   <div v-if="panel.open.value" class="cf-sidebar">
     <header class="cf-sidebar__header">
       <div class="cf-sidebar__title-row">
-        <div class="cf-sidebar__logo-placeholder" aria-hidden="true" />
         <h3 class="cf-sidebar__title">{{ t('conditionalFormat.title') }}</h3>
       </div>
       <div class="cf-sidebar__header-actions">
@@ -320,13 +319,6 @@ function closeAll(): void {
   min-width: 0;
 }
 
-.cf-sidebar__logo-placeholder {
-  width: 20px;
-  height: 20px;
-  border-radius: 4px;
-  background: linear-gradient(135deg, #c4c4c4 0%, #e8e8e8 100%);
-  flex-shrink: 0;
-}
 
 .cf-sidebar__title {
   margin: 0;

@@ -112,13 +112,11 @@ function onMenuClick(info: any) {
     .menu-item-inner {
       display: flex;
       align-items: center;
-      font-size: 13px;
       color: #333;
 
       .check-box {
         width: 18px;
         font-size: 12px;
-        color: var(--ant-primary-color, #1890ff);
         display: flex;
         align-items: center;
       }

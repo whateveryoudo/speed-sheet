@@ -33,6 +33,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   close: []
   'picker-open-change': [open: boolean]
+  rename: [sheetId: string]
 }>()
 
 const pickerOpen = ref(false)
@@ -50,6 +51,7 @@ const actionCtx = computed(() => ({
   sheet: props.sheet,
   sheetId: props.sheetId,
   close: dismissMenu,
+  onStartRename: (id: string) => emit('rename', id),
 }))
 
 const { t } = useSheetLocale(() => props.lang)
@@ -65,7 +67,10 @@ const sheetMeta = useSheetYMap(
 )
 
 const onMenuClick: MenuProps['onClick'] = (e) => {
-  const key = String(e.key)
+  let key = String(e.key)
+  if (key.startsWith('item-')) {
+    key = key.slice(5)
+  }
   if (key === 'tabColor-board' || key === 'tabColor') return
   runSheetTabMenuAction(key, resolvedKeys.value, actionCtx.value)
 }
@@ -105,7 +110,7 @@ defineExpose({ pickerOpen })
             @pick="onColorPick" @picker-open-change="onPickerOpenChange" @mousedown.stop @click.stop />
         </a-menu-item>
       </a-sub-menu>
-      <a-menu-item v-else :key="`item-${item.key}`" :disabled="item.disabled">
+      <a-menu-item v-else :key="item.key" :disabled="item.disabled">
         {{ item.title }}
       </a-menu-item>
     </template>

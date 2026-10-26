@@ -125,7 +125,13 @@ export function computeEditorWidth(
   measureCtx.font = data
     ? cellFontString(data)
     : `${DEFAULT_CELL_FONT_SIZE}px -apple-system, BlinkMacSystemFont, sans-serif`
-  const textW = measureCtx.measureText(text).width + CELL_TEXT_PAD_X * 2 + o * 2
+  let maxLineWidth = 0
+  const lines = text.split('\n')
+  for (const line of lines) {
+    const w = measureCtx.measureText(line).width
+    if (w > maxLineWidth) maxLineWidth = w
+  }
+  const textW = maxLineWidth + CELL_TEXT_PAD_X * 2 + o * 2
   const maxW = Math.max(minW, layout.viewportW - editorLeft - 4)
   return Math.min(maxW, Math.max(minW, spanW, textW))
 }
@@ -201,7 +207,7 @@ export function drawCellText(
   const colSpan = Math.max(1, options?.colSpan ?? 1)
   const totalW = options?.totalWidth != null ? Math.max(colW, options.totalWidth) : colW * colSpan
   const truncate = options?.truncate ?? false
-  const isWrap = options?.wrap === 2
+  const isWrap = options?.wrap === 2 || content.includes('\n')
   const ht = options?.ht ?? 1 // 0: center, 1: left, 2: right
   const vt = options?.vt ?? 0 // 0: middle, 1: top, 2: bottom
   const fs = options?.fontSize ?? DEFAULT_CELL_FONT_SIZE

@@ -6,6 +6,14 @@ export type { FormulaBuiltinEntry, FormulaCategoryId, FormulaCategoryMeta } from
 export { FORMULA_BUILTIN_REGISTRY } from './buildRegistry'
 export { FORMULA_META_OVERRIDES } from './meta'
 export { FORMULA_CATEGORIES, categoryLabel, getCategoryMeta } from './categories'
+export {
+  parseSyntaxParameters,
+  getFormulaPromptContext,
+  type FormulaPromptContext,
+  type FormulaSearchPrompt,
+  type FormulaHelpPrompt,
+  type FormulaNonePrompt,
+} from './prompt'
 
 const _canonical = new Map<string, string>()
 

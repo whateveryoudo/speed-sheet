@@ -100,7 +100,8 @@ export function computeEditorStyles(options: {
     width: `${width}px`,
     minWidth: `${minW}px`,
     maxWidth: `${maxW}px`,
-    height: `${minH}px`,
+    minHeight: `${minH}px`,
+    height: 'auto',
   }
   const field: CssStyle = {
     width: '100%',

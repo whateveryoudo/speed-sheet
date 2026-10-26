@@ -3,6 +3,7 @@ import * as Y from 'yjs'
 import { cellIdKey } from '@speed-sheet/shared'
 import { SheetState } from '../state/SheetState'
 import { initLayoutFromRcEntries } from '../state/sheet-layout'
+import { Sheet } from '../Sheet'
 
 describe('Sheet layout v2 (stable ids)', () => {
   it('insertRows keeps cell storage keys stable', () => {
@@ -45,5 +46,24 @@ describe('Sheet layout v2 (stable ids)', () => {
     expect(after.colId).toBe(before.colId)
     expect(state.getCellData(1, 7)?.v).toBe(99)
     expect((ySheet.get('cells') as Y.Map<unknown>).has(keyBefore)).toBe(true)
+  })
+
+  it('duplicateSheet copies data and configs without error', () => {
+    const sheet = new Sheet()
+    sheet.state.setCell(0, 0, { v: 'Hello', bg: '#ff0000' })
+    sheet.state.setRowHeight(0, 40)
+    sheet.state.setColWidth(0, 120)
+    sheet.state.mergeCells({ r: 1, c: 1 }, { r: 2, c: 2 })
+
+    const copyId = sheet.duplicateSheet(sheet.getActiveSheetId())
+    expect(sheet.getSheetIds().length).toBe(2)
+    expect(sheet.getActiveSheetId()).toBe(copyId)
+
+    const copyState = sheet.state
+    expect(copyState.getCellData(0, 0)?.v).toBe('Hello')
+    expect(copyState.getCellData(0, 0)?.bg).toBe('#ff0000')
+    expect(copyState.getRowHeight(0)).toBe(40)
+    expect(copyState.getColWidth(0)).toBe(120)
+    expect(copyState.merges.size).toBe(1)
   })
 })

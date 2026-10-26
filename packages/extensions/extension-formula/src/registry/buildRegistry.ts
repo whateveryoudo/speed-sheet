@@ -36,7 +36,7 @@ function buildEntry(name: string): FormulaBuiltinEntry | null {
     example: override?.example,
     seeAlso: override?.seeAlso,
     aliases: override?.aliases,
-    implemented: override?.implemented ?? false,
+    implemented: override?.implemented ?? (row.formulajs || false),
     formulajs: row.formulajs,
     featured: override?.featured ?? false,
   }

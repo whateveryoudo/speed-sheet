@@ -21,6 +21,21 @@ export interface SheetRef {
   endColLock?: boolean
 }
 
+export function normalizeFormulaInput(raw: string): string {
+  return raw
+    .replace(/\uFF1D/g, '=') // ＝
+    .replace(/\uFF08/g, '(') // （
+    .replace(/\uFF09/g, ')') // ）
+    .replace(/\uFF0C/g, ',') // ，
+    .replace(/\uFF1A/g, ':') // ：
+    .replace(/\uFF0D/g, '-') // －
+    .replace(/\u2013/g, '-') // – en-dash
+    .replace(/\u2014/g, '-') // — em-dash
+    .replace(/\uFF0B/g, '+') // ＋
+    .replace(/\uFF0A/g, '*') // ＊
+    .replace(/\uFF0F/g, '/') // ／
+}
+
 /** 列字母 → 0-based 列号 */
 export function letterToCol(letters: string): number {
   let n = 0
@@ -57,7 +72,7 @@ export function parseRefToken(token: string): SheetRef | null {
   if (bang >= 0) {
     let sheetPart = trimmed.slice(0, bang)
     if (sheetPart.startsWith("'") && sheetPart.endsWith("'")) {
-      sheetPart = sheetPart.slice(1, -1)
+      sheetPart = sheetPart.slice(1, -1).replace(/''/g, "'")
     }
     sheet = sheetPart
     local = trimmed.slice(bang + 1)
@@ -104,7 +119,7 @@ import { overlapsInternalRef } from './internal-ref-scan'
 export function extractRefTokens(formula: string): string[] {
   const tokens: string[] = []
   const re =
-    /(?:'[^']+'|[\w\u4e00-\u9fff\u3400-\u9fff]+!)?\$?[A-Za-z]{1,4}\$?\d+(?::\$?[A-Za-z]{1,4}\$?\d+)?/g
+    /(?:'[^']+'!|[\w\u4e00-\u9fff\u3400-\u9fff]+!)?\$?[A-Za-z]{1,4}\$?\d+(?::\$?[A-Za-z]{1,4}\$?\d+)?/g
   let m: RegExpExecArray | null
   while ((m = re.exec(formula)) !== null) {
     const start = m.index

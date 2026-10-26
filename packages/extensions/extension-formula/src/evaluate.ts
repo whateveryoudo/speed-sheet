@@ -6,6 +6,7 @@ import {
   hasInternalRefs,
   parseInternalRefToken,
 } from './formula-bindings'
+import { normalizeFormulaInput } from './refs'
 import { FN_MAP, FN_RE } from './fnMap'
 import { isRegisteredBuiltin } from './registry'
 
@@ -27,17 +28,22 @@ function splitTopLevelArgs(inner: string): string[] {
   const parts: string[] = []
   let depth = 0
   let start = 0
+  let inQuote = false
   for (let i = 0; i < inner.length; i++) {
     const ch = inner[i]
-    if (ch === '(') depth++
-    else if (ch === ')') depth--
-    else if (ch === ',' && depth === 0) {
-      parts.push(inner.slice(start, i).trim())
-      start = i + 1
+    if (ch === '"' && (i === 0 || inner[i - 1] !== '\\')) {
+      inQuote = !inQuote
+    } else if (!inQuote) {
+      if (ch === '(') depth++
+      else if (ch === ')') depth--
+      else if (ch === ',' && depth === 0) {
+        parts.push(inner.slice(start, i).trim())
+        start = i + 1
+      }
     }
   }
   parts.push(inner.slice(start).trim())
-  return parts.filter(Boolean)
+  return parts.filter((p) => p.length > 0)
 }
 
 function detectNameError(expr: string): boolean {
@@ -64,39 +70,63 @@ function resolveRefSheetId(
   return id
 }
 
-function resolveArgNumbers(
+function resolveArg(
   arg: string,
   ctx: FormulaContext,
   visiting: Set<string>,
-): number[] | { error: FormulaErrorCode } {
-  if (arg.startsWith('#')) {
-    const ref = parseInternalRefToken(arg)
-    if (!ref) return { error: 'REF' }
-    const sheetResolved = resolveRefSheetId(ctx, ref.sheetId)
-    if (typeof sheetResolved !== 'string') return sheetResolved
-    const sheetId = sheetResolved
-    if (ref.endRowId != null && ref.endColId != null) {
-      return collectIdRangeScalars(
-        ctx,
-        sheetId,
-        ref.rowId,
-        ref.colId,
-        ref.endRowId,
-        ref.endColId,
-        visiting,
-      )
+): any | { error: FormulaErrorCode } {
+  let trimmed = arg.trim()
+  if (!trimmed) return 0
+
+  // 1. 单个内部引用 token（单元格或区域）
+  if (trimmed.startsWith('#') && trimmed.endsWith('#')) {
+    const ref = parseInternalRefToken(trimmed)
+    if (ref) {
+      const sheetResolved = resolveRefSheetId(ctx, ref.sheetId)
+      if (typeof sheetResolved !== 'string') return sheetResolved
+      const sheetId = sheetResolved
+      if (ref.endRowId != null && ref.endColId != null) {
+        return collectIdRangeScalars(
+          ctx,
+          sheetId,
+          ref.rowId,
+          ref.colId,
+          ref.endRowId,
+          ref.endColId,
+          visiting,
+        )
+      }
+      const raw = ctx.getScalarById(sheetId, ref.rowId, ref.colId, visiting)
+      if (typeof raw === 'string' && raw.startsWith('#')) return { error: 'REF' }
+      if (typeof raw === 'string' && raw !== '' && Number.isNaN(Number(raw))) {
+        return raw
+      }
+      return coerceNumber(raw)
     }
-    const raw = ctx.getScalarById(sheetId, ref.rowId, ref.colId, visiting)
-    if (typeof raw === 'string' && raw.startsWith('#')) return { error: 'REF' }
-    if (typeof raw === 'string' && raw !== '' && Number.isNaN(Number(raw))) {
-      return { error: 'VALUE' }
-    }
-    return [coerceNumber(raw)]
   }
-  const n = Number(arg)
-  if (Number.isFinite(n)) return [n]
-  if (arg.startsWith('"') || /[A-Za-z\u4e00-\u9fff]/.test(arg)) return { error: 'VALUE' }
-  return []
+
+  // 2. 内部引用与表达式混合（如 #r_0:c_0# * 1.5 或 #r_0:c_0# > 10）
+  if (hasInternalRefs(trimmed)) {
+    const afterRefs = replaceInternalRefs(trimmed, ctx, visiting)
+    if (typeof afterRefs !== 'string') return afterRefs
+    trimmed = afterRefs
+  }
+
+  if (trimmed.toUpperCase() === 'TRUE') return true
+  if (trimmed.toUpperCase() === 'FALSE') return false
+  if (/^"[^"]*"$/.test(trimmed)) return trimmed.slice(1, -1)
+
+  const n = Number(trimmed)
+  if (Number.isFinite(n)) return n
+
+  // 3. 计算表达式（算术或逻辑比较）
+  const res = safeArithmetic(trimmed)
+  if (!res.error) {
+    return res.value
+  }
+
+  if (/[A-Za-z\u4e00-\u9fff]/.test(trimmed)) return { error: 'VALUE' }
+  return trimmed
 }
 
 function evalFunctions(
@@ -120,27 +150,66 @@ function evalFunctions(
     const open = m.index + m[0].length
     let depth = 1
     let i = open
+    let inQuote = false
     for (; i < out.length && depth > 0; i++) {
-      if (out[i] === '(') depth++
-      else if (out[i] === ')') depth--
+      const ch = out[i]
+      if (ch === '"' && (i === 0 || out[i - 1] !== '\\')) {
+        inQuote = !inQuote
+      } else if (!inQuote) {
+        if (ch === '(') depth++
+        else if (ch === ')') depth--
+      }
     }
     if (depth !== 0) return { error: 'ERROR' }
 
-    const inner = out.slice(open, i - 1)
-    const args = splitTopLevelArgs(inner)
-    const values: number[] = []
-    for (const a of args) {
-      const resolved = resolveArgNumbers(a, ctx, visiting)
-      if (!Array.isArray(resolved)) return resolved
-      values.push(...resolved)
+    let inner = out.slice(open, i - 1)
+    if (FN_RE.test(inner)) {
+      const evaluatedInner = evalFunctions(inner, ctx, visiting)
+      if (typeof evaluatedInner !== 'string') return evaluatedInner
+      inner = evaluatedInner
     }
 
-    let computed: number
-    computed = fn(values)
+    const args = splitTopLevelArgs(inner)
+    const callArgs: any[] = []
+    for (const a of args) {
+      const resolved = resolveArg(a, ctx, visiting)
+      if (typeof resolved === 'object' && resolved !== null && 'error' in resolved) {
+        return resolved
+      }
+      callArgs.push(resolved)
+    }
 
-    if (!Number.isFinite(computed)) return { error: 'NUM' }
+    let computed: any
+    try {
+      computed = (fn as any)(...callArgs)
+    } catch {
+      return { error: 'VALUE' }
+    }
 
-    const replacement = String(computed)
+    if (computed instanceof Error) {
+      const msg = computed.message.replace(/^#|!$/g, '').toUpperCase()
+      if (msg === 'VALUE') return { error: 'VALUE' }
+      if (msg === 'DIV/0' || msg === 'DIV0') return { error: 'DIV0' }
+      if (msg === 'NUM') return { error: 'NUM' }
+      if (msg === 'REF') return { error: 'REF' }
+      if (msg === 'NAME') return { error: 'NAME' }
+      if (msg === 'NULL') return { error: 'NULL' }
+      if (msg === 'NA' || msg === 'N/A') return { error: 'NA' }
+      return { error: 'ERROR' }
+    }
+
+    let replacement: string
+    if (typeof computed === 'number') {
+      if (!Number.isFinite(computed)) return { error: 'NUM' }
+      replacement = String(computed)
+    } else if (typeof computed === 'boolean') {
+      replacement = computed ? 'TRUE' : 'FALSE'
+    } else if (typeof computed === 'string') {
+      replacement = JSON.stringify(computed)
+    } else {
+      replacement = String(computed ?? '')
+    }
+
     out = out.slice(0, m.index) + replacement + out.slice(i)
   }
   return out
@@ -173,29 +242,42 @@ function replaceInternalRefs(
       if (!sumFn) return { error: 'NAME' }
       const sum = sumFn(nums)
       if (!Number.isFinite(sum)) return { error: 'NUM' }
-      out = out.split(token).join(String(sum))
+      const rep = sum < 0 ? `(${sum})` : String(sum)
+      out = out.split(token).join(rep)
       continue
     }
     const raw = ctx.getScalarById(sheetId, ref.rowId, ref.colId, visiting)
     if (typeof raw === 'string' && raw.startsWith('#')) return { error: 'REF' }
     if (typeof raw === 'string' && raw !== '' && Number.isNaN(Number(raw))) {
-      return { error: 'VALUE' }
+      out = out.split(token).join(JSON.stringify(raw))
+      continue
     }
     const v = coerceNumber(raw)
-    out = out.split(token).join(String(v))
+    const rep = v < 0 ? `(${v})` : String(v)
+    out = out.split(token).join(rep)
   }
   return out
 }
 
 function safeArithmetic(expr: string): FormulaResult {
-  const trimmed = expr.replace(/\s/g, '')
-  if (!trimmed) return formulaErrorResult('ERROR')
+  const pureTrimmed = expr.trim()
+  if (!pureTrimmed) return formulaErrorResult('ERROR')
+
+  if (pureTrimmed === 'TRUE') return { value: true, m: 'TRUE' }
+  if (pureTrimmed === 'FALSE') return { value: false, m: 'FALSE' }
+  if (/^"[^"]*"$/.test(pureTrimmed)) {
+    const s = pureTrimmed.slice(1, -1)
+    return { value: s, m: s }
+  }
+
+  const trimmed = pureTrimmed.replace(/\s/g, '')
 
   if (/[a-zA-Z"]/.test(trimmed)) {
     return formulaErrorResult('VALUE')
   }
 
-  if (!/^[0-9+\-*/().]+$/.test(trimmed)) {
+  // 允许数字、基础算术（+ - * / % ^）、括号、比较符（< > = !）
+  if (!/^[0-9+\-*/().^%<>=!]+$/.test(trimmed)) {
     return formulaErrorResult('ERROR')
   }
 
@@ -204,8 +286,19 @@ function safeArithmetic(expr: string): FormulaResult {
   }
 
   try {
+    const jsExpr = trimmed
+      .replace(/<>/g, '!==')
+      .replace(/(?<![<>=!])=(?![=])/g, '===')
+      .replace(/\^/g, '**')
+
     // eslint-disable-next-line no-new-func
-    const v = new Function(`return (${trimmed})`)()
+    const v = new Function(`return (${jsExpr})`)()
+    if (typeof v === 'boolean') {
+      return { value: v, m: v ? 'TRUE' : 'FALSE' }
+    }
+    if (typeof v === 'string') {
+      return { value: v, m: v }
+    }
     if (typeof v !== 'number' || Number.isNaN(v)) {
       return formulaErrorResult('VALUE')
     }
@@ -224,7 +317,8 @@ export function evaluateFormulaString(
   ctx: FormulaContext,
   visiting: Set<string> = new Set(),
 ): FormulaResult {
-  const text = raw.trim()
+  const normalized = normalizeFormulaInput(raw)
+  const text = normalized.trim()
   if (!text.startsWith('=')) {
     return { value: text, m: text }
   }

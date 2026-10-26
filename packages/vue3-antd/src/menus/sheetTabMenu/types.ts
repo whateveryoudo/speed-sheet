@@ -11,6 +11,7 @@ export interface SheetTabMenuActionContext {
   sheet: Sheet | null | undefined
   sheetId: string
   close: () => void
+  onStartRename?: (sheetId: string) => void
 }
 
 export type SheetTabMenuItemConfig =

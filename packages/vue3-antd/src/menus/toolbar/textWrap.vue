@@ -1,33 +1,10 @@
 <template>
-  <a-dropdown
-    v-model:open="open"
-    trigger="click"
-    placement="bottomLeft"
-    :disabled="disableMenu"
-    overlay-class-name="sheet-textwrap-dropdown"
-  >
+  <a-dropdown v-model:open="open" trigger="click" placement="bottomLeft" :disabled="disableMenu"
+    overlay-class-name="sheet-textwrap-dropdown">
     <s-keymap-tip :title="disableMenu ? null : t('toolbar.textWrap')">
-      <a-button
-        type="text"
-        class="shadow-btn-wrapper"
-        :disabled="disableMenu"
-      >
+      <a-button type="text" class="shadow-btn-wrapper" :disabled="disableMenu">
         <span class="inline-flex items-center justify-center">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-            <!-- Dynamic Icon based on current wrap mode -->
-            <template v-if="currentWrap === 1">
-              <!-- Overflow: arrow crossing right border -->
-              <path d="M4 4h2v16H4V4zm4 7h9.5l-2.5-2.5 1.4-1.4 4.9 4.9-4.9 4.9-1.4-1.4 2.5-2.5H8v-2z" />
-            </template>
-            <template v-else-if="currentWrap === 2">
-              <!-- Wrap: arrow curling around -->
-              <path d="M4 4h2v16H4V4zm14 0h2v16h-2V4zM8 7h6a3 3 0 0 1 0 6H9.4l1.8 1.8-1.4 1.4L6 12.4l3.8-3.8 1.4 1.4L9.4 11H14a1 1 0 0 0 0-2H8V7z" />
-            </template>
-            <template v-else>
-              <!-- Clip: line stopped at wall -->
-              <path d="M4 4h2v16H4V4zm14 0h2v16h-2V4zm-10 7h8v2H8v-2z" />
-            </template>
-          </svg>
+          <s-icon-font :type="currentWrapIconType" />
         </span>
         <caret-down-outlined class="dropdown-trigger" />
       </a-button>
@@ -41,11 +18,7 @@
             <span class="check-box">
               <check-outlined v-if="currentWrap === 1" />
             </span>
-            <span class="menu-icon">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                <path d="M4 4h2v16H4V4zm4 7h9.5l-2.5-2.5 1.4-1.4 4.9 4.9-4.9 4.9-1.4-1.4 2.5-2.5H8v-2z" />
-              </svg>
-            </span>
+            <s-icon-font type="icon-kl-overflow" class="mr-2" />
             <span class="menu-label">{{ t('toolbar.wrapOverflow') }}</span>
           </div>
         </a-menu-item>
@@ -56,11 +29,7 @@
             <span class="check-box">
               <check-outlined v-if="currentWrap === 0" />
             </span>
-            <span class="menu-icon">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                <path d="M4 4h2v16H4V4zm14 0h2v16h-2V4zm-10 7h8v2H8v-2z" />
-              </svg>
-            </span>
+            <s-icon-font type="icon-kl-clip" class="mr-2" />
             <span class="menu-label">{{ t('toolbar.wrapClip') }}</span>
           </div>
         </a-menu-item>
@@ -71,11 +40,7 @@
             <span class="check-box">
               <check-outlined v-if="currentWrap === 2" />
             </span>
-            <span class="menu-icon">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                <path d="M4 4h2v16H4V4zm14 0h2v16h-2V4zM8 7h6a3 3 0 0 1 0 6H9.4l1.8 1.8-1.4 1.4L6 12.4l3.8-3.8 1.4 1.4L9.4 11H14a1 1 0 0 0 0-2H8V7z" />
-              </svg>
-            </span>
+            <s-icon-font type="icon-kl-wrap" class="mr-2" />
             <span class="menu-label">{{ t('toolbar.wrapWrap') }}</span>
           </div>
         </a-menu-item>
@@ -103,6 +68,16 @@ const currentWrap = computed<0 | 1 | 2>(() => {
   return 1
 })
 
+const currentWrapIconType = computed(() => {
+  if (currentWrap.value === 0) {
+    return 'icon-kl-clip'
+  }
+  if (currentWrap.value === 2) {
+    return 'icon-kl-wrap'
+  }
+  return 'icon-kl-overflow'
+})
+
 function onMenuClick(info: any) {
   const wrap = Number(info?.key) as 0 | 1 | 2
   if (!sheet.value) return
@@ -116,7 +91,7 @@ function onMenuClick(info: any) {
 <style lang="less">
 .sheet-textwrap-dropdown {
   .sheet-wrap-menu-panel {
-    min-width: 130px;
+    min-width: 100px;
     padding: 4px 0;
 
     .ant-dropdown-menu-item {
@@ -137,15 +112,6 @@ function onMenuClick(info: any) {
         display: flex;
         align-items: center;
       }
-
-      .menu-icon {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 8px;
-        color: #555;
-      }
-
       .menu-label {
         flex: 1;
       }

@@ -28,6 +28,28 @@
         <button class="demo-btn demo-btn-primary" @click="handleFillData">
           批量填入数据
         </button>
+        <div class="demo-divider" />
+        <span class="demo-api-label">📥 API 导出:</span>
+        <button class="demo-btn demo-btn-success" @click="handleExportExcelApi">
+          Excel (.xlsx)
+        </button>
+        <button class="demo-btn demo-btn-info" @click="handleExportSpeedSheetApi">
+          SpeedSheet (.speedsheet)
+        </button>
+        <button class="demo-btn" @click="handleExportCsvApi">
+          CSV (.csv)
+        </button>
+        <div class="demo-divider" />
+        <span class="demo-api-label">📤 API 导入:</span>
+        <button class="demo-btn demo-btn-warning" @click="handleImportExcelApi">
+          导入 Excel
+        </button>
+        <button class="demo-btn demo-btn-warning" @click="handleImportSpeedSheetApi">
+          导入 SpeedSheet
+        </button>
+        <button class="demo-btn demo-btn-warning" @click="handleImportCsvApi">
+          导入 CSV
+        </button>
       </div>
     </div>
 
@@ -54,6 +76,17 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { SpeedSheet } from '@speed-sheet/vue3-antd'
+import {
+  exportSnapshotToXlsx,
+  importXlsxToSnapshot,
+  exportSnapshotToSpeedSheet,
+  importSpeedSheetToSnapshot,
+  exportSnapshotToCsv,
+  importCsvToSnapshot,
+  downloadBlob,
+  promptSelectFile,
+  ImportExportExtension,
+} from '@speed-sheet/extension-import-export'
 import { luckysheetFileToSnapshot } from '@speed-sheet/core'
 import type { WorkbookSnapshot } from '@speed-sheet/shared'
 import { WatermarkExtension } from './plugins/watermark'
@@ -68,6 +101,7 @@ const extensions = [
     color: 'rgba(24, 144, 255, 0.12)',
     fontSize: 22,
   }),
+  ImportExportExtension,
 ]
 
 // 2. 正向配置：自由编排工具栏，将插件注册的 'watermark' 按钮放在工具栏上！
@@ -77,7 +111,8 @@ const customToolbarKeys = [
   'fontSize', 'border', 'align', '|',
   'formula', '|',
   'watermark', '|', // <-- 扩展自带的工具栏按钮直接声明使用！
-  'chart',
+  'chart', '|',
+  'import', 'export',
 ]
 
 // 3. 反向排除：排除掉不需要的内置按钮
@@ -139,6 +174,70 @@ function handleFillData() {
     .setCellValue({ r: 4, c: 2, value: 2024 })
     .setCellValue({ r: 4, c: 3, value: 98 })
     .run()
+}
+
+// ---- 外部 API 调用测试（对应知识库外部目录树、独立弹窗等无 Sheet 挂载场景） ----
+
+async function handleExportExcelApi() {
+  const sheet = speedSheetRef.value?.sheet
+  if (!sheet) return
+  const snapshot = sheet.toSnapshot()
+  const activeName = sheet.getSheetName(sheet.getActiveSheetId()) || 'Sheet'
+  const buffer = await exportSnapshotToXlsx(snapshot)
+  downloadBlob(
+    buffer,
+    `${activeName}_API导出_${Date.now()}.xlsx`,
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  )
+}
+
+function handleExportSpeedSheetApi() {
+  const sheet = speedSheetRef.value?.sheet
+  if (!sheet) return
+  const snapshot = sheet.toSnapshot()
+  const activeName = sheet.getSheetName(sheet.getActiveSheetId()) || 'Sheet'
+  const content = exportSnapshotToSpeedSheet(snapshot, { pretty: true })
+  downloadBlob(content, `${activeName}_API导出_${Date.now()}.speedsheet`, 'application/json')
+}
+
+function handleExportCsvApi() {
+  const sheet = speedSheetRef.value?.sheet
+  if (!sheet) return
+  const snapshot = sheet.toSnapshot()
+  const activeId = sheet.getActiveSheetId()
+  const activeName = sheet.getSheetName(activeId) || 'Sheet'
+  const csv = exportSnapshotToCsv(snapshot, { sheetIdOrIndex: activeId })
+  downloadBlob(csv, `${activeName}_API导出_${Date.now()}.csv`, 'text/csv;charset=utf-8')
+}
+
+async function handleImportExcelApi() {
+  const sheet = speedSheetRef.value?.sheet
+  if (!sheet) return
+  const file = await promptSelectFile('.xlsx')
+  if (!file) return
+  const buffer = await file.arrayBuffer()
+  const snapshot = await importXlsxToSnapshot(buffer)
+  sheet.loadSnapshot(snapshot, { replace: true })
+}
+
+async function handleImportSpeedSheetApi() {
+  const sheet = speedSheetRef.value?.sheet
+  if (!sheet) return
+  const file = await promptSelectFile('.speedsheet,.json')
+  if (!file) return
+  const text = await file.text()
+  const snapshot = importSpeedSheetToSnapshot(text)
+  sheet.loadSnapshot(snapshot, { replace: true })
+}
+
+async function handleImportCsvApi() {
+  const sheet = speedSheetRef.value?.sheet
+  if (!sheet) return
+  const file = await promptSelectFile('.csv,text/csv')
+  if (!file) return
+  const text = await file.text()
+  const snapshot = importCsvToSnapshot(text)
+  sheet.loadSnapshot(snapshot, { replace: true })
 }
 </script>
 
@@ -218,6 +317,55 @@ function handleFillData() {
 
 .demo-btn-primary:hover {
   background: #40a9ff;
+  color: #fff;
+}
+
+.demo-divider {
+  width: 1px;
+  height: 18px;
+  background: #d9d9d9;
+  margin: 0 4px;
+}
+
+.demo-api-label {
+  font-weight: 600;
+  color: #1f1f1f;
+  font-size: 12px;
+}
+
+.demo-btn-success {
+  background: #f6ffed;
+  border-color: #b7eb8f;
+  color: #389e0d;
+}
+
+.demo-btn-success:hover {
+  background: #52c41a;
+  border-color: #52c41a;
+  color: #fff;
+}
+
+.demo-btn-info {
+  background: #e6f7ff;
+  border-color: #91d5ff;
+  color: #096dd9;
+}
+
+.demo-btn-info:hover {
+  background: #1890ff;
+  border-color: #1890ff;
+  color: #fff;
+}
+
+.demo-btn-warning {
+  background: #fff7e6;
+  border-color: #ffd591;
+  color: #d46b08;
+}
+
+.demo-btn-warning:hover {
+  background: #fa8c16;
+  border-color: #fa8c16;
   color: #fff;
 }
 </style>

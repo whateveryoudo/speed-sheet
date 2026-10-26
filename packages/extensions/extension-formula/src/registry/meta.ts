@@ -87,6 +87,7 @@ export const FORMULA_META_OVERRIDES: readonly MetaOverride[] = [
     label: '绝对值',
     syntax: 'ABS(数值)',
     hint: '返回数字的绝对值。',
+    implemented: true,
   },
   {
     name: 'ROUND',
@@ -94,6 +95,7 @@ export const FORMULA_META_OVERRIDES: readonly MetaOverride[] = [
     label: '四舍五入',
     syntax: 'ROUND(数值, 位数)',
     hint: '按指定位数四舍五入。',
+    implemented: true,
   },
   {
     name: 'VLOOKUP',

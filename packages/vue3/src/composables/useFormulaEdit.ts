@@ -12,17 +12,20 @@ import type { Sheet } from '@speed-sheet/core'
 
 export type { FormulaRangeHighlight }
 
+export type FormulaEditSource = 'cell' | 'bar' | null
+
 export interface FormulaEditContext {
   active: Ref<boolean>
+  source: Ref<FormulaEditSource>
   text: Ref<string>
   anchor: Ref<{ r: number; c: number }>
   caret: Ref<number>
   /** 已点选过引用（Luckysheet rangestart），直到 cancel / 非 pick 提交 */
   refPickActive: Ref<boolean>
   highlights: Ref<FormulaRangeHighlight[]>
-  start: (r: number, c: number, initial?: string) => void
+  start: (r: number, c: number, initial?: string, source?: FormulaEditSource) => void
   /** 在指定单元格进入公式编辑（菜单/公式栏触发） */
-  beginAtCell: (sheet: Sheet, r: number, c: number, fresh?: boolean) => void
+  beginAtCell: (sheet: Sheet, r: number, c: number, fresh?: boolean, source?: FormulaEditSource) => void
   cancel: () => void
   setText: (text: string, caret?: number) => void
   insertRef: (sheet: Sheet, r0: number, c0: number, r1?: number, c1?: number, sheetId?: string) => void
@@ -36,6 +39,7 @@ export const FORMULA_EDIT_KEY: InjectionKey<FormulaEditContext> = Symbol('formul
 
 export function provideFormulaEdit(): FormulaEditContext {
   const active = ref(false)
+  const source = ref<FormulaEditSource>(null)
   const text = ref('')
   const anchor = ref({ r: 0, c: 0 })
   const caret = ref(0)
@@ -44,13 +48,15 @@ export function provideFormulaEdit(): FormulaEditContext {
 
   const ctx: FormulaEditContext = {
     active,
+    source,
     text,
     anchor,
     caret,
     refPickActive,
     highlights,
-    start(r, c, initial = '') {
+    start(r, c, initial = '', editSource: FormulaEditSource = null) {
       active.value = true
+      source.value = editSource
       anchor.value = { r, c }
       text.value = initial
       caret.value = initial.length
@@ -58,14 +64,15 @@ export function provideFormulaEdit(): FormulaEditContext {
       highlights.value = []
       if (isFormulaText(initial)) ctx.syncHighlights(null)
     },
-    beginAtCell(sheet, r, c, fresh = false) {
+    beginAtCell(sheet, r, c, fresh = false, editSource: FormulaEditSource = 'bar') {
       if (sheet.state.cellHasImages(r, c)) return
       const initial = fresh ? '=' : getCellFormulaInitial(sheet, r, c)
-      ctx.start(r, c, initial)
+      ctx.start(r, c, initial, editSource)
       caret.value = initial === '=' ? 1 : initial.length
     },
     cancel() {
       active.value = false
+      source.value = null
       text.value = ''
       caret.value = 0
       refPickActive.value = false

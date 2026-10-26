@@ -359,6 +359,12 @@ export class Sheet {
     })
   }
 
+  /** 判断指定工作表是否处于隐藏状态 */
+  isSheetHidden(sheetId: string): boolean {
+    const ySheet = this.ydoc.getMap('sheets').get(sheetId) as Y.Map<any>
+    return !!ySheet?.get('hidden')
+  }
+
   /** 调整工作表顺序（页签拖拽）；orderedIds 为可见表顺序，隐藏表保留在末尾 */
   reorderSheets(orderedIds: string[]): void {
     const sheetsMap = this.ydoc.getMap('sheets')
@@ -486,8 +492,30 @@ export class Sheet {
     return {
       version: 2,
       sheets,
-      activeSheetId: sheets[0]?.id ?? '0',
+      activeSheetId: this._activeSheetId ?? sheets[0]?.id ?? '0',
     }
+  }
+
+  /** 加载或替换整个工作簿快照 */
+  loadSnapshot(snapshot: WorkbookSnapshot, options?: { replace?: boolean }): void {
+    const sheetsMap = this.ydoc.getMap('sheets')
+    const shouldReplace = options?.replace ?? true
+    transactUser(this.ydoc, () => {
+      if (shouldReplace) {
+        Array.from(sheetsMap.keys()).forEach((key) => {
+          sheetsMap.delete(key)
+        })
+      }
+      this._loadSnapshot(snapshot)
+    })
+    const targetId = snapshot.activeSheetId || snapshot.sheets[0]?.id
+    if (targetId && sheetsMap.has(targetId)) {
+      this.switchSheet(targetId)
+    } else {
+      const keys = Array.from(sheetsMap.keys())
+      if (keys.length > 0) this.switchSheet(keys[0])
+    }
+    this.notifyUpdate()
   }
 
   /** Export to Luckysheet-compatible format */
@@ -684,24 +712,30 @@ function objectToYMap(obj: Record<string, any> | undefined): Y.Map<any> {
   return map
 }
 
+function cloneYValue(val: unknown): unknown {
+  if (val instanceof Y.Map) {
+    const map = new Y.Map()
+    val.forEach((v, k) => {
+      map.set(k, cloneYValue(v))
+    })
+    return map
+  }
+  if (val instanceof Y.Array) {
+    const arr = new Y.Array()
+    const clonedItems = val.toArray().map((item) => cloneYValue(item))
+    arr.push(clonedItems)
+    return arr
+  }
+  if (val && typeof val === 'object') {
+    return JSON.parse(JSON.stringify(val))
+  }
+  return val
+}
+
 function cloneYSheetMap(source: Y.Map<any>): Y.Map<any> {
   const target = new Y.Map()
   source.forEach((value, key) => {
-    if (value instanceof Y.Map) {
-      const nested = new Y.Map()
-      value.forEach((v, k) => {
-        if (v instanceof Y.Map) {
-          const cell = new Y.Map()
-          v.forEach((cv, ck) => cell.set(ck, cv))
-          nested.set(k, cell)
-        } else {
-          nested.set(k, v)
-        }
-      })
-      target.set(key, nested)
-    } else {
-      target.set(key, value)
-    }
+    target.set(key, cloneYValue(value))
   })
   return target
 }

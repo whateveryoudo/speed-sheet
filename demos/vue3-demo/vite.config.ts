@@ -3,9 +3,26 @@ import vue from "@vitejs/plugin-vue";
 import UnoCSS from "@unocss/vite";
 import vueJsx from "@vitejs/plugin-vue-jsx";
 import { resolve } from "path";
+import fs from "fs";
 import Components from "unplugin-vue-components/vite";
 import { AntDesignVueResolver } from "unplugin-vue-components/resolvers";
 import { createSimpleSvgSpritePlugin } from "../../build/simple-svg-sprite";
+
+const localScSrc = resolve(__dirname, "../../../speed-components/src");
+const localScCss = resolve(__dirname, "../../../speed-components/dist/style.css");
+const useLocalSc = fs.existsSync(localScSrc) && fs.existsSync(localScCss) && !process.env.CI;
+
+const scAliases = useLocalSc
+  ? {
+      "@sc": localScSrc,
+      "speed-components-ui/dist/style.css": localScCss,
+      "speed-components-ui/components": resolve(__dirname, "../../../speed-components/src/components"),
+      "speed-components-ui/hooks": resolve(__dirname, "../../../speed-components/src/hooks"),
+      "speed-components-ui": localScSrc,
+    }
+  : {
+      "@sc": localScSrc,
+    };
 
 export default defineConfig(({ mode }) => ({
   base: mode === "production" ? "/speed-sheet/demo/" : "/",
@@ -28,8 +45,9 @@ export default defineConfig(({ mode }) => ({
   ],
   // Dev: always use package source (avoid stale dist with old canvas layout)
   resolve: {
+    dedupe: ["vue"],
     alias: {
-      "@sc": resolve(__dirname, "../../../speed-components/src"),
+      ...scAliases,
       // 须在 @speed-sheet/vue3 之前，避免 index.ts/style.css 解析失败
       "@speed-sheet/vue3/style.css": resolve(
         __dirname,
@@ -55,10 +73,15 @@ export default defineConfig(({ mode }) => ({
         __dirname,
         "../../packages/extensions/extension-formula/src/index.ts",
       ),
+      "@speed-sheet/extension-import-export": resolve(
+        __dirname,
+        "../../packages/extensions/extension-import-export/src/index.ts",
+      ),
     },
   },
   optimizeDeps: {
     include: ["yjs", "lib0"],
+    exclude: useLocalSc ? ["speed-components-ui"] : [],
   },
   server: {
     port: 4000,

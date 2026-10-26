@@ -1,7 +1,7 @@
 import * as formulajs from '@formulajs/formulajs'
 import { buildFunctionNamePattern, getImplementedBuiltinNames } from './registry'
 
-export type FormulaFn = (values: number[]) => number
+export type FormulaFn = (...args: any[]) => any
 
 function buildFnMap(): Record<string, FormulaFn> {
   const map: Record<string, FormulaFn> = {}

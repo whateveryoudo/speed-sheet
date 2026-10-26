@@ -1,3 +1,4 @@
+import { Modal, message } from 'ant-design-vue'
 import type { SheetT } from '../../i18n'
 import { sheetI18n } from '../../i18n'
 import type { SheetTabMenuActionContext, SheetTabMenuItemConfig } from './types'
@@ -11,45 +12,93 @@ export interface SheetTabMenuActionDef {
   run: (ctx: SheetTabMenuActionContext) => void
 }
 
+function copyFallback(text: string): void {
+  try {
+    const input = document.createElement('textarea')
+    input.value = text
+    input.style.position = 'fixed'
+    input.style.opacity = '0'
+    document.body.appendChild(input)
+    input.select()
+    document.execCommand('copy')
+    document.body.removeChild(input)
+    message.success(sheetI18n.global.t('sheetTabMenu.copyLinkSuccess'))
+  } catch {
+    message.error('复制失败')
+  }
+}
+
 export const sheetTabMenuActions: Record<string, SheetTabMenuActionDef> = {
   delete: {
     titleKey: 'sheetTabMenu.delete',
     disabled: (ctx) => (ctx.sheet?.getSheetIds().length ?? 0) <= 1,
     run: ({ sheet, sheetId, close }) => {
-      sheet?.deleteSheet(sheetId)
       close()
+      if (!sheet) return
+      const name = sheet.getSheetName(sheetId) || sheetId
+      Modal.confirm({
+        title: sheetI18n.global.t('sheetTabMenu.deleteConfirmTitle'),
+        content: sheetI18n.global.t('sheetTabMenu.deleteConfirmContent', { name }),
+        okType: 'danger',
+        onOk: () => {
+          sheet.deleteSheet(sheetId)
+          message.success(sheetI18n.global.t('sheetTabMenu.deleteSuccess'))
+        },
+      })
     },
   },
   rename: {
     titleKey: 'sheetTabMenu.rename',
-    run: ({ sheet, sheetId, close }) => {
+    run: ({ sheet, sheetId, close, onStartRename }) => {
+      close()
+      if (onStartRename) {
+        onStartRename(sheetId)
+        return
+      }
       const cur = sheet?.getSheetName(sheetId) ?? ''
       const name = window.prompt(sheetI18n.global.t('sheetTabMenu.renamePrompt'), cur)
-      if (name != null && name.trim()) sheet?.renameSheet(sheetId, name.trim())
-      close()
+      if (name != null && name.trim() && name.trim() !== cur) {
+        sheet?.renameSheet(sheetId, name.trim())
+      }
     },
   },
   duplicate: {
     titleKey: 'sheetTabMenu.duplicate',
     run: ({ sheet, sheetId, close }) => {
-      sheet?.duplicateSheet(sheetId)
       close()
+      if (!sheet) return
+      const newId = sheet.duplicateSheet(sheetId)
+      sheet.switchSheet(newId)
+      message.success(sheetI18n.global.t('sheetTabMenu.duplicateSuccess'))
     },
   },
   copyLink: {
     titleKey: 'sheetTabMenu.copyLink',
     run: ({ sheetId, close }) => {
-      const url = `${location.href.split('#')[0]}#sheet=${sheetId}`
-      void navigator.clipboard?.writeText(url)
       close()
+      const url = `${location.origin}${location.pathname}${location.search}#sheet=${sheetId}`
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard
+          .writeText(url)
+          .then(() => {
+            message.success(sheetI18n.global.t('sheetTabMenu.copyLinkSuccess'))
+          })
+          .catch(() => {
+            copyFallback(url)
+          })
+      } else {
+        copyFallback(url)
+      }
     },
   },
   hide: {
     titleKey: 'sheetTabMenu.hide',
     disabled: (ctx) => (ctx.sheet?.getVisibleSheetIds().length ?? 0) <= 1,
     run: ({ sheet, sheetId, close }) => {
-      sheet?.setSheetHidden(sheetId, true)
       close()
+      if (!sheet) return
+      sheet.setSheetHidden(sheetId, true)
+      message.info(sheetI18n.global.t('sheetTabMenu.hideSuccess'))
     },
   },
   tabColor: {

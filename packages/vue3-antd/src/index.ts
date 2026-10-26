@@ -70,6 +70,8 @@ export {
 } from './menus'
 export type { ToolbarItemConfig, ContextMenuActionContext } from './menus'
 export { default as AutofillOptionsMenu } from './components/AutofillOptionsMenu.vue'
+export { default as ExportModal } from './menus/toolbar/importExport/ExportModal.vue'
+export { default as ImportModal } from './menus/toolbar/importExport/ImportModal.vue'
 export type { AutofillPayload } from './components/AutofillOptionsMenu.vue'
 export { ensureSvgSprite } from './icons'
 

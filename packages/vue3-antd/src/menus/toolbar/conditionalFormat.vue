@@ -19,33 +19,49 @@
           </a-menu-item>
           <a-menu-item key="cell-more">{{ t('conditionalFormat.menu.moreRules') }}</a-menu-item>
         </a-sub-menu>
-        <a-sub-menu key="databar" :title="t('conditionalFormat.menu.dataBar')">
-          <div class="cf-preset-section">
-            <div class="cf-preset-title">{{ t('conditionalFormat.gradientFill') }}</div>
-            <div class="cf-preset-grid">
-              <button
-                v-for="p in gradientPresets"
-                :key="p.id"
-                type="button"
-                class="cf-preset-btn"
-                @click="addDataBarPreset(p)"
-              >
-                <span class="cf-preset-bar" :style="presetBarStyle(p)" />
-              </button>
+        <a-sub-menu
+          key="databar"
+          :title="t('conditionalFormat.menu.dataBar')"
+          popup-class-name="sheet-cf-databar-submenu"
+        >
+          <div class="lake-sheet-toolbar-image-chose-wrapper">
+            <div class="lake-sheet-toolbar-image-chose">
+              <div class="lake-sheet-toolbar-image-chose-title">{{ t('conditionalFormat.gradientFill') }}</div>
+              <div class="lake-sheet-toolbar-image-chose-group">
+                <div
+                  v-for="p in gradientPresets"
+                  :key="p.id"
+                  class="lake-sheet-toolbar-image-chose-item"
+                  @click="addDataBarPreset(p)"
+                >
+                  <img
+                    v-if="p.img"
+                    :src="p.img"
+                    class="lake-sheet-toolbar-image-chose-img"
+                    :alt="t(p.labelKey)"
+                  />
+                  <span v-else class="cf-preset-bar" :style="presetBarStyle(p)" />
+                </div>
+              </div>
             </div>
-          </div>
-          <div class="cf-preset-section">
-            <div class="cf-preset-title">{{ t('conditionalFormat.solidFill') }}</div>
-            <div class="cf-preset-grid">
-              <button
-                v-for="p in solidPresets"
-                :key="p.id"
-                type="button"
-                class="cf-preset-btn"
-                @click="addDataBarPreset(p)"
-              >
-                <span class="cf-preset-bar" :style="presetBarStyle(p)" />
-              </button>
+            <div class="lake-sheet-toolbar-image-chose">
+              <div class="lake-sheet-toolbar-image-chose-title">{{ t('conditionalFormat.solidFill') }}</div>
+              <div class="lake-sheet-toolbar-image-chose-group">
+                <div
+                  v-for="p in solidPresets"
+                  :key="p.id"
+                  class="lake-sheet-toolbar-image-chose-item"
+                  @click="addDataBarPreset(p)"
+                >
+                  <img
+                    v-if="p.img"
+                    :src="p.img"
+                    class="lake-sheet-toolbar-image-chose-img"
+                    :alt="t(p.labelKey)"
+                  />
+                  <span v-else class="cf-preset-bar" :style="presetBarStyle(p)" />
+                </div>
+              </div>
             </div>
           </div>
         </a-sub-menu>
@@ -203,37 +219,65 @@ const onMenuClick: MenuProps['onClick'] = ({ key }) => {
 </style>
 
 <style lang="less">
-.sheet-cf-dropdown {
-  .cf-preset-section {
-    padding: 4px 12px 8px;
+.sheet-cf-databar-submenu {
+  .ant-dropdown-menu {
+    padding: 0 !important;
+    min-width: 176px;
+    width: auto;
+  }
+}
+
+.lake-sheet-toolbar-image-chose-wrapper {
+  padding: 10px 14px 12px;
+  width: 180px;
+  box-sizing: border-box;
+
+  .lake-sheet-toolbar-image-chose {
+    &:not(:first-child) {
+      margin-top: 10px;
+    }
   }
 
-  .cf-preset-title {
-    font-size: 11px;
-    color: var(--ant-color-text-secondary);
-    margin-bottom: 6px;
+  .lake-sheet-toolbar-image-chose-title {
+    font-size: 13px;
+    color: var(--ant-color-text-primary, #262626);
+    line-height: 20px;
+    margin-bottom: 8px;
+    font-weight: 500;
   }
 
-  .cf-preset-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
+  .lake-sheet-toolbar-image-chose-group {
+    display: grid !important;
+    grid-template-columns: repeat(3, 43px) !important;
+    justify-content: space-between;
+    row-gap: 8px;
   }
 
-  .cf-preset-btn {
-    border: 1px solid var(--ant-color-border-secondary);
-    border-radius: 4px;
-    padding: 4px;
-    background: #fff;
+  .lake-sheet-toolbar-image-chose-item {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .lake-sheet-toolbar-image-chose-img {
+    width: 35px;
+    height: 31px;
+    border: 3px solid transparent;
+    box-sizing: content-box;
+    border-radius: 6px;
+    transition: all 0.1s ease-in-out;
     cursor: pointer;
 
-    &:hover {
-      border-color: var(--ant-color-primary);
+    &:hover,
+    &.lake-sheet-toolbar-image-chose-img-active {
+      border-color: var(--speed-color-bg-gray-3, #eff0f0);
     }
   }
 
   .cf-preset-bar {
     display: block;
+    width: 35px;
     height: 10px;
     border-radius: 2px;
   }

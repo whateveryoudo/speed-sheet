@@ -218,6 +218,7 @@ import { chartStyleSections, type SchemaFieldItem } from './schema'
 const {
   visible,
   chartId,
+  activeChartId,
   closeDrawer,
   isPickingRange,
   pickingRange,
@@ -243,6 +244,20 @@ const chart = computed<SheetChartItem | null>(() => {
   if (!s || !id) return null
   return s.state.getChart(id)
 })
+
+// 当图表被删除（例如在画布卡片删除、快捷键删除等）时，如果抽屉仍处于打开状态，自动关闭抽屉
+watch(
+  chart,
+  (val) => {
+    if (visible.value && !val) {
+      if (activeChartId.value === chartId.value) {
+        activeChartId.value = null
+      }
+      closeDrawer()
+    }
+  },
+  { immediate: true },
+)
 
 /** 依据当前图表动态计算可见的 Schema Section */
 const visibleStyleSections = computed(() => {
@@ -400,7 +415,11 @@ function onHeaderColChange(e: any) {
 
 function removeChart() {
   if (!chart.value || !sheet.value) return
-  sheet.value.chain().removeSheetChart({ id: chart.value.id }).run()
+  const id = chart.value.id
+  if (activeChartId.value === id) {
+    activeChartId.value = null
+  }
+  sheet.value.chain().removeSheetChart({ id }).run()
   closeDrawer()
 }
 </script>

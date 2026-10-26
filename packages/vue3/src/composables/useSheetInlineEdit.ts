@@ -143,9 +143,10 @@ export function useSheetInlineEdit(options: {
     if (!fe) return
     syncingToFormulaEdit = true
     if (!fe.active.value) {
-      fe.start(editR.value, editC.value, val)
+      fe.start(editR.value, editC.value, val, 'cell')
       fe.caret.value = caret
     } else {
+      fe.source.value = 'cell'
       fe.setText(val, caret)
     }
     syncingToFormulaEdit = false
@@ -165,6 +166,15 @@ export function useSheetInlineEdit(options: {
       fe.cancel()
       return
     }
+
+    // 如果编辑源是顶部公式栏（bar），则不打开单元格内联编辑，避免抢焦点和双重弹窗
+    if (fe.source.value === 'bar') {
+      fe.syncHighlights(options.sheet.value)
+      restoreFormulaEditingSelection()
+      options.onDraw()
+      return
+    }
+
     const text = fe.text.value
     const caretPos = fe.caret.value
 
@@ -267,7 +277,7 @@ export function useSheetInlineEdit(options: {
     editorValue.value = initial
     editing.value = true
     if (isFormulaText(initial) && options.formulaEdit) {
-      options.formulaEdit.start(r, c, initial)
+      options.formulaEdit.start(r, c, initial, 'cell')
     }
     nextTick(() => {
       updateEditorWidth()
@@ -324,6 +334,10 @@ export function useSheetInlineEdit(options: {
 
   function onEditorKeydown(e: KeyboardEvent): void {
     if (e.key === 'Enter') {
+      if (e.altKey) {
+        // Option/Alt + Enter：换行，由输入框处理，不退出编辑态
+        return
+      }
       e.preventDefault()
       e.stopPropagation()
       syncEditorCaret()
@@ -353,6 +367,20 @@ export function useSheetInlineEdit(options: {
     const rel = e.relatedTarget as Node | null
     if (rel && options.viewportEl.value?.contains(rel)) {
       nextTick(() => options.editorEl.value?.focus())
+      return
+    }
+    // 对齐 Luckysheet：点击表格容器外部（外部网页/未明确指定区域）不退出编辑态
+    const boundary = options.commitBoundary?.value
+    if (!rel || (boundary && !boundary.contains(rel))) {
+      return
+    }
+    // 对齐腾讯文档/Excel：如果失去焦点的目标属于工具栏、公式栏或浮层（Dropdown / Popover / Modal），保持编辑态不退出！
+    const relEl = rel instanceof HTMLElement ? rel : (rel.parentElement as HTMLElement | null)
+    if (
+      relEl?.closest(
+        '.sheet-toolbar-host, .sheet-toolbar, .speed-sheet-toolbar, .sheet-formula-bar, .speed-sheet-formula-bar, .sheet-bar, .formula-assist-popup, .ant-dropdown, .ant-popover, .ant-modal, .ant-select-dropdown, .color-picker-popover, .color-board-popover-wrapper, .sheet-cf-databar-submenu, .sheet-cf-databar-popover',
+      )
+    ) {
       return
     }
     if (isFormulaText(editorValue.value)) {

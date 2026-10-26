@@ -37,4 +37,7 @@ export const defaultSheetToolbarKeys: ToolbarItemConfig[] = [
   'formula',
   '|',
   'findAndReplace',
+  '|',
+  'import',
+  'export',
 ]

@@ -15,7 +15,7 @@ export {
   SHEET_EDITOR_KEY,
 } from './composables/useSheetEditorContext'
 export type { SheetEditorContext } from './composables/useSheetEditorContext'
-export type { FormulaEditContext, FormulaRangeHighlight } from './composables/useFormulaEdit'
+export type { FormulaEditContext, FormulaRangeHighlight, FormulaEditSource } from './composables/useFormulaEdit'
 /** 公式编辑字符串工具 — 实现在 @speed-sheet/extension-formula，此处 re-export 保持对外 API 稳定 */
 export {
   isFormulaInput,
@@ -57,6 +57,8 @@ export type {
 
 export { default as SheetCanvas } from './components/SheetCanvas.vue'
 export { default as FormulaRichInput } from './components/FormulaRichInput.vue'
+export { default as FormulaAssistPopup } from './components/FormulaAssistPopup.vue'
+export { getCaretCharacterOffset, setCaretCharacterOffset } from './components/formulaCaret'
 export { default as SheetExtensionViews } from './components/SheetExtensionViews.vue'
 export { default as SheetBubbleMenusHost } from './components/SheetBubbleMenusHost.vue'
 export { default as SheetBubbleMenu } from './components/SheetBubbleMenu.vue'

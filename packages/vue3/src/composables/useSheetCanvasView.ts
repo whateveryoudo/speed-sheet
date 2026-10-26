@@ -93,7 +93,11 @@ export function useSheetCanvasView(options: {
   const layout = computed({
     get: () => {
       void bump.value
-      return viewport.layoutState.layout
+      const base = viewport.layoutState.layout
+      return {
+        ...base,
+        metrics: viewport.layoutState.gridMetrics,
+      }
     },
     set: (v) => {
       viewport.layoutState.layout = v

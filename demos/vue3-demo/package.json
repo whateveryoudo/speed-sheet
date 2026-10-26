@@ -12,6 +12,7 @@
     "@speed-sheet/core": "workspace:^",
     "@speed-sheet/vue3": "workspace:^",
     "@speed-sheet/vue3-antd": "workspace:^",
+    "@speed-sheet/extension-import-export": "workspace:^",
     "ant-design-vue": "^4.2.0",
     "@ant-design/icons-vue": "^7.0.0",
     "lib0": "^0.2.117",

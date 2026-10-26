@@ -103,18 +103,63 @@
     <template v-else>
       <div class="cf-field">
         <label class="cf-label">{{ t('conditionalFormat.display') }}</label>
-        <div class="cf-databar-preview">
-          <div
-            class="cf-databar-preview-bar"
-            :style="dataBarPreviewStyle"
-          />
-        </div>
-        <a-select
-          v-model:value="dataBarColorKey"
-          size="small"
-          :options="dataBarColorOptions"
-          @change="onDataBarColorChange"
-        />
+        <a-popover
+          v-model:open="colorPickerOpen"
+          trigger="click"
+          placement="bottomRight"
+          :overlay-inner-style="{ padding: 0 }"
+          overlay-class-name="sheet-cf-databar-popover"
+        >
+          <template #content>
+            <div class="lake-sheet-toolbar-image-chose-wrapper">
+              <div class="lake-sheet-toolbar-image-chose">
+                <div class="lake-sheet-toolbar-image-chose-title">{{ t('conditionalFormat.gradientFill') }}</div>
+                <div class="lake-sheet-toolbar-image-chose-group">
+                  <div
+                    v-for="p in CF_DATA_BAR_GRADIENT_PRESETS"
+                    :key="p.id"
+                    class="lake-sheet-toolbar-image-chose-item"
+                    @click="onSelectDataBarPreset(p)"
+                  >
+                    <img
+                      v-if="p.img"
+                      :src="p.img"
+                      class="lake-sheet-toolbar-image-chose-img"
+                      :class="{ 'lake-sheet-toolbar-image-chose-img-active': p.id === dataBarColorKey }"
+                      :alt="t(p.labelKey)"
+                    />
+                    <span v-else class="cf-preset-bar" :style="presetBarStyle(p)" />
+                  </div>
+                </div>
+              </div>
+              <div class="lake-sheet-toolbar-image-chose">
+                <div class="lake-sheet-toolbar-image-chose-title">{{ t('conditionalFormat.solidFill') }}</div>
+                <div class="lake-sheet-toolbar-image-chose-group">
+                  <div
+                    v-for="p in CF_DATA_BAR_SOLID_PRESETS"
+                    :key="p.id"
+                    class="lake-sheet-toolbar-image-chose-item"
+                    @click="onSelectDataBarPreset(p)"
+                  >
+                    <img
+                      v-if="p.img"
+                      :src="p.img"
+                      class="lake-sheet-toolbar-image-chose-img"
+                      :class="{ 'lake-sheet-toolbar-image-chose-img-active': p.id === dataBarColorKey }"
+                      :alt="t(p.labelKey)"
+                    />
+                    <span v-else class="cf-preset-bar" :style="presetBarStyle(p)" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+          <div class="cf-databar-selector-btn">
+            <span class="cf-databar-selector-preview" :style="dataBarPreviewStyle" />
+            <span class="cf-databar-selector-label">{{ currentPresetLabel }}</span>
+            <DownOutlined class="cf-databar-selector-caret" />
+          </div>
+        </a-popover>
       </div>
       <div class="cf-field">
         <label class="cf-label">{{ t('conditionalFormat.minValue') }}</label>
@@ -154,7 +199,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { SelectValue } from 'ant-design-vue/es/select'
-import { TableOutlined } from '@ant-design/icons-vue'
+import { TableOutlined, DownOutlined } from '@ant-design/icons-vue'
 import type { CfRule } from '@speed-sheet/extension-conditional-format'
 import {
   formatRangeA1,
@@ -202,6 +247,7 @@ function createDraft(rule: CfRule | null): CfRule {
 const draft = reactive<CfRule>(createDraft(props.rule))
 const rangeText = ref(formatRangeA1(draft.row, draft.column))
 const dataBarColorKey = ref('g-green')
+const colorPickerOpen = ref(false)
 
 watch(
   () => props.rule,
@@ -271,6 +317,36 @@ const dataBarPreviewStyle = computed(() => {
   }
   return { background: bar.color }
 })
+
+const currentPreset = computed(() =>
+  allDataBarPresets.find((p) => p.id === dataBarColorKey.value),
+)
+
+const currentPresetLabel = computed(() => {
+  if (!currentPreset.value) return ''
+  return (
+    t(currentPreset.value.labelKey) +
+    (currentPreset.value.gradient ? ` (${t('conditionalFormat.gradient')})` : '')
+  )
+})
+
+function presetBarStyle(p: (typeof allDataBarPresets)[number]): Record<string, string> {
+  if (p.gradient) {
+    return {
+      background: `linear-gradient(to right, ${p.color}, transparent)`,
+    }
+  }
+  return { background: p.color }
+}
+
+function onSelectDataBarPreset(p: (typeof allDataBarPresets)[number]): void {
+  dataBarColorKey.value = p.id
+  if (draft.dataBar) {
+    draft.dataBar.color = p.color
+    draft.dataBar.gradient = p.gradient
+  }
+  colorPickerOpen.value = false
+}
 
 function syncDataBarColorKey(): void {
   const bar = draft.dataBar
@@ -387,19 +463,54 @@ syncDataBarColorKey()
   cursor: pointer;
 }
 
-.cf-databar-preview {
-  height: 28px;
-  border: 1px solid var(--ant-color-border-secondary);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.cf-databar-preview-bar {
-  height: 100%;
-  width: 70%;
-}
-
 .cf-bound-input {
   margin-top: 4px;
+}
+
+.cf-databar-selector-btn {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 4px 11px;
+  background: var(--ant-color-bg-container, #fff);
+  border: 1px solid var(--ant-color-border, #d9d9d9);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+
+  &:hover {
+    border-color: var(--ant-color-primary, #1677ff);
+  }
+}
+
+.cf-databar-selector-preview {
+  width: 90px;
+  height: 18px;
+  border-radius: 3px;
+  margin-right: 8px;
+  flex-shrink: 0;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.cf-databar-selector-label {
+  flex: 1;
+  font-size: 13px;
+  color: var(--ant-color-text, #262626);
+  text-align: right;
+  margin-right: 6px;
+}
+
+.cf-databar-selector-caret {
+  font-size: 11px;
+  color: var(--ant-color-text-secondary, #8c8c8c);
+}
+</style>
+
+<style lang="less">
+.sheet-cf-databar-popover {
+  .ant-popover-inner {
+    padding: 0 !important;
+  }
 }
 </style>

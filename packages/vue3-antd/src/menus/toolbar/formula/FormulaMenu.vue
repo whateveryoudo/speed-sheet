@@ -10,21 +10,20 @@
     <template #overlay>
       <a-menu :selectable="false" class="formula-menu-list min-w-160px" @click="onPick">
         <a-menu-item-group :title="t('formula.common')">
-          <FormulaMenuHintPopover v-for="fn in featured" :key="fn.name" :fn="fn">
-            <a-menu-item :key="fn.name">
+          <a-menu-item v-for="fn in featured" :key="fn.name">
+            <FormulaMenuHintPopover :fn="fn">
               {{ fn.name }}({{ fn.label }})
-            </a-menu-item>
-          </FormulaMenuHintPopover>
-
+            </FormulaMenuHintPopover>
+          </a-menu-item>
         </a-menu-item-group>
         <a-menu-divider />
         <a-sub-menu v-for="cat in categories" :key="cat" :title="categoryLabel(cat, sheetLocale)">
           <div class="max-h-[600px] overflow-y-auto">
-            <FormulaMenuHintPopover v-for="fn in byCategory(cat)" :key="fn.name" :fn="fn">
-              <a-menu-item :key="fn.name">
+            <a-menu-item v-for="fn in byCategory(cat)" :key="fn.name">
+              <FormulaMenuHintPopover :fn="fn">
                 {{ fn.name }}
-              </a-menu-item>
-            </FormulaMenuHintPopover>
+              </FormulaMenuHintPopover>
+            </a-menu-item>
           </div>
         </a-sub-menu>
         <a-menu-divider />

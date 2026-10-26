@@ -41,6 +41,7 @@ export function provideChartConfigDrawer(): ChartConfigDrawerContext {
     cancelPickingRange()
     visible.value = false
     chartId.value = null
+    activeChartId.value = null
   }
 
   function startPickingRange(initial?: ChartRange, confirmCb?: (range: ChartRange) => void) {

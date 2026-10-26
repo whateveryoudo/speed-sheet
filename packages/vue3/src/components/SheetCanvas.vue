@@ -121,12 +121,21 @@
         class="cell-editor"
         :style="editorStyle"
         :field-style="editorFieldStyle"
-        @input="onEditorInput"
+        @input="handleEditorInput"
         @blur="onEditorBlur"
-        @keydown="onEditorKeydown"
+        @keydown="handleEditorKeydown"
         @keyup="syncEditorCaret"
         @click.stop="syncEditorCaret"
         @mousedown.stop
+      />
+      <FormulaAssistPopup
+        v-if="editing && isFormulaText(editorValue)"
+        ref="assistPopupEl"
+        :context="promptContext"
+        :anchor-el="editorDomEl"
+        :boundary="viewportEl"
+        @select="onSelectAssistEntry"
+        @close="promptContext = { type: 'none' }"
       />
       <slot v-if="ctxMenu.show && $slots['context-menu']" name="context-menu" v-bind="ctxMenuPayload"
         :close="closeCtxMenu" />
@@ -136,7 +145,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, toRef, inject, watch } from 'vue'
+import { ref, computed, toRef, inject, watch, nextTick } from 'vue'
 import type { Sheet, CellRange, AutofillDirection } from '@speed-sheet/core'
 import type { CellAttributes } from '@speed-sheet/shared'
 import type { ContextMenuState } from '../types/context-menu'
@@ -144,6 +153,13 @@ import { FORMULA_EDIT_KEY } from '../composables/useFormulaEdit'
 import { useSheetEditorOptional } from '../composables/useSheetEditorContext'
 import { useSheetCanvasView } from '../composables/useSheetCanvasView'
 import FormulaRichInput from './FormulaRichInput.vue'
+import FormulaAssistPopup from './FormulaAssistPopup.vue'
+import {
+  getFormulaPromptContext,
+  isFormulaText,
+  type FormulaPromptContext,
+  type FormulaBuiltinEntry,
+} from '@speed-sheet/extension-formula'
 import SheetExtensionViews from './SheetExtensionViews.vue'
 import SheetBubbleMenusHost from './SheetBubbleMenusHost.vue'
 import { provideSheetViewport } from '../composables/useSheetViewportContext'
@@ -302,6 +318,86 @@ const {
   onFreezeInvalid: () => emit('freeze-invalid'),
   onAutofillComplete: (payload) => emit('autofill-complete', payload),
   onFindAndReplace: () => emit('find-and-replace'),
+})
+
+const assistPopupEl = ref<InstanceType<typeof FormulaAssistPopup>>()
+const promptContext = ref<FormulaPromptContext>({ type: 'none' })
+const editorDomEl = computed(() => {
+  const comp = editorEl.value as any
+  return (comp?.$el ?? null) as HTMLElement | null
+})
+
+function updatePromptContext(): void {
+  if (!editing.value || !isFormulaText(editorValue.value)) {
+    promptContext.value = { type: 'none' }
+    return
+  }
+  const text = editorValue.value
+  const caret = editorEl.value?.selectionStart ?? text.length
+  promptContext.value = getFormulaPromptContext(text, caret)
+}
+
+function handleEditorInput(): void {
+  onEditorInput()
+  nextTick(updatePromptContext)
+}
+
+function handleEditorKeydown(e: KeyboardEvent): void {
+  if (promptContext.value.type === 'search') {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      e.stopPropagation()
+      assistPopupEl.value?.moveNext()
+      return
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      e.stopPropagation()
+      assistPopupEl.value?.movePrev()
+      return
+    }
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      const ok = assistPopupEl.value?.selectCurrent()
+      if (ok) {
+        e.preventDefault()
+        e.stopPropagation()
+        return
+      }
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      e.stopPropagation()
+      promptContext.value = { type: 'none' }
+      return
+    }
+  } else if (promptContext.value.type === 'help') {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      e.stopPropagation()
+      promptContext.value = { type: 'none' }
+      return
+    }
+  }
+  onEditorKeydown(e)
+}
+
+function onSelectAssistEntry(entry: FormulaBuiltinEntry): void {
+  if (promptContext.value.type === 'search') {
+    const range = promptContext.value.replaceRange
+    editorEl.value?.insertText(`${entry.name}(`, range)
+    nextTick(() => {
+      editorEl.value?.focus()
+      updatePromptContext()
+    })
+  }
+}
+
+watch(editing, (isEdit) => {
+  if (!isEdit) {
+    promptContext.value = { type: 'none' }
+  } else {
+    nextTick(updatePromptContext)
+  }
 })
 
 provideSheetViewport({
@@ -543,10 +639,10 @@ defineExpose({
   border: 2px solid #1a73e8;
   margin: 0;
   font-size: 12px;
-  line-height: calc(1em + 2px);
+  line-height: 1.4;
   font-family: ui-monospace, SFMono-Regular, Menlo, -apple-system, sans-serif;
   background: #fff;
   box-sizing: border-box;
-  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 </style>

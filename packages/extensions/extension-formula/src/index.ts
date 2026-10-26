@@ -14,7 +14,7 @@ export {
 export { createFormulaContext } from './context'
 export type { FormulaStorage } from './extension'
 export type { FormulaRangeHighlight } from './engine'
-export { formatA1, colToLetter, letterToCol, parseRefToken, extractRefTokens } from './refs'
+export { formatA1, colToLetter, letterToCol, parseRefToken, extractRefTokens, normalizeFormulaInput } from './refs'
 export {
   displayFormulaToInternal,
   internalFormulaToDisplay,
@@ -34,6 +34,12 @@ export {
   resolveBuiltinName,
   isRegisteredBuiltin,
   categoryLabel,
+  getFormulaPromptContext,
+  parseSyntaxParameters,
+  type FormulaPromptContext,
+  type FormulaSearchPrompt,
+  type FormulaHelpPrompt,
+  type FormulaNonePrompt,
 } from './registry'
 export type { FormulaBuiltinEntry, FormulaCategoryId } from './registry'
 export type { FormulaResult, FormulaErrorCode } from './evaluate'

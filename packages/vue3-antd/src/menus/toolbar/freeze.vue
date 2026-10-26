@@ -1,17 +1,9 @@
 <template>
-  <a-dropdown
-    v-model:open="open"
-    :trigger="['click']"
-    :disabled="!editableCpt"
-    overlay-class-name="sheet-freeze-dropdown"
-  >
+  <a-dropdown v-model:open="open" :trigger="['click']" :disabled="!editableCpt"
+    overlay-class-name="sheet-freeze-dropdown">
     <s-keymap-tip :title="editableCpt ? '冻结' : null">
-      <a-button
-        type="text"
-        :class="['shadow-btn-wrapper', freezeActive ? 'is-active' : '']"
-        :disabled="!editableCpt"
-      >
-        <BorderOutlined />
+      <a-button type="text" :class="['shadow-btn-wrapper', freezeActive ? 'is-active' : '']" :disabled="!editableCpt">
+        <s-icon-font type="icon-kl-freezerowcoloum" :size="16" />
         <CaretDownOutlined class="freeze-caret" />
       </a-button>
     </s-keymap-tip>
@@ -20,19 +12,19 @@
         <template v-if="!freezeActive">
           <a-menu-item key="rows">
             <span class="freeze-menu-item">
-              <MenuUnfoldOutlined />
+              <s-icon-font type="icon-kl-freezefirstrow" :size="16" />
               <span>{{ rowLabel }}</span>
             </span>
           </a-menu-item>
           <a-menu-item key="cols">
             <span class="freeze-menu-item">
-              <MenuFoldOutlined />
+              <s-icon-font type="icon-kl-freezzecolumn" :size="16" />
               <span>{{ colLabel }}</span>
             </span>
           </a-menu-item>
           <a-menu-item key="both">
             <span class="freeze-menu-item">
-              <BorderOutlined />
+              <s-icon-font type="icon-kl-freezerowcoloum" :size="16" />
               <span>{{ bothLabel }}</span>
             </span>
           </a-menu-item>
@@ -41,7 +33,7 @@
           <a-menu-divider />
           <a-menu-item key="cancel">
             <span class="freeze-menu-item">
-              <CloseOutlined />
+              <s-icon-font type="icon-kl-quxiaoshaixuan" :size="16" />
               <span>取消冻结</span>
             </span>
           </a-menu-item>

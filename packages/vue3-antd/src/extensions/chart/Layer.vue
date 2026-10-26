@@ -171,6 +171,7 @@ const {
   confirmPickingRange,
   cancelPickingRange,
   openDrawer,
+  closeDrawer,
 } = useChartConfigDrawer()
 
 const chartDoms = new Map<string, HTMLElement>()
@@ -387,6 +388,14 @@ function onWindowKeyDown(e: KeyboardEvent) {
       e.preventDefault()
       confirmPickingRange()
     }
+  } else if ((e.key === 'Delete' || e.key === 'Backspace') && activeChartId.value && !isPickingRange.value) {
+    const target = e.target as HTMLElement | null
+    const tag = target?.tagName?.toLowerCase()
+    const isInput = tag === 'input' || tag === 'textarea' || target?.isContentEditable
+    if (!isInput) {
+      e.preventDefault()
+      removeChart(activeChartId.value)
+    }
   }
 }
 
@@ -593,6 +602,12 @@ function onChartMouseDown(chart: SheetChartItem, e: MouseEvent) {
 
 function removeChart(id: string) {
   if (!sheet.value) return
+  if (drawerChartId.value === id || drawerVisible.value) {
+    closeDrawer()
+  }
+  if (activeChartId.value === id) {
+    activeChartId.value = null
+  }
   sheet.value.chain().removeSheetChart({ id }).run()
 }
 
@@ -822,18 +837,37 @@ function onResizeStart(chart: SheetChartItem, handle: ResizeHandleDirection, e: 
 }
 
 function onGlobalMouseDown(e: MouseEvent) {
-  if (drawerVisible.value) return
+  if (isPickingRange.value) return
   const target = e.target as HTMLElement | null
-  if (target?.closest('.sheet-chart-container') || target?.closest('.sheet-chart-drawer')) return
-  activeChartId.value = null
+  if (!target) return
+
+  // 点击图表本身、图表抽屉或其弹出的浮层（下拉菜单、颜色选择器、Popover等），保持选中
+  if (
+    target.closest('.sheet-chart-container') ||
+    target.closest('.sheet-chart-drawer') ||
+    target.closest('.ant-drawer') ||
+    target.closest('.ant-select-dropdown') ||
+    target.closest('.ant-popover') ||
+    target.closest('.ant-dropdown') ||
+    target.closest('.ant-color-picker') ||
+    target.closest('.ant-modal')
+  ) {
+    return
+  }
+
+  // 点击外部其他区域（如画布单元格区域、工具栏、背景等）：图表失去选中并关闭设置面板
+  if (activeChartId.value || drawerVisible.value) {
+    activeChartId.value = null
+    closeDrawer()
+  }
 }
 
 onMounted(() => {
-  window.addEventListener('mousedown', onGlobalMouseDown)
+  window.addEventListener('mousedown', onGlobalMouseDown, true)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('mousedown', onGlobalMouseDown)
+  window.removeEventListener('mousedown', onGlobalMouseDown, true)
   window.removeEventListener('keydown', onWindowKeyDown)
   chartInstances.forEach((inst) => inst.dispose())
   chartInstances.clear()

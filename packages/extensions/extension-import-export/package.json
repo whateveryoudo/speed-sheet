@@ -2,13 +2,15 @@
   "name": "@speed-sheet/extension-import-export",
   "version": "0.1.1",
   "type": "module",
-  "main": "./dist/index.js",
+  "description": "Headless import/export conversion engine for speed-sheet (XLSX, SpeedSheet, CSV)",
+  "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.cjs"
     }
   },
   "files": [
@@ -17,19 +19,21 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
+    "test": "vitest run",
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@speed-sheet/core": "workspace:^"
+    "@speed-sheet/core": "workspace:^",
+    "@speed-sheet/shared": "workspace:^",
+    "exceljs": "^4.4.0"
   },
   "devDependencies": {
     "tsup": "^8.3.0",
     "typescript": "^5.6.0",
-    "xlsx": "^0.18.5",
+    "vitest": "^2.1.0",
     "yjs": "^13.6.0"
   },
   "peerDependencies": {
-    "xlsx": "^0.18.0",
     "yjs": "^13.6.0"
   },
   "publishConfig": {

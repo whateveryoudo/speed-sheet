@@ -29,6 +29,8 @@ import Protect from './protect.vue'
 import ConditionalFormat from './conditionalFormat.vue'
 import Freeze from './freeze.vue'
 import FindAndReplace from './findAndReplace.vue'
+import Import from './import.vue'
+import Export from './export.vue'
 import { defaultSheetToolbarKeys } from './keys'
 import type { ToolbarItemConfig } from './types'
 import { useSheetToolbar } from '../../composables/useSheetToolbar'
@@ -63,6 +65,8 @@ const componentMap = {
   dropdown: Dropdown,
   chart: Chart,
   findAndReplace: FindAndReplace,
+  import: Import,
+  export: Export,
 }
 
 export default defineComponent({
@@ -87,7 +91,14 @@ export default defineComponent({
       for (const ext of exts) {
         const item = (ext as any).getToolbarItem?.()
         if (!item) continue
-        if (typeof item === 'object' && item !== null && 'component' in item) {
+        if (Array.isArray(item)) {
+          for (const subItem of item) {
+            if (typeof subItem === 'object' && subItem !== null && 'component' in subItem) {
+              const key = subItem.key || ext.name
+              map[key] = subItem.component
+            }
+          }
+        } else if (typeof item === 'object' && item !== null && 'component' in item) {
           const key = item.key || ext.name
           map[key] = item.component
         } else {
@@ -102,7 +113,11 @@ export default defineComponent({
         console.warn('同时传入了 toolbarKeys 和 excludeKeys，将只生效 toolbarKeys')
       }
       if (props.toolbarKeys) return props.toolbarKeys
-      const base = defaultSheetToolbarKeys
+      const base = [...defaultSheetToolbarKeys]
+      const extKeys = Object.keys(extensionToolbarMap.value)
+      if (extKeys.length > 0) {
+        base.push('|', ...extKeys)
+      }
       if (!props.excludeKeys?.length) return base
       return base.filter((key) => {
         const k = typeof key === 'string' ? key : key.key
@@ -156,9 +171,10 @@ export default defineComponent({
               inlineCustomMap.value[key] ||
               extensionToolbarMap.value[key] ||
               componentMap[key as keyof typeof componentMap]
+            if (!Component) return null
             return (
               <>
-                {Component ? <Component /> : null}
+                <Component />
                 {showDivider ? <Divider type="vertical" class="menu-divider" /> : null}
               </>
             )

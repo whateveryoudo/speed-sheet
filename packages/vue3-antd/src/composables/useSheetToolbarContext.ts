@@ -25,4 +25,4 @@ export interface SheetToolbarContext {
 }
 
 export const SHEET_TOOLBAR_KEY: InjectionKey<SheetToolbarContext> =
-  Symbol('sheetToolbar')
+  Symbol.for('speed-sheet:toolbar') as any

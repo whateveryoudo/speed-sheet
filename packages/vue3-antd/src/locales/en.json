@@ -21,8 +21,18 @@
     "duplicate": "Duplicate",
     "copyLink": "Copy sheet link",
     "hide": "Hide sheet",
+    "unhide": "Unhide",
     "tabColor": "Tab color",
-    "renamePrompt": "Sheet name"
+    "renamePrompt": "Sheet name",
+    "deleteConfirmTitle": "Delete sheet",
+    "deleteConfirmContent": "Are you sure you want to delete sheet \"{name}\"? This cannot be undone.",
+    "deleteSuccess": "Sheet deleted",
+    "duplicateSuccess": "Sheet duplicated",
+    "copyLinkSuccess": "Sheet link copied to clipboard",
+    "hideSuccess": "Sheet hidden",
+    "unhideSuccess": "Sheet restored",
+    "nameRequired": "Sheet name cannot be empty",
+    "nameDuplicate": "A sheet with this name already exists"
   },
   "colorBoard": {
     "noTabColor": "No tab color",
@@ -189,7 +199,8 @@
       "orange": "Orange",
       "yellow": "Yellow",
       "red": "Red",
-      "cyan": "Cyan"
+      "cyan": "Cyan",
+      "purple": "Purple"
     },
     "menu": {
       "highlight": "Highlight cells",

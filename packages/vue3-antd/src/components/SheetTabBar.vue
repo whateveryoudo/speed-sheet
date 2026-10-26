@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { nextTick, onMounted, onUnmounted, ref, toRef, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, toRef, watch } from 'vue'
+import { message } from 'ant-design-vue'
 import {
   PlusOutlined,
   CaretDownOutlined,
@@ -8,6 +9,7 @@ import {
   CheckOutlined,
   LeftOutlined,
   RightOutlined,
+  EyeInvisibleOutlined,
 } from '@ant-design/icons-vue'
 import draggable from 'vuedraggable'
 import type { Sheet } from '@speed-sheet/core'
@@ -19,6 +21,12 @@ export interface SheetTabItem {
   id: string
   label: string
   color: string | null
+}
+
+export interface AllSheetListItem {
+  id: string
+  label: string
+  hidden: boolean
 }
 
 import type { SheetTabMenuItemConfig } from '../menus/sheetTabMenu/types'
@@ -57,7 +65,25 @@ const menuPickerOpen = ref(false)
 
 const sheetRef = toRef(() => props.sheet)
 const tabItems = ref<SheetTabItem[]>([])
+const allSheetItems = ref<AllSheetListItem[]>([])
 const activeSheetId = ref('')
+
+const renamingSheetId = ref<string | null>(null)
+const renameInputValue = ref('')
+const renameInputRef = ref<HTMLInputElement | null>(null)
+
+const renameInputWidth = computed(() => {
+  let charLen = 0
+  for (const ch of renameInputValue.value) {
+    charLen += ch.charCodeAt(0) > 255 ? 2 : 1
+  }
+  const w = Math.max(48, Math.min(140, charLen * 7.5 + 16))
+  return `${Math.round(w)}px`
+})
+
+const hasHiddenSheets = computed(() =>
+  allSheetItems.value.some((tab) => tab.hidden),
+)
 
 function buildTabs(): SheetTabItem[] {
   const s = sheetRef.value
@@ -67,6 +93,58 @@ function buildTabs(): SheetTabItem[] {
     label: s.getSheetName(id) || id,
     color: s.getSheetTabColor(id),
   }))
+}
+
+function buildAllSheets(): AllSheetListItem[] {
+  const s = sheetRef.value
+  if (!s) return []
+  return s.getSheetIds().map((id) => ({
+    id,
+    label: s.getSheetName(id) || id,
+    hidden: s.isSheetHidden(id),
+  }))
+}
+
+function startRename(tabId: string): void {
+  if (!props.editable) return
+  renamingSheetId.value = tabId
+  const curName = props.sheet?.getSheetName(tabId) || ''
+  renameInputValue.value = curName
+  menuOpenSheetId.value = null
+  nextTick(() => {
+    const el =
+      renameInputRef.value ??
+      document.querySelector<HTMLInputElement>('.sheet-tab-rename-input')
+    el?.focus()
+    el?.select()
+  })
+}
+
+function commitRename(tabId: string): void {
+  if (renamingSheetId.value !== tabId) return
+  const name = renameInputValue.value.trim()
+  renamingSheetId.value = null
+  if (!name) {
+    message.warning(t('sheetTabMenu.nameRequired'))
+    return
+  }
+  const curName = props.sheet?.getSheetName(tabId)
+  if (name === curName) return
+
+  const s = props.sheet
+  if (s) {
+    const allIds = s.getSheetIds()
+    const dup = allIds.some((id) => id !== tabId && s.getSheetName(id) === name)
+    if (dup) {
+      message.warning(t('sheetTabMenu.nameDuplicate'))
+      return
+    }
+    s.renameSheet(tabId, name)
+  }
+}
+
+function cancelRename(): void {
+  renamingSheetId.value = null
 }
 
 function updateTabScrollState(): void {
@@ -119,6 +197,7 @@ watch(
   () => [props.revision, props.sheet] as const,
   () => {
     tabItems.value = buildTabs()
+    allSheetItems.value = buildAllSheets()
     activeSheetId.value = sheetRef.value?.getActiveSheetId() ?? ''
     nextTick(() => {
       updateTabScrollState()
@@ -167,11 +246,16 @@ function openTabMenu(tabId: string): void {
 }
 
 function onSwitchSheet(id: string): void {
+  if (renamingSheetId.value) return
   props.sheet?.switchSheet(id)
   activeSheetId.value = id
 }
 
-function onSwitchFromList(id: string): void {
+function onSwitchFromList(id: string, isHidden = false): void {
+  if (isHidden) {
+    props.sheet?.setSheetHidden(id, false)
+    message.success(t('sheetTabMenu.unhideSuccess'))
+  }
   onSwitchSheet(id)
   sheetListOpen.value = false
 }
@@ -203,38 +287,32 @@ defineExpose({
   <a-flex ref="flexRef" class="sheet-bar" align="center" :gap="0">
     <a-popover
       v-model:open="sheetListOpen"
-      trigger="click"
+      trigger="hover"
       placement="topLeft"
       :overlay-inner-style="{ padding: 0 }"
       overlay-class-name="sheet-tab-list-popover"
     >
       <template #content>
-        <draggable
-          v-model="tabItems"
-          item-key="id"
-          tag="ul"
-          class="sheet-tab-list"
-          handle=".sheet-tab-list-drag"
-          :disabled="!editable"
-          :animation="150"
-          ghost-class="sheet-tab-list-ghost"
-          @end="onDragEnd"
-        >
-          <template #item="{ element: tab }">
-            <li
-              class="sheet-tab-list-item"
-              :class="{ active: tab.id === activeSheetId }"
-              @click="onSwitchFromList(tab.id)"
-            >
-              <HolderOutlined class="sheet-tab-list-drag" />
-              <span class="sheet-tab-list-label">{{ tab.label }}</span>
-              <CheckOutlined
-                v-if="tab.id === activeSheetId"
-                class="sheet-tab-list-check"
-              />
-            </li>
-          </template>
-        </draggable>
+        <ul class="sheet-tab-list">
+          <li
+            v-for="tab in allSheetItems"
+            :key="tab.id"
+            class="sheet-tab-list-item"
+            :class="{ active: tab.id === activeSheetId, 'is-hidden': tab.hidden }"
+            @click="onSwitchFromList(tab.id, tab.hidden)"
+          >
+            <EyeInvisibleOutlined v-if="tab.hidden" class="sheet-tab-list-hidden-icon" />
+            <HolderOutlined v-else class="sheet-tab-list-drag" />
+            <span class="sheet-tab-list-label" :class="{ 'is-hidden': tab.hidden }">
+              {{ tab.label }}
+              <span v-if="tab.hidden" class="sheet-tab-list-hidden-badge">({{ t('sheetTabMenu.hide') }})</span>
+            </span>
+            <CheckOutlined
+              v-if="tab.id === activeSheetId && !tab.hidden"
+              class="sheet-tab-list-check"
+            />
+          </li>
+        </ul>
       </template>
       <a-button
         type="text"
@@ -242,7 +320,9 @@ defineExpose({
         class="sheet-tab-menu-btn"
         :aria-label="t('sheetTabBar.sheetList')"
       >
-        <UnorderedListOutlined />
+        <a-badge :dot="hasHiddenSheets" color="#1677ff" :offset="[4, -2]">
+          <UnorderedListOutlined />
+        </a-badge>
       </a-button>
     </a-popover>
 
@@ -288,14 +368,27 @@ defineExpose({
               @contextmenu.prevent="openTabMenu(tab.id)"
             >
               <span
+                v-if="renamingSheetId !== tab.id"
                 :class="[
                   'sheet-tab-label',
                   editable ? 'sheet-tab-drag-handle' : 'sheet-tab-label-readonly',
                 ]"
                 @click="onSwitchSheet(tab.id)"
+                @dblclick="startRename(tab.id)"
               >
                 {{ tab.label }}
               </span>
+              <input
+                v-else
+                ref="renameInputRef"
+                v-model="renameInputValue"
+                class="sheet-tab-rename-input"
+                :style="{ width: renameInputWidth }"
+                @blur="commitRename(tab.id)"
+                @keydown.enter.prevent="commitRename(tab.id)"
+                @keydown.esc.prevent="cancelRename"
+                @click.stop
+              />
               <a-dropdown
                 v-if="editable"
                 :open="isMenuOpen(tab.id)"
@@ -321,6 +414,7 @@ defineExpose({
                     :menu-keys="menuKeys"
                     :exclude-keys="excludeMenuKeys"
                     @picker-open-change="onPickerOpenChange"
+                    @rename="startRename"
                     @close="menuOpenSheetId = null; menuPickerOpen = false"
                   />
                 </template>
@@ -381,6 +475,18 @@ defineExpose({
   height: var(--speed-layout-sheet-bar-height, 32px);
   padding: 0 !important;
   border-radius: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  :deep(.ant-badge) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    vertical-align: middle;
+  }
+
   &:hover {
     color: var(--ant-color-primary) !important;
   }
@@ -507,6 +613,20 @@ defineExpose({
 
 .sheet-tab-label {
   pointer-events: auto;
+  user-select: none;
+}
+
+.sheet-tab-rename-input {
+  border: 1px solid var(--ant-color-primary, #1677ff);
+  border-radius: 2px;
+  padding: 0 4px;
+  font-size: var(--ant-font-size-sm);
+  line-height: 1.4;
+  height: 20px;
+  outline: none;
+  background: #fff;
+  color: var(--ant-color-text);
+  box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.2);
 }
 
 .sheet-tab-caret-trigger {
@@ -568,6 +688,28 @@ defineExpose({
   &.active {
     color: var(--ant-color-primary);
   }
+
+  &.is-hidden {
+    opacity: 0.65;
+
+    &:hover {
+      opacity: 1;
+      color: var(--ant-color-primary);
+    }
+  }
+}
+
+.sheet-tab-list-hidden-icon {
+  flex-shrink: 0;
+  color: var(--ant-color-text-quaternary);
+  font-size: 13px;
+}
+
+.sheet-tab-list-hidden-badge {
+  margin-left: 6px;
+  font-size: 11px;
+  color: var(--ant-color-text-tertiary);
+  font-style: normal;
 }
 
 .sheet-tab-list-drag {

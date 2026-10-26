@@ -163,8 +163,7 @@ const chartDrawerCtx = provideChartConfigDrawer()
 const shouldHideSelection = computed(() => {
   return (
     chartDrawerCtx.isPickingRange.value ||
-    Boolean(chartDrawerCtx.activeChartId.value) ||
-    chartDrawerCtx.visible.value
+    Boolean(chartDrawerCtx.activeChartId.value)
   )
 })
 
@@ -419,6 +418,10 @@ function onCellClick(r: number, c: number): void {
   if (formulaEdit.active.value) {
     commitFormulaEditIfActive()
   }
+  if (!chartDrawerCtx.isPickingRange.value && (chartDrawerCtx.activeChartId.value || chartDrawerCtx.visible.value)) {
+    chartDrawerCtx.activeChartId.value = null
+    chartDrawerCtx.closeDrawer()
+  }
   const s = sheet.value
   if (!s) return
   if (isFilterHeaderCell(s, r, c)) {
@@ -487,6 +490,10 @@ function onSelectingRange(
     })
     return
   }
+  if (chartDrawerCtx.activeChartId.value || chartDrawerCtx.visible.value) {
+    chartDrawerCtx.activeChartId.value = null
+    chartDrawerCtx.closeDrawer()
+  }
   if (cfRangePick.active.value) {
     cfRangePick.handleSelectRange(r0, c0, r1, c1)
   }
@@ -506,6 +513,10 @@ function onSelectRange(
       column: [Math.min(c0, c1), Math.max(c0, c1)],
     })
     return
+  }
+  if (chartDrawerCtx.activeChartId.value || chartDrawerCtx.visible.value) {
+    chartDrawerCtx.activeChartId.value = null
+    chartDrawerCtx.closeDrawer()
   }
   if (cfRangePick.active.value) {
     cfRangePick.handleSelectRange(r0, c0, r1, c1)

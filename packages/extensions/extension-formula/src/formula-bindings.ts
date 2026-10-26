@@ -11,9 +11,10 @@ import {
   extractInternalRefTokens,
   hasInternalRefs,
 } from './internal-ref-scan'
-import { extractRefTokens, formatA1, parseRefToken } from './refs'
+import { extractRefTokens, formatA1, parseRefToken, normalizeFormulaInput } from './refs'
 
 export { extractInternalRefTokens, hasInternalRefs } from './internal-ref-scan'
+export { normalizeFormulaInput } from './refs'
 
 const ID = AXIS_ID_PATTERN
 
@@ -145,7 +146,8 @@ export function displayFormulaToInternal(
   ctx: FormulaContext,
   defaultSheetId: string,
 ): string {
-  const text = displayFormula.trim()
+  const normalized = normalizeFormulaInput(displayFormula)
+  const text = normalized.trim()
   if (!text.startsWith('=')) return text
 
   let out = text

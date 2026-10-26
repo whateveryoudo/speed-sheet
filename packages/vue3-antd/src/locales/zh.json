@@ -21,8 +21,18 @@
     "duplicate": "创建副本",
     "copyLink": "复制工作表链接",
     "hide": "隐藏工作表",
+    "unhide": "取消隐藏",
     "tabColor": "工作表标签颜色",
-    "renamePrompt": "工作表名称"
+    "renamePrompt": "工作表名称",
+    "deleteConfirmTitle": "删除工作表",
+    "deleteConfirmContent": "确定要删除工作表“{name}”吗？此操作无法撤销。",
+    "deleteSuccess": "已删除工作表",
+    "duplicateSuccess": "已创建工作表副本",
+    "copyLinkSuccess": "已复制工作表链接到剪贴板",
+    "hideSuccess": "已隐藏工作表",
+    "unhideSuccess": "已恢复显示工作表",
+    "nameRequired": "工作表名称不能为空",
+    "nameDuplicate": "已存在同名工作表"
   },
   "colorBoard": {
     "noTabColor": "无标签色",
@@ -189,7 +199,8 @@
       "orange": "橙色",
       "yellow": "黄色",
       "red": "红色",
-      "cyan": "青色"
+      "cyan": "青色",
+      "purple": "紫色"
     },
     "menu": {
       "highlight": "突出显示单元格",
