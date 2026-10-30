@@ -128,9 +128,10 @@ export function replaceCellMatch(
     newV = Number(newText)
   }
 
-  sheet.chain().setCell(r, c, {
-    v: newV,
-    m: String(newText),
+  sheet.chain().setCellValue({
+    r,
+    c,
+    value: String(newV),
   }).run()
 
   return true
@@ -160,9 +161,10 @@ export function replaceAllMatches(
       if (typeof cellData.v === 'number' && !isNaN(Number(newText)) && newText.trim() !== '') {
         newV = Number(newText)
       }
-      chain.setCell(m.r, m.c, {
-        v: newV,
-        m: String(newText),
+      chain.setCellValue({
+        r: m.r,
+        c: m.c,
+        value: String(newV),
       })
       replacedCount++
     }

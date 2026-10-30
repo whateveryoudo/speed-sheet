@@ -13,7 +13,10 @@
       :revision="revision"
       :boundary="rootEl"
     />
-    <div class="speed-sheet-canvas-wrap">
+    <div
+      class="speed-sheet-canvas-wrap"
+      :class="{ 'is-format-painter-active': formatPainterActive }"
+    >
       <CfRangePickBanner v-if="cfRangePick.active.value" />
       <SheetCanvas
         class="speed-sheet-canvas"
@@ -366,7 +369,14 @@ const canvasRefRanges = computed(() => {
   ]
 })
 
-const formatPainterActive = ref(false)
+export type FormatPainterMode = 'none' | 'single' | 'continuous'
+const formatPainterMode = ref<FormatPainterMode>('none')
+const formatPainterActive = computed<boolean>({
+  get: () => formatPainterMode.value !== 'none',
+  set: (val: boolean) => {
+    formatPainterMode.value = val ? 'single' : 'none'
+  },
+})
 const copiedStyle = ref<Partial<CellAttributes> | null>(null)
 const findReplaceOpen = ref(false)
 
@@ -380,6 +390,7 @@ provide(SHEET_TOOLBAR_KEY, {
   revision,
   editable: toRef(() => props.editable ?? true),
   formatPainterActive,
+  formatPainterMode,
   copiedStyle,
   findReplaceOpen,
   getViewportState: () => canvasRef.value?.getViewportState?.() ?? null,
@@ -390,7 +401,7 @@ watch(
   () => props.editable,
   (canEdit) => {
     if (canEdit) return
-    formatPainterActive.value = false
+    formatPainterMode.value = 'none'
     copiedStyle.value = null
     findReplaceOpen.value = false
     formulaEdit.cancel()
@@ -443,8 +454,10 @@ function onCellClick(r: number, c: number): void {
   }
   if (formatPainterActive.value && copiedStyle.value) {
     s.chain().applyCellStyle({ r, c, style: copiedStyle.value }).run()
-    formatPainterActive.value = false
-    copiedStyle.value = null
+    if (formatPainterMode.value === 'single') {
+      formatPainterMode.value = 'none'
+      copiedStyle.value = null
+    }
   }
 }
 
@@ -497,6 +510,26 @@ function onSelectingRange(
   if (cfRangePick.active.value) {
     cfRangePick.handleSelectRange(r0, c0, r1, c1)
   }
+  if (formatPainterActive.value && copiedStyle.value && (r0 !== r1 || c0 !== c1)) {
+    const minR = Math.min(r0, r1)
+    const maxR = Math.max(r0, r1)
+    const minC = Math.min(c0, c1)
+    const maxC = Math.max(c0, c1)
+    const s = sheet.value
+    if (s) {
+      const chain = s.chain()
+      for (let r = minR; r <= maxR; r++) {
+        for (let c = minC; c <= maxC; c++) {
+          chain.applyCellStyle({ r, c, style: copiedStyle.value })
+        }
+      }
+      chain.run()
+    }
+    if (formatPainterMode.value === 'single') {
+      formatPainterMode.value = 'none'
+      copiedStyle.value = null
+    }
+  }
 }
 
 function onSelectRange(
@@ -520,6 +553,26 @@ function onSelectRange(
   }
   if (cfRangePick.active.value) {
     cfRangePick.handleSelectRange(r0, c0, r1, c1)
+  }
+  if (formatPainterActive.value && copiedStyle.value && (r0 !== r1 || c0 !== c1)) {
+    const minR = Math.min(r0, r1)
+    const maxR = Math.max(r0, r1)
+    const minC = Math.min(c0, c1)
+    const maxC = Math.max(c0, c1)
+    const s = sheet.value
+    if (s) {
+      const chain = s.chain()
+      for (let r = minR; r <= maxR; r++) {
+        for (let c = minC; c <= maxC; c++) {
+          chain.applyCellStyle({ r, c, style: copiedStyle.value })
+        }
+      }
+      chain.run()
+    }
+    if (formatPainterMode.value === 'single') {
+      formatPainterMode.value = 'none'
+      copiedStyle.value = null
+    }
   }
   if (lastAutofill.value) {
     const fullR0 = Math.min(lastAutofill.value.sourceRange.r0, lastAutofill.value.targetRange.r0)
@@ -569,6 +622,22 @@ function onNavigateMatch(r: number, c: number): void {
   canvasRef.value?.scrollToCell(r, c)
 }
 
+function onGlobalKeydown(e: KeyboardEvent): void {
+  if (e.key === 'Escape' && formatPainterActive.value) {
+    formatPainterMode.value = 'none'
+    copiedStyle.value = null
+    e.stopPropagation()
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', onGlobalKeydown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onGlobalKeydown)
+})
+
 defineExpose({
   sheet,
   switchSheet,
@@ -594,6 +663,10 @@ defineExpose({
   flex: 1 1 0;
   min-height: 0;
   display: flex;
+
+  &.is-format-painter-active :deep(canvas) {
+    cursor: copy;
+  }
 }
 
 :deep(.speed-sheet-canvas) {

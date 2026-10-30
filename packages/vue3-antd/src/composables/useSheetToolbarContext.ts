@@ -16,6 +16,7 @@ export interface SheetToolbarContext {
   /** 是否可编辑（查看态为 false） */
   editable: Ref<boolean>
   formatPainterActive: Ref<boolean>
+  formatPainterMode?: Ref<'none' | 'single' | 'continuous'>
   copiedStyle: Ref<Partial<CellAttributes> | null>
   findReplaceOpen: Ref<boolean>
   /** 读取画布当前滚动与布局，供冻结等工具栏做视口校验 */

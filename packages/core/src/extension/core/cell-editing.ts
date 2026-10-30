@@ -35,6 +35,25 @@ export const CellEditingExtension = Extension.create({
         }
       },
 
+      setCell: (props: any, ...rest: any[]) => {
+        return ({ state }: CommandContext) => {
+          let r = 0, c = 0, patch: any = {}
+          if (typeof props === 'number' && typeof rest[0] === 'number') {
+            r = props
+            c = rest[0]
+            patch = rest[1] ?? {}
+          } else if (props && typeof props.r === 'number' && typeof props.c === 'number') {
+            r = props.r
+            c = props.c
+            patch = props.data ?? { ...props }
+            delete patch.r
+            delete patch.c
+          }
+          state.setCell(r, c, patch)
+          return true
+        }
+      },
+
       setCellFormat: (props: { r: number; c: number; format: CellFormat }) => {
         return ({ state }: CommandContext) => {
           const cell = state.getCellData(props.r, props.c)

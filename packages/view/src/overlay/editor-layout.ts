@@ -1,5 +1,5 @@
 import {
-  cellRect,
+  cellViewportRect,
   CELL_EDITOR_OUTSET,
   buildCellMap,
   getCellTextColSpan,
@@ -34,11 +34,16 @@ export function computeEditorBox(options: {
   mergeContext?: MergeContext
 }): EditorBox {
   const mc = options.mergeContext ?? MergeContext.empty()
-  const r = cellRect(options.editR, options.editC, options.layout, mc)
+  const layout = {
+    ...options.layout,
+    scrollX: options.scrollX ?? options.layout.scrollX,
+    scrollY: options.scrollY ?? options.layout.scrollY,
+  }
+  const r = cellViewportRect(options.editR, options.editC, layout, mc)
   const o = CELL_EDITOR_OUTSET
   return {
-    left: r.x - options.scrollX - o,
-    top: r.y - options.scrollY - o,
+    left: r.x - o,
+    top: r.y - o,
     minW: r.w + o * 2,
     minH: r.h + o * 2,
   }

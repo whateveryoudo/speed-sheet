@@ -42,7 +42,7 @@
 <script setup lang="ts">
 import { computed, watch, type ComputedRef, type Ref } from 'vue'
 import { CheckOutlined } from '@ant-design/icons-vue'
-import { cellRect } from '@speed-sheet/core'
+import { cellViewportRect } from '@speed-sheet/core'
 import type { Extension } from '@speed-sheet/core'
 import { useSheetViewport, type SheetBubbleAnchorRect } from '@speed-sheet/vue3'
 import { useDropdownPickPanel } from '../../composables/useDropdownPickPanel'
@@ -73,10 +73,10 @@ const anchorRectRef = computed((): SheetBubbleAnchorRect | null => {
   if (!s || !open.value) return null
   const { r, c } = pickAnchor
   const mc = s.createMergeContext()
-  const rect = cellRect(r, c, layout.value, mc)
+  const rect = cellViewportRect(r, c, layout.value, mc)
   return {
-    left: rect.x - scrollX.value,
-    top: rect.y - scrollY.value,
+    left: rect.x,
+    top: rect.y,
     width: rect.w,
     height: rect.h,
   }
