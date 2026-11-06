@@ -75,7 +75,7 @@ export { default as ImportModal } from './menus/toolbar/importExport/ImportModal
 export type { AutofillPayload } from './components/AutofillOptionsMenu.vue'
 export { ensureSvgSprite } from './icons'
 
-export type { WorkbookConfig } from '@speed-sheet/shared'
+export * from '@speed-sheet/shared'
 export type {
   SpeedSheetProps,
   ContextMenuItemConfig,
