@@ -4,6 +4,7 @@ import { frozenColPixelWidth, frozenRowPixelHeight } from '../../freeze/freeze-u
 import { colToLetter } from './hit'
 import { hasFreezePanes, splitSelectionByFreezePanes } from './freeze-panes'
 import type { RenderEnv } from './render-env'
+import type { RenderOptions } from './types'
 
 type RowHeaderBand = { clipTop: number; clipH: number }
 

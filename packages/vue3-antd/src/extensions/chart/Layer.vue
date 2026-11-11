@@ -157,7 +157,7 @@ import { useSheetToolbar } from '../../composables/useSheetToolbar'
 import { useChartConfigDrawer } from '../../composables/useChartConfigDrawer'
 import ResizeHandles from '../../components/ResizeHandles.vue'
 import { useBoxResize, type ResizeHandleDirection } from '../../composables/useBoxResize'
-import { echarts, type ECharts } from './echarts'
+import { ensureEcharts, echarts, type ECharts } from './echarts'
 
 const { sheet, layout, scrollX, scrollY, viewportTick, editable } = useSheetViewport()
 const { revision } = useSheetToolbar()
@@ -527,7 +527,8 @@ function renderChartInstance(chart: SheetChartItem, optionChanged = true) {
 
   let instance = chartInstances.get(chart.id)
   if (!instance) {
-    instance = echarts.init(dom)
+    const echartsCore = ensureEcharts()
+    instance = echartsCore.init(dom)
     chartInstances.set(chart.id, instance)
 
     // 绑定 ECharts 双击事件：双击标题或坐标轴原位修改，双击其他空白处打开抽屉

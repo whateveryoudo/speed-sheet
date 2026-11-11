@@ -171,9 +171,9 @@ export function drawCells(env: RenderEnv): void {
       truncate: useTruncate,
       strikethrough: !!data.cl,
       underline: !!data.un,
-      ht: data.ht,
-      vt: data.vt,
-      wrap: data.tb,
+      ht: data.ht as 0 | 1 | 2 | undefined,
+      vt: data.vt as 0 | 1 | 2 | undefined,
+      wrap: data.tb as 0 | 1 | 2 | undefined,
       fontSize: data.fs ?? DEFAULT_CELL_FONT_SIZE,
     })
 

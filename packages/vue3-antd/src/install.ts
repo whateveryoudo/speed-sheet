@@ -15,6 +15,8 @@ import { ensureSvgSprite } from './icons'
 
 export interface SpeedSheetUiInstallOptions extends SpeedSheetGlobalConfig {
   locale?: SheetLocale
+  /** 仅宿主未 app.use(SpeedComponents) 时生效；已安装则不再合并 iconfont，避免重复 SVG */
+  iconfontUrl?: string | string[]
 }
 
 export function installSpeedSheetUi(
@@ -30,7 +32,16 @@ export function installSpeedSheetUi(
     installSheetI18n(app)
   }
   provideSpeedSheetGlobalConfig((key, value) => app.provide(key, value))
-  ensureSpeedComponents(app, { iconfontUrl: baseConfig.iconfontUrl })
+
+  const fromHost = options?.iconfontUrl
+  const hostUrls = Array.isArray(fromHost) ? fromHost : fromHost ? [fromHost] : []
+  const baseUrls = Array.isArray(baseConfig.iconfontUrl)
+    ? baseConfig.iconfontUrl
+    : baseConfig.iconfontUrl
+      ? [baseConfig.iconfontUrl]
+      : []
+  const urls = Array.from(new Set([...baseUrls, ...hostUrls])).filter(Boolean)
+  ensureSpeedComponents(app, { iconfontUrl: urls })
 }
 
 export { setSpeedSheetGlobalConfig } from '@speed-sheet/vue3'
